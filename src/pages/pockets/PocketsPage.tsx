@@ -51,20 +51,23 @@ export function PocketsPage({ userId }: Props) {
       {/* Add/Edit form modal */}
       {(showForm || editing) && (
         <div
-          className="fixed inset-0 bg-black/70 z-50 flex items-end justify-center"
+          className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center px-4"
           onClick={e => { if (e.target === e.currentTarget) { setShowForm(false); setEditing(null) } }}
         >
-          <div className="bg-slate-900 w-full max-w-lg rounded-t-3xl border-t border-slate-700 flex flex-col"
-            style={{ maxHeight: '90dvh' }}>
-            {/* Handle + title — fijos arriba */}
-            <div className="flex-shrink-0 px-6 pt-4 pb-3">
-              <div className="w-10 h-1 bg-slate-700 rounded-full mx-auto mb-4" />
+          <div className="bg-slate-900 w-full max-w-lg rounded-2xl border border-slate-700 flex flex-col"
+            style={{ maxHeight: '85dvh' }}>
+            {/* Título fijo arriba */}
+            <div className="flex-shrink-0 px-6 pt-5 pb-3 border-b border-slate-800 flex items-center justify-between">
               <h2 className="text-base font-bold text-slate-100">
                 {editing ? 'Editar bolsillo' : 'Nuevo bolsillo'}
               </h2>
+              <button
+                onClick={() => { setShowForm(false); setEditing(null) }}
+                className="text-slate-500 hover:text-slate-300 text-xl leading-none"
+              >×</button>
             </div>
             {/* Contenido scrollable */}
-            <div className="overflow-y-auto flex-1 px-6 pb-8">
+            <div className="overflow-y-auto flex-1 px-6 py-5">
               <PocketForm
                 userId={userId}
                 initial={editing ?? undefined}
