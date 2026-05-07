@@ -21,6 +21,14 @@ export function AuthPage() {
     setLoading(false)
   }
 
+  const switchMode = (next: 'login' | 'register') => {
+    setMode(next)
+    setError('')
+    setName('')
+    setEmail('')
+    setPassword('')
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
@@ -31,24 +39,9 @@ export function AuthPage() {
         </div>
 
         <div className="bg-slate-900 rounded-2xl p-6 border border-slate-800">
-          <div className="flex gap-2 mb-6">
-            <button
-              onClick={() => setMode('login')}
-              className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
-                mode === 'login' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'
-              }`}
-            >
-              Ingresar
-            </button>
-            <button
-              onClick={() => setMode('register')}
-              className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
-                mode === 'register' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'
-              }`}
-            >
-              Registrarse
-            </button>
-          </div>
+          <h2 className="text-slate-100 font-semibold text-base mb-5">
+            {mode === 'login' ? 'Ingresar a tu cuenta' : 'Crear cuenta nueva'}
+          </h2>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode === 'register' && (
@@ -101,6 +94,24 @@ export function AuthPage() {
               {loading ? 'Cargando...' : mode === 'login' ? 'Entrar' : 'Crear cuenta'}
             </button>
           </form>
+
+          <div className="mt-5 text-center text-sm">
+            {mode === 'login' ? (
+              <p className="text-slate-500">
+                ¿No tienes cuenta?{' '}
+                <button onClick={() => switchMode('register')} className="text-blue-400 hover:text-blue-300 font-medium">
+                  Regístrate
+                </button>
+              </p>
+            ) : (
+              <p className="text-slate-500">
+                ¿Ya tienes cuenta?{' '}
+                <button onClick={() => switchMode('login')} className="text-blue-400 hover:text-blue-300 font-medium">
+                  Ingresar
+                </button>
+              </p>
+            )}
+          </div>
         </div>
       </div>
     </div>

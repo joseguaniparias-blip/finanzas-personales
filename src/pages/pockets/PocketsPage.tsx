@@ -50,29 +50,40 @@ export function PocketsPage({ userId }: Props) {
 
       {/* Add/Edit form modal */}
       {(showForm || editing) && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-end justify-center p-0">
-          <div className="bg-slate-900 w-full max-w-lg rounded-t-3xl p-6 border-t border-slate-700 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-base font-bold text-slate-100 mb-4">
-              {editing ? 'Editar bolsillo' : 'Nuevo bolsillo'}
-            </h2>
-            <PocketForm
-              userId={userId}
-              initial={editing ?? undefined}
-              onSave={async data => {
-                if (editing) {
-                  await updatePocket(editing.id, data)
+        <div
+          className="fixed inset-0 bg-black/70 z-50 flex items-end justify-center"
+          onClick={e => { if (e.target === e.currentTarget) { setShowForm(false); setEditing(null) } }}
+        >
+          <div className="bg-slate-900 w-full max-w-lg rounded-t-3xl border-t border-slate-700 flex flex-col"
+            style={{ maxHeight: '90dvh' }}>
+            {/* Handle + title — fijos arriba */}
+            <div className="flex-shrink-0 px-6 pt-4 pb-3">
+              <div className="w-10 h-1 bg-slate-700 rounded-full mx-auto mb-4" />
+              <h2 className="text-base font-bold text-slate-100">
+                {editing ? 'Editar bolsillo' : 'Nuevo bolsillo'}
+              </h2>
+            </div>
+            {/* Contenido scrollable */}
+            <div className="overflow-y-auto flex-1 px-6 pb-8">
+              <PocketForm
+                userId={userId}
+                initial={editing ?? undefined}
+                onSave={async data => {
+                  if (editing) {
+                    await updatePocket(editing.id, data)
+                    setEditing(null)
+                  } else {
+                    await addPocket(data)
+                    setShowForm(false)
+                  }
+                }}
+                onDelete={editing ? async () => {
+                  await deletePocket(editing.id)
                   setEditing(null)
-                } else {
-                  await addPocket(data)
-                  setShowForm(false)
-                }
-              }}
-              onDelete={editing ? async () => {
-                await deletePocket(editing.id)
-                setEditing(null)
-              } : undefined}
-              onCancel={() => { setShowForm(false); setEditing(null) }}
-            />
+                } : undefined}
+                onCancel={() => { setShowForm(false); setEditing(null) }}
+              />
+            </div>
           </div>
         </div>
       )}
