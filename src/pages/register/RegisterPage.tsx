@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { TrendingUp, TrendingDown } from 'lucide-react'
+import { PageHeader } from '@/components/shared/PageHeader'
 import { IncomeForm } from '@/pages/income/IncomeForm'
 import { ExpenseForm } from '@/pages/expenses/ExpenseForm'
 import { usePlatforms } from '@/hooks/usePlatforms'
@@ -45,7 +46,7 @@ export function RegisterPage({ userId }: Props) {
 
   return (
     <div className="p-4 max-w-lg mx-auto">
-      <h1 className="text-slate-100 text-xl font-bold mb-1">Registrar</h1>
+      <PageHeader title="Registrar" />
       <p className="text-slate-500 text-sm mb-8">¿Qué quieres registrar?</p>
 
       <div className="grid grid-cols-2 gap-4">

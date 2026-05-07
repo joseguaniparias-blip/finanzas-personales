@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { TrendingUp, TrendingDown, CreditCard } from 'lucide-react'
+import { PageHeader } from '@/components/shared/PageHeader'
 
 const modules = [
   { to: '/ingresos',  icon: TrendingUp,   label: 'Ingresos',  color: 'emerald', desc: 'Plataformas y efectivo' },
@@ -10,7 +11,7 @@ const modules = [
 export function HomePage() {
   return (
     <div className="p-4 max-w-lg mx-auto">
-      <h1 className="text-slate-100 text-xl font-bold mb-1">Mis Finanzas</h1>
+      <PageHeader title="Mis Finanzas" />
       <p className="text-slate-500 text-sm mb-6">¿Qué quieres revisar hoy?</p>
 
       <div className="space-y-3">

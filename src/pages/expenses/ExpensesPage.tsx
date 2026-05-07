@@ -6,6 +6,7 @@ import { useTransactions } from '@/hooks/useTransactions'
 import { ExpenseForm } from './ExpenseForm'
 import { maskAmount } from '@/components/shared/PrivacyToggle'
 import { AmountInput, parseAmount } from '@/components/shared/AmountInput'
+import { PageHeader } from '@/components/shared/PageHeader'
 import type { Category, Transaction } from '@/types'
 
 interface Props { userId: string }
@@ -53,15 +54,17 @@ export function ExpensesPage({ userId }: Props) {
 
   return (
     <div className="p-4 max-w-lg mx-auto">
-      <div className="flex items-center justify-between mb-5">
-        <h1 className="text-slate-100 text-xl font-bold">Gastos</h1>
-        <button
-          onClick={() => setShowForm(true)}
-          className="flex items-center gap-1.5 bg-red-600 hover:bg-red-500 text-white px-3 py-2 rounded-xl text-xs font-semibold transition-colors"
-        >
-          <Plus size={14} /> Registrar
-        </button>
-      </div>
+      <PageHeader
+        title="Gastos"
+        right={
+          <button
+            onClick={() => setShowForm(true)}
+            className="flex items-center gap-1.5 bg-red-600 hover:bg-red-500 text-white px-3 py-2 rounded-xl text-xs font-semibold transition-colors"
+          >
+            <Plus size={14} /> Registrar
+          </button>
+        }
+      />
 
       {/* Month summary */}
       <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-4 mb-5 border border-slate-700">

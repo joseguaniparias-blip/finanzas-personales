@@ -6,6 +6,7 @@ import { usePockets } from '@/hooks/usePockets'
 import { DebtForm } from './DebtForm'
 import { DebtDetail } from './DebtDetail'
 import { maskAmount } from '@/components/shared/PrivacyToggle'
+import { PageHeader } from '@/components/shared/PageHeader'
 import type { Debt } from '@/types'
 
 interface Props { userId: string }
@@ -69,15 +70,17 @@ export function DebtsPage({ userId }: Props) {
 
   return (
     <div className="p-4 max-w-lg mx-auto">
-      <div className="flex items-center justify-between mb-5">
-        <h1 className="text-slate-100 text-xl font-bold">Deudas</h1>
-        <button
-          onClick={() => setShowForm(true)}
-          className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-xl text-xs font-semibold transition-colors"
-        >
-          <Plus size={14} /> Nueva
-        </button>
-      </div>
+      <PageHeader
+        title="Deudas"
+        right={
+          <button
+            onClick={() => setShowForm(true)}
+            className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-xl text-xs font-semibold transition-colors"
+          >
+            <Plus size={14} /> Nueva
+          </button>
+        }
+      />
 
       {/* Summary */}
       {debts.length > 0 && totalDebt > 0 && (

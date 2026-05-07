@@ -5,6 +5,7 @@ import { usePockets } from '@/hooks/usePockets'
 import { useTransactions } from '@/hooks/useTransactions'
 import { IncomeForm } from './IncomeForm'
 import { maskAmount } from '@/components/shared/PrivacyToggle'
+import { PageHeader } from '@/components/shared/PageHeader'
 import type { Platform, Transaction } from '@/types'
 import { TrendingUp, Plus } from 'lucide-react'
 
@@ -52,15 +53,17 @@ export function IncomePage({ userId }: Props) {
 
   return (
     <div className="p-4 max-w-lg mx-auto">
-      <div className="flex items-center justify-between mb-5">
-        <h1 className="text-slate-100 text-xl font-bold">Ingresos</h1>
-        <button
-          onClick={() => setShowForm(true)}
-          className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded-xl text-xs font-semibold transition-colors"
-        >
-          <Plus size={14} /> Registrar
-        </button>
-      </div>
+      <PageHeader
+        title="Ingresos"
+        right={
+          <button
+            onClick={() => setShowForm(true)}
+            className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded-xl text-xs font-semibold transition-colors"
+          >
+            <Plus size={14} /> Registrar
+          </button>
+        }
+      />
 
       {/* Platform wallets */}
       {platforms.length > 0 && (

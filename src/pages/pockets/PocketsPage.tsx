@@ -4,6 +4,7 @@ import { usePockets } from '@/hooks/usePockets'
 import { PocketCard } from './PocketCard'
 import { PocketForm } from './PocketForm'
 import { PrivacyToggle, maskAmount } from '@/components/shared/PrivacyToggle'
+import { PageHeader } from '@/components/shared/PageHeader'
 import type { Pocket } from '@/types'
 
 interface Props { userId: string }
@@ -18,11 +19,11 @@ export function PocketsPage({ userId }: Props) {
 
   return (
     <div className="p-4 max-w-lg mx-auto">
-      {/* Header */}
+      <PageHeader title="Bolsillos" right={<PrivacyToggle hidden={hidden} onToggle={() => setHidden(h => !h)} />} />
+      {/* Saldo total */}
       <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-5 mb-6 border border-slate-700">
         <div className="flex items-center justify-between mb-1">
           <p className="text-xs text-slate-400">SALDO TOTAL</p>
-          <PrivacyToggle hidden={hidden} onToggle={() => setHidden(h => !h)} />
         </div>
         <p className="text-3xl font-bold text-emerald-400">{maskAmount(totalBalance, hidden)}</p>
         <p className="text-xs text-slate-500 mt-1">{pockets.length} bolsillo{pockets.length !== 1 ? 's' : ''}</p>
