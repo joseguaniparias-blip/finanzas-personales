@@ -65,9 +65,19 @@ export function OnboardingFlow({ userId, onComplete }: Props) {
     }
 
     // 3. Mark onboarding complete in Supabase
+    const now = new Date().toISOString()
     await supabase.from('user_profiles').upsert({
       id: userId, name: finalData.name,
       onboarding_completed: true, balance_hidden: false
+    })
+
+    // 4. Sync profile to local DB so App.tsx detects it instantly on next load
+    await db.user_profiles.put({
+      id: userId,
+      name: finalData.name,
+      onboarding_completed: true,
+      balance_hidden: false,
+      created_at: now
     })
 
     setSaving(false)

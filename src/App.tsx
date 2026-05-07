@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { db } from '@/lib/db'
+import { supabase } from '@/lib/supabase'
 import { AuthPage } from '@/pages/auth/AuthPage'
 import { AppShell } from '@/components/layout/AppShell'
 import { OnboardingFlow } from '@/pages/onboarding/OnboardingFlow'
@@ -20,9 +21,38 @@ function AppRoutes() {
 
   useEffect(() => {
     if (!user) { setOnboardingDone(null); return }
-    db.user_profiles.get(user.id).then(profile => {
-      setOnboardingDone(profile?.onboarding_completed ?? false)
-    })
+
+    async function checkOnboarding() {
+      // 1. Check local IndexedDB first (fast path)
+      const localProfile = await db.user_profiles.get(user!.id)
+      if (localProfile) {
+        setOnboardingDone(localProfile.onboarding_completed)
+        return
+      }
+
+      // 2. Fallback: check Supabase (user on new device or after clearing storage)
+      const { data } = await supabase
+        .from('user_profiles')
+        .select('onboarding_completed, name, balance_hidden, created_at')
+        .eq('id', user!.id)
+        .single()
+
+      if (data?.onboarding_completed) {
+        // Sync profile to local DB so next check is instant
+        await db.user_profiles.put({
+          id: user!.id,
+          name: data.name ?? '',
+          onboarding_completed: true,
+          balance_hidden: data.balance_hidden ?? false,
+          created_at: data.created_at ?? new Date().toISOString()
+        })
+        setOnboardingDone(true)
+      } else {
+        setOnboardingDone(false)
+      }
+    }
+
+    checkOnboarding()
   }, [user])
 
   if (loading || (user && onboardingDone === null)) {
