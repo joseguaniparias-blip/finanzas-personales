@@ -10,6 +10,9 @@ import { PocketsPage } from '@/pages/pockets/PocketsPage'
 import { RegisterPage } from '@/pages/register/RegisterPage'
 import { HistoryPage } from '@/pages/history/HistoryPage'
 import { ReportsPage } from '@/pages/reports/ReportsPage'
+import { IncomePage } from '@/pages/income/IncomePage'
+import { ExpensesPage } from '@/pages/expenses/ExpensesPage'
+import { DebtsPage } from '@/pages/debts/DebtsPage'
 
 function AppRoutes() {
   const { user, loading } = useAuth()
@@ -39,11 +42,14 @@ function AppRoutes() {
   return (
     <Routes>
       <Route element={<AppShell />}>
-        <Route path="/"          element={<HomePage />} />
-        <Route path="/bolsillos" element={<PocketsPage userId={user.id} />} />
-        <Route path="/registrar" element={<RegisterPage />} />
-        <Route path="/historial" element={<HistoryPage />} />
-        <Route path="/reportes"  element={<ReportsPage />} />
+        <Route path="/"           element={<HomePage />} />
+        <Route path="/bolsillos"  element={<PocketsPage userId={user.id} />} />
+        <Route path="/registrar"  element={<RegisterPage userId={user.id} />} />
+        <Route path="/historial"  element={<HistoryPage />} />
+        <Route path="/reportes"   element={<ReportsPage />} />
+        <Route path="/ingresos"   element={<IncomePage userId={user.id} />} />
+        <Route path="/gastos"     element={<ExpensesPage userId={user.id} />} />
+        <Route path="/deudas"     element={<DebtsPage userId={user.id} />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
