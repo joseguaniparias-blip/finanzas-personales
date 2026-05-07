@@ -9,7 +9,7 @@ import type { Pocket } from '@/types'
 interface Props { userId: string }
 
 export function PocketsPage({ userId }: Props) {
-  const { pockets, totalBalance, loading, addPocket, updatePocket } = usePockets(userId)
+  const { pockets, totalBalance, loading, addPocket, updatePocket, deletePocket } = usePockets(userId)
   const [hidden, setHidden] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Pocket | null>(null)
@@ -67,6 +67,10 @@ export function PocketsPage({ userId }: Props) {
                   setShowForm(false)
                 }
               }}
+              onDelete={editing ? async () => {
+                await deletePocket(editing.id)
+                setEditing(null)
+              } : undefined}
               onCancel={() => { setShowForm(false); setEditing(null) }}
             />
           </div>

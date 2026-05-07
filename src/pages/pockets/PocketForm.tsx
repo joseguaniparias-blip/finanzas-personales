@@ -1,10 +1,12 @@
 import { useState } from 'react'
+import { Trash2 } from 'lucide-react'
 import type { Pocket, PocketType } from '@/types'
 
 interface Props {
   userId: string
   initial?: Pocket
   onSave: (data: Omit<Pocket, 'id' | 'created_at'>) => void
+  onDelete?: () => void
   onCancel: () => void
 }
 
@@ -16,12 +18,13 @@ const ICONS: Record<PocketType, { default: string; options: string[] }> = {
 
 const COLORS = ['#34d399', '#60a5fa', '#fb923c', '#a78bfa', '#f87171', '#fbbf24', '#94a3b8']
 
-export function PocketForm({ userId, initial, onSave, onCancel }: Props) {
+export function PocketForm({ userId, initial, onSave, onDelete, onCancel }: Props) {
   const [name, setName] = useState(initial?.name ?? '')
   const [type, setType] = useState<PocketType>(initial?.type ?? 'bank')
   const [balance, setBalance] = useState(initial?.balance?.toString() ?? '0')
   const [color, setColor] = useState(initial?.color ?? '#34d399')
   const [icon, setIcon] = useState(initial?.icon ?? '💳')
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -101,6 +104,34 @@ export function PocketForm({ userId, initial, onSave, onCancel }: Props) {
           {initial ? 'Guardar cambios' : 'Agregar bolsillo'}
         </button>
       </div>
+
+      {initial && onDelete && (
+        <div className="pt-2">
+          {!confirmDelete ? (
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(true)}
+              className="w-full flex items-center justify-center gap-2 text-red-500 hover:text-red-400 py-2.5 rounded-xl text-sm transition-colors"
+            >
+              <Trash2 size={14} /> Eliminar bolsillo
+            </button>
+          ) : (
+            <div className="bg-red-950/40 border border-red-700/40 rounded-xl p-4 text-center">
+              <p className="text-slate-300 text-sm mb-3">¿Eliminar <strong>{initial.name}</strong>?</p>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setConfirmDelete(false)}
+                  className="flex-1 py-2 rounded-lg bg-slate-700 text-slate-300 text-sm">
+                  No
+                </button>
+                <button type="button" onClick={onDelete}
+                  className="flex-1 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold">
+                  Sí, eliminar
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </form>
   )
 }
