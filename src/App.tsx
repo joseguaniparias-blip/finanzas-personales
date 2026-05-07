@@ -14,6 +14,9 @@ import { ReportsPage } from '@/pages/reports/ReportsPage'
 import { IncomePage } from '@/pages/income/IncomePage'
 import { ExpensesPage } from '@/pages/expenses/ExpensesPage'
 import { DebtsPage } from '@/pages/debts/DebtsPage'
+import { CollectionsPage } from '@/pages/collections/CollectionsPage'
+import { SavingsPage } from '@/pages/savings/SavingsPage'
+import { CadenaPage } from '@/pages/cadena/CadenaPage'
 
 function AppRoutes() {
   const { user, loading } = useAuth()
@@ -80,6 +83,9 @@ function AppRoutes() {
         <Route path="/ingresos"   element={<IncomePage userId={user.id} />} />
         <Route path="/gastos"     element={<ExpensesPage userId={user.id} />} />
         <Route path="/deudas"     element={<DebtsPage userId={user.id} />} />
+        <Route path="/cobros"     element={<CollectionsPage userId={user.id} />} />
+        <Route path="/ahorros"    element={<SavingsPage userId={user.id} />} />
+        <Route path="/cadena"     element={<CadenaPage userId={user.id} />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
