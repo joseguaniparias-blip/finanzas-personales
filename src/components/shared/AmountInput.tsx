@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useState } from 'react'
 
 interface Props {
   value: string
@@ -9,16 +9,18 @@ interface Props {
 }
 
 export function AmountInput({ value, onChange, placeholder = '0', label, className = '' }: Props) {
-  const ref = useRef<HTMLInputElement>(null)
+  const [focused, setFocused] = useState(false)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/\D/g, '')
     onChange(raw)
   }
 
-  const formatted = value
-    ? Number(value).toLocaleString('es-CO')
-    : ''
+  // While focused: show raw digits so the user can type freely without dots interfering
+  // While blurred: show formatted number with thousand separators
+  const displayValue = focused
+    ? value
+    : value ? Number(value).toLocaleString('es-CO') : ''
 
   return (
     <div className={className}>
@@ -26,11 +28,12 @@ export function AmountInput({ value, onChange, placeholder = '0', label, classNa
       <div className="relative flex items-center bg-slate-800 rounded-xl border border-slate-700 focus-within:border-blue-500 transition-colors">
         <span className="pl-3 text-slate-500 text-sm font-medium">$</span>
         <input
-          ref={ref}
           type="text"
           inputMode="numeric"
-          value={formatted}
+          value={displayValue}
           onChange={handleChange}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
           placeholder={placeholder}
           className="flex-1 bg-transparent py-3 px-2 text-slate-100 text-base font-semibold focus:outline-none placeholder:text-slate-600"
         />
