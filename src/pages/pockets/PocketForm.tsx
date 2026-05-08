@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Trash2 } from 'lucide-react'
 import type { Pocket, PocketType } from '@/types'
+import { AmountInput, parseAmount } from '@/components/shared/AmountInput'
 
 interface Props {
   userId: string
@@ -21,7 +22,7 @@ const COLORS = ['#34d399', '#60a5fa', '#fb923c', '#a78bfa', '#f87171', '#fbbf24'
 export function PocketForm({ userId, initial, onSave, onDelete, onCancel }: Props) {
   const [name, setName] = useState(initial?.name ?? '')
   const [type, setType] = useState<PocketType>(initial?.type ?? 'bank')
-  const [balance, setBalance] = useState(initial?.balance?.toString() ?? '0')
+  const [balance, setBalance] = useState(initial?.balance?.toString() ?? '')
   const [color, setColor] = useState(initial?.color ?? '#34d399')
   const [icon, setIcon] = useState(initial?.icon ?? '💳')
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -33,7 +34,7 @@ export function PocketForm({ userId, initial, onSave, onDelete, onCancel }: Prop
       name: name.trim(),
       type,
       platform_id: null,
-      balance: parseFloat(balance) || 0,
+      balance: parseAmount(balance),
       color,
       icon,
       is_active: true
@@ -86,13 +87,7 @@ export function PocketForm({ userId, initial, onSave, onDelete, onCancel }: Prop
         </div>
       </div>
 
-      <div>
-        <label className="text-xs text-slate-400 mb-1 block">SALDO ACTUAL</label>
-        <input type="number" value={balance} onChange={e => setBalance(e.target.value)}
-          min="0" step="1000"
-          className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500"
-        />
-      </div>
+      <AmountInput label="SALDO ACTUAL" value={balance} onChange={setBalance} />
 
       <div className="flex gap-3 pt-2">
         <button type="button" onClick={onCancel}
