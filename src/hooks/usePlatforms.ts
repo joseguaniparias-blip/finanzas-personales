@@ -9,6 +9,7 @@ interface PlatformsHook {
   loading: boolean
   addPlatform: (p: NewPlatform) => Promise<Platform>
   updatePlatform: (id: string, updates: Partial<Platform>) => Promise<void>
+  deletePlatform: (id: string) => Promise<void>
 }
 
 export function usePlatforms(userId: string): PlatformsHook {
@@ -38,5 +39,10 @@ export function usePlatforms(userId: string): PlatformsHook {
     await load()
   }
 
-  return { platforms, loading, addPlatform, updatePlatform }
+  const deletePlatform = async (id: string) => {
+    await db.platforms.update(id, { is_active: false })
+    await load()
+  }
+
+  return { platforms, loading, addPlatform, updatePlatform, deletePlatform }
 }

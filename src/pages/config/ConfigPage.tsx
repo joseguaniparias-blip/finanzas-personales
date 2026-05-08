@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { LogOut, ChevronRight, User, Bell } from 'lucide-react'
+import { LogOut, ChevronRight, User, Bell, Trash2 } from 'lucide-react'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { usePlatforms } from '@/hooks/usePlatforms'
 import { usePockets } from '@/hooks/usePockets'
@@ -16,7 +16,8 @@ type Section = 'main' | 'profile' | 'platforms' | 'categories'
 
 export function ConfigPage({ userId }: Props) {
   const { profile, setHidden } = useUserProfile(userId)
-  const { platforms, updatePlatform } = usePlatforms(userId)
+  const { platforms, updatePlatform, deletePlatform } = usePlatforms(userId)
+  const [confirmDeletePlatform, setConfirmDeletePlatform] = useState<string | null>(null)
   const { pockets } = usePockets(userId)
   const { categories, updateCategory } = useCategories(userId)
   const { signOut } = useAuth()
@@ -59,7 +60,27 @@ export function ConfigPage({ userId }: Props) {
         <div className="space-y-4">
           {platforms.map(p => (
             <div key={p.id} className="bg-slate-800 rounded-2xl p-4 border border-slate-700">
-              <p className="text-slate-200 font-semibold text-sm mb-3">{p.name}</p>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-slate-200 font-semibold text-sm">{p.name}</p>
+                {confirmDeletePlatform === p.id ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-red-400">¿Eliminar?</span>
+                    <button onClick={async () => { await deletePlatform(p.id); setConfirmDeletePlatform(null) }}
+                      className="text-xs bg-red-600 hover:bg-red-500 text-white px-2 py-1 rounded-lg transition-colors">
+                      Sí, eliminar
+                    </button>
+                    <button onClick={() => setConfirmDeletePlatform(null)}
+                      className="text-xs text-slate-500 hover:text-slate-300 transition-colors">
+                      Cancelar
+                    </button>
+                  </div>
+                ) : (
+                  <button onClick={() => setConfirmDeletePlatform(p.id)}
+                    className="p-1.5 rounded-lg text-slate-600 hover:text-red-400 hover:bg-red-400/10 transition-colors">
+                    <Trash2 size={14} />
+                  </button>
+                )}
+              </div>
               <div className="mb-3">
                 <p className="text-xs text-slate-400 mb-2">Día de pago semanal</p>
                 <div className="flex gap-1">
