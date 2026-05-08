@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Eye, EyeOff, TrendingUp, TrendingDown, CreditCard, HandCoins, PiggyBank, Users, Check } from 'lucide-react'
+import { Eye, EyeOff, TrendingUp, TrendingDown, CreditCard, HandCoins, PiggyBank, Users, Check, Settings } from 'lucide-react'
 import { usePockets } from '@/hooks/usePockets'
 import { useTransactions } from '@/hooks/useTransactions'
 import { useScheduledEvents } from '@/hooks/useScheduledEvents'
@@ -14,10 +14,11 @@ interface Props { userId: string }
 type Period = 'day' | 'week' | 'month'
 
 const EVENT_META: Record<string, { color: string; icon: string; label: string }> = {
-  debt:       { color: 'text-blue-400',    icon: '🔴', label: 'Deuda' },
-  collection: { color: 'text-emerald-400', icon: '🟢', label: 'Cobro' },
-  saving:     { color: 'text-blue-400',    icon: '💙', label: 'Ahorro' },
-  cadena:     { color: 'text-violet-400',  icon: '🟣', label: 'Cadena' },
+  debt:             { color: 'text-blue-400',    icon: '🔴', label: 'Deuda' },
+  collection:       { color: 'text-emerald-400', icon: '🟢', label: 'Cobro' },
+  saving:           { color: 'text-blue-400',    icon: '💙', label: 'Ahorro' },
+  cadena:           { color: 'text-violet-400',  icon: '🟣', label: 'Cadena' },
+  platform_payout:  { color: 'text-orange-400',  icon: '💰', label: 'Pago plataforma' },
 }
 
 function maskVal(amount: number, hidden: boolean) {
@@ -91,10 +92,16 @@ export function HomePage({ userId }: Props) {
           <p className="text-slate-500 text-xs">Bienvenido</p>
           <h1 className="text-slate-100 text-xl font-bold">{profile?.name ?? '…'}</h1>
         </div>
-        <button onClick={() => setHidden(!hidden)}
-          className="p-2.5 rounded-full bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors">
-          {hidden ? <EyeOff size={18} /> : <Eye size={18} />}
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setHidden(!hidden)}
+            className="p-2.5 rounded-full bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors">
+            {hidden ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+          <Link to="/configuracion"
+            className="p-2.5 rounded-full bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors">
+            <Settings size={18} />
+          </Link>
+        </div>
       </div>
 
       {/* Balance card */}

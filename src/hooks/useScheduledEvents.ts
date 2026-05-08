@@ -60,6 +60,10 @@ export function useScheduledEvents(userId: string): ScheduledEventsHook {
       await adjustPocket(pocketId, -event.amount)
       await addTx(userId, 'expense', event.amount, pocketId, event, today)
       await handleCadenaConfirm(event)
+
+    } else if (event.type === 'platform_payout') {
+      // Move full platform pocket balance to dest pocket
+      await handlePlatformPayoutConfirm(event, pocketId, userId, today)
     }
 
     await load()
@@ -177,6 +181,23 @@ async function handleCadenaConfirm(event: ScheduledEvent) {
     await scheduleNext(event, cadena.frequency, cadena.contribution_amount)
   }
   await db.cadenas.update(cadena.id, updates)
+}
+
+async function handlePlatformPayoutConfirm(event: ScheduledEvent, destPocketId: string, userId: string, today: string) {
+  // Find the platform pocket and move its full balance to dest pocket
+  const platformPockets = await db.pockets
+    .where('platform_id').equals(event.reference_id)
+    .and(p => Boolean(p.is_active))
+    .toArray()
+  const platformPocket = platformPockets[0]
+  if (!platformPocket || platformPocket.balance <= 0) return
+
+  const amount = platformPocket.balance
+  await db.pockets.update(platformPocket.id, { balance: 0 })
+  await adjustPocket(destPocketId, amount)
+
+  const fakeEvent: ScheduledEvent = { ...event, amount }
+  await addTx(userId, 'income', amount, destPocketId, fakeEvent, today, `Pago plataforma → bolsillo`)
 }
 
 async function scheduleNext(prev: ScheduledEvent, frequency: string, amount: number) {

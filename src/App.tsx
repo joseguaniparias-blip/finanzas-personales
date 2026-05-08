@@ -11,16 +11,21 @@ import { PocketsPage } from '@/pages/pockets/PocketsPage'
 import { RegisterPage } from '@/pages/register/RegisterPage'
 import { HistoryPage } from '@/pages/history/HistoryPage'
 import { ReportsPage } from '@/pages/reports/ReportsPage'
+import { usePlatformPayouts } from '@/hooks/usePlatformPayouts'
 import { IncomePage } from '@/pages/income/IncomePage'
 import { ExpensesPage } from '@/pages/expenses/ExpensesPage'
 import { DebtsPage } from '@/pages/debts/DebtsPage'
 import { CollectionsPage } from '@/pages/collections/CollectionsPage'
 import { SavingsPage } from '@/pages/savings/SavingsPage'
 import { CadenaPage } from '@/pages/cadena/CadenaPage'
+import { ConfigPage } from '@/pages/config/ConfigPage'
 
 function AppRoutes() {
   const { user, loading } = useAuth()
   const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null)
+
+  // Must be called unconditionally before any returns
+  usePlatformPayouts(user && onboardingDone ? user.id : '')
 
   useEffect(() => {
     if (!user) { setOnboardingDone(null); return }
@@ -79,13 +84,14 @@ function AppRoutes() {
         <Route path="/bolsillos"  element={<PocketsPage userId={user.id} />} />
         <Route path="/registrar"  element={<RegisterPage userId={user.id} />} />
         <Route path="/historial"  element={<HistoryPage userId={user.id} />} />
-        <Route path="/reportes"   element={<ReportsPage />} />
+        <Route path="/reportes"   element={<ReportsPage userId={user.id} />} />
         <Route path="/ingresos"   element={<IncomePage userId={user.id} />} />
         <Route path="/gastos"     element={<ExpensesPage userId={user.id} />} />
         <Route path="/deudas"     element={<DebtsPage userId={user.id} />} />
-        <Route path="/cobros"     element={<CollectionsPage userId={user.id} />} />
-        <Route path="/ahorros"    element={<SavingsPage userId={user.id} />} />
-        <Route path="/cadena"     element={<CadenaPage userId={user.id} />} />
+        <Route path="/cobros"          element={<CollectionsPage userId={user.id} />} />
+        <Route path="/ahorros"         element={<SavingsPage userId={user.id} />} />
+        <Route path="/cadena"          element={<CadenaPage userId={user.id} />} />
+        <Route path="/configuracion"   element={<ConfigPage userId={user.id} />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
