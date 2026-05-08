@@ -22,7 +22,8 @@ const COLORS = ['#34d399', '#60a5fa', '#fb923c', '#a78bfa', '#f87171', '#fbbf24'
 export function PocketForm({ userId, initial, onSave, onDelete, onCancel }: Props) {
   const [name, setName] = useState(initial?.name ?? '')
   const [type, setType] = useState<PocketType>(initial?.type ?? 'bank')
-  const [balance, setBalance] = useState(initial?.balance?.toString() ?? '')
+  const [balance, setBalance] = useState(Math.abs(initial?.balance ?? 0).toString() || '')
+  const [negative, setNegative] = useState((initial?.balance ?? 0) < 0)
   const [color, setColor] = useState(initial?.color ?? '#34d399')
   const [icon, setIcon] = useState(initial?.icon ?? '💳')
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -34,7 +35,7 @@ export function PocketForm({ userId, initial, onSave, onDelete, onCancel }: Prop
       name: name.trim(),
       type,
       platform_id: null,
-      balance: parseAmount(balance),
+      balance: parseAmount(balance) * (negative ? -1 : 1),
       color,
       icon,
       is_active: true
@@ -87,7 +88,19 @@ export function PocketForm({ userId, initial, onSave, onDelete, onCancel }: Prop
         </div>
       </div>
 
-      <AmountInput label="SALDO ACTUAL" value={balance} onChange={setBalance} />
+      <div>
+        <label className="text-xs text-slate-400 mb-1 block">SALDO ACTUAL</label>
+        <div className="flex gap-2 items-center">
+          <button
+            type="button"
+            onClick={() => setNegative(n => !n)}
+            className={`flex-shrink-0 w-10 h-10 rounded-xl text-base font-bold transition-colors border ${negative ? 'bg-red-600/20 border-red-500 text-red-400' : 'bg-slate-800 border-slate-700 text-slate-400'}`}>
+            {negative ? '−' : '+'}
+          </button>
+          <AmountInput label="" value={balance} onChange={setBalance} className="flex-1" />
+        </div>
+        {negative && <p className="text-xs text-red-400 mt-1">Saldo negativo — la plataforma te debe menos de lo registrado</p>}
+      </div>
 
       <div className="flex gap-3 pt-2">
         <button type="button" onClick={onCancel}
