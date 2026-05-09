@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ArrowLeft, Check, SkipForward, Trophy } from 'lucide-react'
+import { ArrowLeft, Check, SkipForward, Trophy, Calendar, Trash2 } from 'lucide-react'
 import type { Cadena, Pocket } from '@/types'
 import { maskAmount } from '@/components/shared/PrivacyToggle'
 import { ConfirmEventSheet } from '@/components/shared/ConfirmEventSheet'
@@ -10,11 +10,15 @@ interface Props {
   pockets: Pocket[]
   onBack: () => void
   onPaymentRecorded: () => void
+  onDelete: () => void
 }
 
-export function CadenaDetail({ cadena, pockets, onBack, onPaymentRecorded }: Props) {
-  const { getPendingByRef, confirmEvent, partialEvent, postponeEvent } = useScheduledEvents(cadena.user_id)
+export function CadenaDetail({ cadena, pockets, onBack, onPaymentRecorded, onDelete }: Props) {
+  const { getPendingByRef, confirmEvent, partialEvent, postponeEvent, rescheduleEvent } = useScheduledEvents(cadena.user_id)
   const [confirmSheet, setConfirmSheet] = useState(false)
+  const [editingDate, setEditingDate] = useState(false)
+  const [newDate, setNewDate] = useState('')
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   const pendingEvent = getPendingByRef(cadena.id)
   const sourcePocket = pockets.find(p => p.id === cadena.source_pocket_id)
@@ -24,6 +28,13 @@ export function CadenaDetail({ cadena, pockets, onBack, onPaymentRecorded }: Pro
   const isOverdue = pendingEvent && pendingEvent.due_date <= today
   const totalPot = cadena.contribution_amount * cadena.participants
   const isMyTurnNow = cadena.current_round === cadena.my_turn
+
+  async function handleReschedule() {
+    if (!pendingEvent || !newDate) return
+    await rescheduleEvent(pendingEvent.id, newDate)
+    setEditingDate(false)
+    setNewDate('')
+  }
 
   return (
     <div className="p-4 max-w-lg mx-auto">
@@ -66,6 +77,7 @@ export function CadenaDetail({ cadena, pockets, onBack, onPaymentRecorded }: Pro
         )}
       </div>
 
+      {/* Details */}
       <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 mb-5 space-y-3">
         <Row label="Aporte" value={maskAmount(cadena.contribution_amount, false)} />
         <Row label="Frecuencia" value={freqLabel} />
@@ -75,11 +87,47 @@ export function CadenaDetail({ cadena, pockets, onBack, onPaymentRecorded }: Pro
         <Row label="Pagadas" value={`${cadena.paid_rounds} ronda${cadena.paid_rounds !== 1 ? 's' : ''}`} />
       </div>
 
+      {/* Pending event card */}
       {pendingEvent && cadena.status === 'active' && (
         <div className={`rounded-xl p-4 mb-5 border ${isOverdue ? 'bg-violet-600/10 border-violet-600/30' : 'bg-slate-800 border-slate-700'}`}>
-          <p className={`text-xs font-medium mb-3 ${isOverdue ? 'text-violet-400' : 'text-slate-400'}`}>
-            {isOverdue ? '🔔 Aporte pendiente' : `📅 Próximo aporte · ${pendingEvent.due_date}`}
-          </p>
+          <div className="flex items-center justify-between mb-1">
+            <p className={`text-xs font-medium ${isOverdue ? 'text-violet-400' : 'text-slate-400'}`}>
+              {isOverdue ? '🔔 Aporte pendiente' : `📅 Próximo aporte · ${pendingEvent.due_date}`}
+            </p>
+            {/* Cambiar fecha */}
+            {!editingDate && (
+              <button
+                onClick={() => { setEditingDate(true); setNewDate(pendingEvent.due_date) }}
+                className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 transition-colors">
+                <Calendar size={12} /> Cambiar fecha
+              </button>
+            )}
+          </div>
+
+          {/* Date picker inline */}
+          {editingDate && (
+            <div className="mb-3 flex items-center gap-2">
+              <input
+                type="date"
+                value={newDate}
+                min={today}
+                onChange={e => setNewDate(e.target.value)}
+                className="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-violet-500"
+              />
+              <button
+                onClick={handleReschedule}
+                disabled={!newDate}
+                className="bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white px-3 py-2 rounded-lg text-sm font-semibold transition-colors">
+                Guardar
+              </button>
+              <button
+                onClick={() => { setEditingDate(false); setNewDate('') }}
+                className="text-slate-500 hover:text-slate-300 px-2 py-2 text-sm transition-colors">
+                ✕
+              </button>
+            </div>
+          )}
+
           <p className="text-slate-200 font-bold text-lg mb-4">{maskAmount(pendingEvent.amount, false)}</p>
           <div className="grid grid-cols-2 gap-2">
             <button onClick={() => setConfirmSheet(true)}
@@ -89,6 +137,35 @@ export function CadenaDetail({ cadena, pockets, onBack, onPaymentRecorded }: Pro
             <button onClick={() => { postponeEvent(pendingEvent.id); onPaymentRecorded() }}
               className="flex items-center justify-center gap-2 bg-slate-700 hover:bg-slate-600 text-slate-300 py-2.5 rounded-xl text-sm transition-colors">
               <SkipForward size={14} /> Posponer
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Delete button */}
+      {cadena.status === 'active' && !confirmDelete && (
+        <button
+          onClick={() => setConfirmDelete(true)}
+          className="w-full flex items-center justify-center gap-2 border border-red-600/30 text-red-400 hover:bg-red-600/10 py-3 rounded-xl text-sm transition-colors">
+          <Trash2 size={14} /> Eliminar cadena
+        </button>
+      )}
+
+      {/* Delete confirmation */}
+      {confirmDelete && (
+        <div className="bg-red-600/10 border border-red-600/30 rounded-xl p-4">
+          <p className="text-red-400 text-sm font-semibold mb-1">¿Eliminar esta cadena?</p>
+          <p className="text-slate-400 text-xs mb-4">Se eliminará la cadena y los eventos pendientes. Esta acción no se puede deshacer.</p>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={onDelete}
+              className="bg-red-600 hover:bg-red-500 text-white py-2.5 rounded-xl text-sm font-semibold transition-colors">
+              Sí, eliminar
+            </button>
+            <button
+              onClick={() => setConfirmDelete(false)}
+              className="bg-slate-700 hover:bg-slate-600 text-slate-300 py-2.5 rounded-xl text-sm transition-colors">
+              Cancelar
             </button>
           </div>
         </div>

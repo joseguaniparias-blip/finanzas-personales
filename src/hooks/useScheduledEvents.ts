@@ -9,6 +9,7 @@ interface ScheduledEventsHook {
   confirmEvent: (id: string, pocketId: string) => Promise<void>
   partialEvent: (id: string, pocketId: string, paidAmount: number) => Promise<void>
   postponeEvent: (id: string) => Promise<void>
+  rescheduleEvent: (id: string, newDate: string) => Promise<void>
   getPendingByType: (type: EventType) => ScheduledEvent[]
   getPendingByRef: (referenceId: string) => ScheduledEvent | undefined
 }
@@ -107,10 +108,15 @@ export function useScheduledEvents(userId: string): ScheduledEventsHook {
     await load()
   }
 
+  const rescheduleEvent = async (id: string, newDate: string) => {
+    await db.scheduled_events.update(id, { due_date: newDate })
+    await load()
+  }
+
   const getPendingByType = (type: EventType) => events.filter(e => e.type === type)
   const getPendingByRef = (referenceId: string) => events.find(e => e.reference_id === referenceId)
 
-  return { events, todayEvents, loading, confirmEvent, partialEvent, postponeEvent, getPendingByType, getPendingByRef }
+  return { events, todayEvents, loading, confirmEvent, partialEvent, postponeEvent, rescheduleEvent, getPendingByType, getPendingByRef }
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────

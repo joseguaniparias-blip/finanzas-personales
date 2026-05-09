@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Eye, EyeOff, TrendingUp, TrendingDown, CreditCard, HandCoins, PiggyBank, Users, Check, Settings } from 'lucide-react'
+import { Eye, EyeOff, TrendingUp, TrendingDown, CreditCard, HandCoins, PiggyBank, Users, Check, Settings, ChevronRight } from 'lucide-react'
 import { usePockets } from '@/hooks/usePockets'
 import { useTransactions } from '@/hooks/useTransactions'
 import { useScheduledEvents } from '@/hooks/useScheduledEvents'
@@ -11,14 +11,15 @@ import type { ScheduledEvent } from '@/types'
 
 interface Props { userId: string }
 
-type Period = 'day' | 'week' | 'month'
+type BalancePeriod = 'day' | 'week' | 'month'
+type AgendaPeriod  = 'day' | 'week' | 'month'
 
 const EVENT_META: Record<string, { color: string; icon: string; label: string }> = {
-  debt:             { color: 'text-blue-400',    icon: '🔴', label: 'Deuda' },
-  collection:       { color: 'text-emerald-400', icon: '🟢', label: 'Cobro' },
-  saving:           { color: 'text-blue-400',    icon: '💙', label: 'Ahorro' },
-  cadena:           { color: 'text-violet-400',  icon: '🟣', label: 'Cadena' },
-  platform_payout:  { color: 'text-orange-400',  icon: '💰', label: 'Pago plataforma' },
+  debt:            { color: 'text-red-400',    icon: '🔴', label: 'Deuda' },
+  collection:      { color: 'text-emerald-400', icon: '🟢', label: 'Cobro' },
+  saving:          { color: 'text-blue-400',   icon: '💙', label: 'Ahorro' },
+  cadena:          { color: 'text-violet-400', icon: '🟣', label: 'Cadena' },
+  platform_payout: { color: 'text-orange-400', icon: '💰', label: 'Pago plataforma' },
 }
 
 function maskVal(amount: number, hidden: boolean) {
@@ -26,7 +27,7 @@ function maskVal(amount: number, hidden: boolean) {
   return `$ ${amount.toLocaleString('es-CO')}`
 }
 
-function periodDates(period: Period): { from: string; to: string } {
+function balanceDates(period: BalancePeriod): { from: string; to: string } {
   const today = new Date()
   const to = today.toISOString().slice(0, 10)
   if (period === 'day') return { from: to, to }
@@ -38,22 +39,65 @@ function periodDates(period: Period): { from: string; to: string } {
   return { from: today.toISOString().slice(0, 7) + '-01', to }
 }
 
+function agendaEndDate(period: AgendaPeriod): string {
+  const today = new Date()
+  if (period === 'day') return today.toISOString().slice(0, 10)
+  if (period === 'week') {
+    const d = new Date(today)
+    d.setDate(d.getDate() + 6)
+    return d.toISOString().slice(0, 10)
+  }
+  // month: last day of current month
+  return new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().slice(0, 10)
+}
+
+function groupByDate(evs: ScheduledEvent[]): { date: string; items: ScheduledEvent[] }[] {
+  const map = new Map<string, ScheduledEvent[]>()
+  for (const ev of evs) {
+    const list = map.get(ev.due_date) ?? []
+    list.push(ev)
+    map.set(ev.due_date, list)
+  }
+  return Array.from(map.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([date, items]) => ({ date, items }))
+}
+
+function formatAgendaDate(iso: string, today: string): string {
+  if (iso === today) return 'Hoy'
+  const tomorrow = new Date()
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  if (iso === tomorrow.toISOString().slice(0, 10)) return 'Mañana'
+  const [y, m, d] = iso.split('-')
+  const months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
+  return `${Number(d)} ${months[Number(m) - 1]} ${y}`
+}
+
 export function HomePage({ userId }: Props) {
   const { pockets, totalBalance } = usePockets(userId)
   const { transactions } = useTransactions(userId)
-  const { todayEvents, confirmEvent, partialEvent, postponeEvent } = useScheduledEvents(userId)
+  const { events, confirmEvent, partialEvent, postponeEvent } = useScheduledEvents(userId)
   const { profile, setHidden } = useUserProfile(userId)
-  const [period, setPeriod] = useState<Period>('month')
+
+  const [balancePeriod, setBalancePeriod] = useState<BalancePeriod>('month')
+  const [agendaPeriod, setAgendaPeriod] = useState<AgendaPeriod>('day')
   const [eventNames, setEventNames] = useState<Record<string, string>>({})
   const [confirmingEvent, setConfirmingEvent] = useState<ScheduledEvent | null>(null)
 
   const hidden = profile?.balance_hidden ?? false
+  const today = new Date().toISOString().slice(0, 10)
 
-  // Resolve event reference names
+  // Agenda: all pending events up to the selected period end
+  const agendaEnd = agendaEndDate(agendaPeriod)
+  const agendaEvents = events.filter(e => e.due_date <= agendaEnd)
+  const groupedAgenda = groupByDate(agendaEvents)
+
+  // Resolve event reference names for everything in agenda
   useEffect(() => {
     async function resolveNames() {
       const map: Record<string, string> = {}
-      for (const ev of todayEvents) {
+      for (const ev of events) {
+        if (map[ev.id]) continue
         if (ev.type === 'debt') {
           const d = await db.debts.get(ev.reference_id)
           if (d) map[ev.id] = d.name
@@ -66,22 +110,26 @@ export function HomePage({ userId }: Props) {
         } else if (ev.type === 'cadena') {
           const ca = await db.cadenas.get(ev.reference_id)
           if (ca) map[ev.id] = ca.name
+        } else if (ev.type === 'platform_payout') {
+          const pl = await db.platforms.get(ev.reference_id)
+          if (pl) map[ev.id] = pl.name
         }
       }
       setEventNames(map)
     }
-    if (todayEvents.length > 0) resolveNames()
-  }, [todayEvents])
+    if (events.length > 0) resolveNames()
+  }, [events])
 
-  // Period income/expense from transactions
-  const { from, to } = periodDates(period)
+  // Balance period income/expense
+  const { from, to } = balanceDates(balancePeriod)
   const periodTxs = transactions.filter(t => t.date >= from && t.date <= to)
   const income  = periodTxs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0)
   const expense = periodTxs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0)
 
-  const periodLabel = period === 'day' ? 'hoy' : period === 'week' ? 'esta semana' : 'este mes'
+  const periodLabel = balancePeriod === 'day' ? 'hoy' : balancePeriod === 'week' ? 'esta semana' : 'este mes'
 
   const nonPlatformPockets = pockets.filter(p => p.type !== 'platform')
+  const platformPockets    = pockets.filter(p => p.type === 'platform' && p.balance > 0)
 
   return (
     <div className="p-4 max-w-lg mx-auto">
@@ -109,11 +157,10 @@ export function HomePage({ userId }: Props) {
         <p className="text-xs text-slate-400 mb-1">SALDO TOTAL</p>
         <p className="text-3xl font-bold text-slate-100 mb-4">{maskVal(totalBalance, hidden)}</p>
 
-        {/* Period filter */}
         <div className="flex gap-1 mb-4">
-          {(['day', 'week', 'month'] as Period[]).map(p => (
-            <button key={p} onClick={() => setPeriod(p)}
-              className={`flex-1 py-1 rounded-lg text-xs font-medium transition-colors ${period === p ? 'bg-slate-600 text-slate-100' : 'text-slate-500 hover:text-slate-400'}`}>
+          {(['day', 'week', 'month'] as BalancePeriod[]).map(p => (
+            <button key={p} onClick={() => setBalancePeriod(p)}
+              className={`flex-1 py-1 rounded-lg text-xs font-medium transition-colors ${balancePeriod === p ? 'bg-slate-600 text-slate-100' : 'text-slate-500 hover:text-slate-400'}`}>
               {p === 'day' ? 'Hoy' : p === 'week' ? 'Semana' : 'Mes'}
             </button>
           ))}
@@ -132,9 +179,9 @@ export function HomePage({ userId }: Props) {
         <p className="text-xs text-slate-600 mt-2 text-right">Movimientos {periodLabel}</p>
       </div>
 
-      {/* Bolsillos mini */}
+      {/* Bolsillos mini (efectivo + bancos) */}
       {nonPlatformPockets.length > 0 && (
-        <div className="flex gap-2 mb-5 overflow-x-auto pb-1">
+        <div className="flex gap-2 mb-3 overflow-x-auto pb-1">
           {nonPlatformPockets.map(p => (
             <Link key={p.id} to="/bolsillos"
               className="flex-shrink-0 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 min-w-[100px]">
@@ -142,41 +189,99 @@ export function HomePage({ userId }: Props) {
                 <span className="text-sm">{p.icon}</span>
                 <span className="text-xs text-slate-400 truncate">{p.name}</span>
               </div>
-              <p className="text-slate-200 font-semibold text-xs">{maskVal(p.balance, hidden)}</p>
+              <p className={`font-semibold text-xs ${p.balance < 0 ? 'text-red-400' : 'text-slate-200'}`}>
+                {maskVal(p.balance, hidden)}
+              </p>
             </Link>
           ))}
         </div>
       )}
 
-      {/* Agenda hoy */}
-      {todayEvents.length > 0 && (
+      {/* Billeteras de plataforma */}
+      {platformPockets.length > 0 && (
         <div className="mb-5">
-          <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">Pendiente hoy</p>
-          <div className="space-y-2">
-            {todayEvents.map(ev => {
-              const meta = EVENT_META[ev.type] ?? { color: 'text-slate-400', icon: '📋', label: ev.type }
-              const name = eventNames[ev.id] ?? '…'
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs text-slate-500 uppercase tracking-wide">Billeteras plataforma</p>
+            <Link to="/bolsillos" className="flex items-center gap-0.5 text-xs text-slate-600 hover:text-slate-400 transition-colors">
+              Ver todas <ChevronRight size={12} />
+            </Link>
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {platformPockets.map(p => (
+              <div key={p.id}
+                className="flex-shrink-0 bg-orange-600/5 border border-orange-600/20 rounded-xl px-3 py-2 min-w-[110px]">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <span className="text-sm">{p.icon}</span>
+                  <span className="text-xs text-slate-400 truncate">{p.name}</span>
+                </div>
+                <p className="text-orange-400 font-semibold text-xs">{maskVal(p.balance, hidden)}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Agenda / Calendario */}
+      <div className="mb-5">
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs text-slate-500 uppercase tracking-wide">Agenda</p>
+          <div className="flex bg-slate-800 rounded-lg p-0.5 gap-0.5">
+            {(['day', 'week', 'month'] as AgendaPeriod[]).map(p => (
+              <button key={p} onClick={() => setAgendaPeriod(p)}
+                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${agendaPeriod === p ? 'bg-slate-600 text-slate-100' : 'text-slate-500 hover:text-slate-400'}`}>
+                {p === 'day' ? 'Hoy' : p === 'week' ? 'Semana' : 'Mes'}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {agendaEvents.length === 0 ? (
+          <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 text-center">
+            <p className="text-slate-500 text-sm">Sin eventos{agendaPeriod === 'day' ? ' hoy' : agendaPeriod === 'week' ? ' esta semana' : ' este mes'} 🎉</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {groupedAgenda.map(({ date, items }) => {
+              const isToday = date === today
+              const isOverdue = date < today
               return (
-                <div key={ev.id}
-                  className="flex items-center gap-3 bg-slate-800 border border-slate-700 rounded-xl p-3">
-                  <span className="text-lg">{meta.icon}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-slate-200 text-sm font-medium truncate">{name}</p>
-                    <p className="text-xs text-slate-500">{meta.label}</p>
+                <div key={date}>
+                  <p className={`text-xs font-semibold mb-1.5 ${isOverdue ? 'text-red-400' : isToday ? 'text-slate-300' : 'text-slate-500'}`}>
+                    {isOverdue && '⚠️ '}
+                    {formatAgendaDate(date, today)}
+                  </p>
+                  <div className="space-y-2">
+                    {items.map(ev => {
+                      const meta = EVENT_META[ev.type] ?? { color: 'text-slate-400', icon: '📋', label: ev.type }
+                      const name = eventNames[ev.id] ?? '…'
+                      const canConfirm = date <= today
+                      return (
+                        <div key={ev.id}
+                          className="flex items-center gap-3 bg-slate-800 border border-slate-700 rounded-xl p-3">
+                          <span className="text-lg leading-none">{meta.icon}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-slate-200 text-sm font-medium truncate">{name}</p>
+                            <p className="text-xs text-slate-500">{meta.label}</p>
+                          </div>
+                          <div className="text-right mr-2">
+                            <p className={`${meta.color} font-bold text-sm`}>{maskVal(ev.amount, hidden)}</p>
+                          </div>
+                          {canConfirm && (
+                            <button onClick={() => setConfirmingEvent(ev)}
+                              className="flex-shrink-0 flex items-center gap-1 bg-slate-700 hover:bg-slate-600 text-slate-300 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors">
+                              <Check size={12} /> Ok
+                            </button>
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
-                  <div className="text-right mr-2">
-                    <p className={`${meta.color} font-bold text-sm`}>{maskVal(ev.amount, hidden)}</p>
-                  </div>
-                  <button onClick={() => setConfirmingEvent(ev)}
-                    className="flex-shrink-0 flex items-center gap-1 bg-slate-700 hover:bg-slate-600 text-slate-300 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors">
-                    <Check size={12} /> Confirmar
-                  </button>
                 </div>
               )
             })}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Modules grid */}
       <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">Módulos</p>

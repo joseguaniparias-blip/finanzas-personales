@@ -11,6 +11,7 @@ interface CadenasHook {
   updateCadena: (id: string, updates: Partial<Cadena>) => Promise<void>
   recordPayment: (id: string) => Promise<void>
   closeCadena: (id: string) => Promise<void>
+  deleteCadena: (id: string) => Promise<void>
 }
 
 export function useCadenas(userId: string): CadenasHook {
@@ -65,7 +66,18 @@ export function useCadenas(userId: string): CadenasHook {
     await load()
   }
 
-  return { cadenas, loading, addCadena, updateCadena, recordPayment, closeCadena }
+  const deleteCadena = async (id: string) => {
+    // Remove all pending scheduled events linked to this cadena
+    const linked = await db.scheduled_events
+      .where('user_id').equals(userId)
+      .filter(e => e.reference_id === id && e.status === 'pending')
+      .toArray()
+    for (const e of linked) await db.scheduled_events.delete(e.id)
+    await db.cadenas.delete(id)
+    await load()
+  }
+
+  return { cadenas, loading, addCadena, updateCadena, recordPayment, closeCadena, deleteCadena }
 }
 
 async function scheduleNextCadenaEvent(cadena: Cadena) {
