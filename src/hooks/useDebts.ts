@@ -90,6 +90,10 @@ async function scheduleNextEvent(debt: Debt) {
 
 function nextDueDate(frequency: string, paymentDay: number): string {
   const now = new Date()
+  if (frequency === 'once') {
+    // Due today — single payment
+    return now.toISOString().slice(0, 10)
+  }
   if (frequency === 'monthly') {
     const d = new Date(now.getFullYear(), now.getMonth(), paymentDay)
     if (d <= now) d.setMonth(d.getMonth() + 1)

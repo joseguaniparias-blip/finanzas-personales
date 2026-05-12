@@ -2,7 +2,7 @@
 
 export type PocketType = 'cash' | 'bank' | 'platform'
 export type TransactionType = 'income' | 'expense' | 'transfer'
-export type Frequency = 'daily' | 'weekly' | 'monthly'
+export type Frequency = 'once' | 'daily' | 'weekly' | 'monthly'
 export type CollectionFrequency = 'once' | 'daily' | 'weekly' | 'monthly'
 export type ContributionType = 'fixed' | 'percent'
 export type SavingFrequency = 'weekly' | 'monthly' | 'on_payout'

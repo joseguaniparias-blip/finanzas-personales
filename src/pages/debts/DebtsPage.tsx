@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, CreditCard } from 'lucide-react'
+import { Plus, CreditCard, Pencil } from 'lucide-react'
 import { useDebts } from '@/hooks/useDebts'
 import { useScheduledEvents } from '@/hooks/useScheduledEvents'
 import { usePockets } from '@/hooks/usePockets'
@@ -12,7 +12,7 @@ import type { Debt } from '@/types'
 interface Props { userId: string }
 
 export function DebtsPage({ userId }: Props) {
-  const { debts, loading, addDebt, updateDebt, recordPayment } = useDebts(userId)
+  const { debts, loading, addDebt, updateDebt, recordPayment, closeDebt } = useDebts(userId)
   const { pockets } = usePockets(userId)
   const { confirmEvent, partialEvent, postponeEvent } = useScheduledEvents(userId)
   const [showForm, setShowForm] = useState(false)
@@ -47,6 +47,8 @@ export function DebtsPage({ userId }: Props) {
         debt={selectedDebt}
         pockets={pockets}
         onBack={() => setSelectedDebt(null)}
+        onEdit={() => { setEditingDebt(selectedDebt); setSelectedDebt(null) }}
+        onDelete={async () => { await closeDebt(selectedDebt.id); setSelectedDebt(null) }}
         onConfirm={async (eventId, pocketId) => {
           await confirmEvent(eventId, pocketId)
           await recordPayment(selectedDebt.id, selectedDebt.installment_amount)
@@ -121,18 +123,29 @@ function DebtCard({ debt, onTap, onEdit }: { debt: Debt; onTap: () => void; onEd
     : null
 
   return (
-    <button
-      onClick={onTap}
-      className="w-full bg-slate-800 rounded-xl p-4 border border-slate-700 hover:border-slate-600 transition-colors text-left"
-    >
+    <div className="bg-slate-800 rounded-xl border border-slate-700">
+      <button
+        onClick={onTap}
+        className="w-full p-4 text-left"
+      >
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1">
           <p className="text-slate-200 font-semibold text-sm">{debt.name}</p>
           <p className="text-xs text-slate-500 mt-0.5">
-            {maskAmount(debt.installment_amount, false)} / {debt.frequency === 'monthly' ? 'mes' : debt.frequency === 'weekly' ? 'semana' : 'día'}
+            {maskAmount(debt.installment_amount, false)}
+            {debt.frequency === 'once'
+              ? ' · Pago único'
+              : ` / ${debt.frequency === 'monthly' ? 'mes' : debt.frequency === 'weekly' ? 'semana' : 'día'}`}
           </p>
         </div>
-        <div className="text-right ml-2">
+        <div className="flex items-start gap-2 ml-2">
+        <button
+          onClick={e => { e.stopPropagation(); onEdit() }}
+          className="p-1.5 rounded-lg text-slate-600 hover:text-slate-300 hover:bg-slate-700 transition-colors"
+        >
+          <Pencil size={13} />
+        </button>
+        <div className="text-right">
           {debt.has_total && debt.total_amount ? (
             <>
               <p className="text-red-400 font-bold text-sm">{maskAmount(remaining!, false)}</p>
@@ -145,6 +158,7 @@ function DebtCard({ debt, onTap, onEdit }: { debt: Debt; onTap: () => void; onEd
             </>
           )}
         </div>
+        </div>
       </div>
 
       {progress !== null && (
@@ -156,9 +170,13 @@ function DebtCard({ debt, onTap, onEdit }: { debt: Debt; onTap: () => void; onEd
         </div>
       )}
 
-      {!debt.has_total && (
+      {!debt.has_total && debt.frequency !== 'once' && (
         <span className="inline-block mt-2 text-xs text-slate-500 bg-slate-700 px-2 py-0.5 rounded-full">Indefinida</span>
       )}
-    </button>
+      {debt.frequency === 'once' && (
+        <span className="inline-block mt-2 text-xs text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full">Pago único</span>
+      )}
+      </button>
+    </div>
   )
 }

@@ -16,7 +16,7 @@ export function DebtForm({ userId, pockets, initial, onSave, onCancel }: Props) 
   const [hasTotal, setHasTotal] = useState(initial?.has_total ?? true)
   const [totalAmount, setTotalAmount] = useState(initial?.total_amount?.toString() ?? '')
   const [installment, setInstallment] = useState(initial?.installment_amount?.toString() ?? '')
-  const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'monthly'>(initial?.frequency ?? 'monthly')
+  const [frequency, setFrequency] = useState<'once' | 'daily' | 'weekly' | 'monthly'>(initial?.frequency ?? 'monthly')
   const [paymentDay, setPaymentDay] = useState(initial?.payment_day ?? 1)
   const [sourcePocketId, setSourcePocketId] = useState(initial?.source_pocket_id ?? pockets[0]?.id ?? '')
   const [startedBefore, setStartedBefore] = useState(initial?.started_before_app ?? false)
@@ -85,29 +85,41 @@ export function DebtForm({ userId, pockets, initial, onSave, onCancel }: Props) 
         )}
       </div>
 
-      {/* Installment */}
-      <AmountInput label="Cuota por período" value={installment} onChange={setInstallment} className="mb-5" />
+      {/* Installment / amount */}
+      <AmountInput
+        label={frequency === 'once' ? 'Monto a pagar' : 'Cuota por período'}
+        value={installment}
+        onChange={setInstallment}
+        className="mb-5"
+      />
 
       {/* Frequency */}
       <div className="mb-5">
         <p className="text-xs text-slate-400 mb-2">Frecuencia</p>
-        <div className="flex gap-2">
-          {(['monthly', 'weekly', 'daily'] as const).map(f => (
+        <div className="grid grid-cols-2 gap-2">
+          {([
+            { value: 'once',    label: 'Pago único' },
+            { value: 'monthly', label: 'Mensual' },
+            { value: 'weekly',  label: 'Semanal' },
+            { value: 'daily',   label: 'Diario' },
+          ] as const).map(f => (
             <button
-              key={f}
-              onClick={() => setFrequency(f)}
-              className={`flex-1 py-2 rounded-xl text-xs font-medium transition-colors border ${
-                frequency === f ? 'bg-blue-600/20 border-blue-500 text-blue-300' : 'border-slate-700 text-slate-400 hover:border-slate-500'
+              key={f.value}
+              onClick={() => setFrequency(f.value)}
+              className={`py-2 rounded-xl text-xs font-medium transition-colors border ${
+                frequency === f.value
+                  ? 'bg-blue-600/20 border-blue-500 text-blue-300'
+                  : 'border-slate-700 text-slate-400 hover:border-slate-500'
               }`}
             >
-              {f === 'monthly' ? 'Mensual' : f === 'weekly' ? 'Semanal' : 'Diario'}
+              {f.label}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Payment day */}
-      {frequency !== 'daily' && (
+      {/* Payment day — only for recurring */}
+      {frequency !== 'daily' && frequency !== 'once' && (
         <div className="mb-5">
           <p className="text-xs text-slate-400 mb-2">{frequency === 'weekly' ? 'Día de la semana' : 'Día del mes'}</p>
           {frequency === 'weekly' ? (
@@ -160,8 +172,8 @@ export function DebtForm({ userId, pockets, initial, onSave, onCancel }: Props) 
         </div>
       </div>
 
-      {/* Before app toggle */}
-      <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 mb-6">
+      {/* Before app toggle — only for recurring debts */}
+      {frequency !== 'once' && <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 mb-6">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-slate-200 text-sm font-medium">¿Ya tiene pagos hechos?</p>
@@ -187,7 +199,7 @@ export function DebtForm({ userId, pockets, initial, onSave, onCancel }: Props) 
             </div>
           </div>
         )}
-      </div>
+      </div>}
 
       <button
         onClick={handleSave}

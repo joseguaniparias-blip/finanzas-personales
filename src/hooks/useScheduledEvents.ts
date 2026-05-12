@@ -144,7 +144,10 @@ async function handleDebtConfirm(event: ScheduledEvent) {
   if (!debt) return
   const newPaid = debt.paid_amount + event.amount
   const updates: Record<string, unknown> = { paid_amount: newPaid }
-  if (debt.has_total && debt.total_amount && newPaid >= debt.total_amount) {
+  if (debt.frequency === 'once') {
+    // Single payment — always mark as paid_off after confirming
+    updates.status = 'paid_off'
+  } else if (debt.has_total && debt.total_amount && newPaid >= debt.total_amount) {
     updates.status = 'paid_off'
   } else {
     await scheduleNext(event, debt.frequency, debt.installment_amount)
