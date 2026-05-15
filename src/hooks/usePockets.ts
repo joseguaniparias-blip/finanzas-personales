@@ -8,6 +8,7 @@ interface PocketsHook {
   pockets: Pocket[]
   totalBalance: number
   loading: boolean
+  load: () => Promise<void>
   addPocket: (pocket: NewPocket) => Promise<void>
   updatePocket: (id: string, updates: Partial<Pocket>) => Promise<void>
   updateBalance: (id: string, newBalance: number) => Promise<void>
@@ -56,5 +57,5 @@ export function usePockets(userId: string): PocketsHook {
     await load()
   }
 
-  return { pockets, totalBalance, loading, addPocket, updatePocket, updateBalance, deletePocket }
+  return { pockets, totalBalance, loading, load, addPocket, updatePocket, updateBalance, deletePocket }
 }

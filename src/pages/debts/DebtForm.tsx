@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { Pocket, Debt } from '@/types'
 import { AmountInput, parseAmount } from '@/components/shared/AmountInput'
 import { DAYS_OF_WEEK } from '@/types'
@@ -7,8 +7,27 @@ interface Props {
   userId: string
   pockets: Pocket[]
   initial?: Debt
-  onSave: (data: Omit<Debt, 'id' | 'created_at' | 'paid_amount' | 'status'>) => Promise<void>
+  onSave: (data: Omit<Debt, 'id' | 'created_at' | 'paid_amount' | 'status'>, firstDueDate?: string) => Promise<void>
   onCancel: () => void
+}
+
+/** Compute the next occurrence of a payment date (same logic as useDebts.nextDueDate) */
+function computeFirstDueDate(frequency: string, paymentDay: number): string {
+  const now = new Date()
+  if (frequency === 'once') return now.toISOString().slice(0, 10)
+  if (frequency === 'monthly') {
+    const d = new Date(now.getFullYear(), now.getMonth(), paymentDay)
+    if (d <= now) d.setMonth(d.getMonth() + 1)
+    return d.toISOString().slice(0, 10)
+  }
+  if (frequency === 'weekly') {
+    const diff = (paymentDay - now.getDay() + 7) % 7 || 7
+    const d = new Date(now); d.setDate(d.getDate() + diff)
+    return d.toISOString().slice(0, 10)
+  }
+  // daily
+  const d = new Date(now); d.setDate(d.getDate() + 1)
+  return d.toISOString().slice(0, 10)
 }
 
 export function DebtForm({ userId, pockets, initial, onSave, onCancel }: Props) {
@@ -21,7 +40,13 @@ export function DebtForm({ userId, pockets, initial, onSave, onCancel }: Props) 
   const [sourcePocketId, setSourcePocketId] = useState(initial?.source_pocket_id ?? pockets[0]?.id ?? '')
   const [startedBefore, setStartedBefore] = useState(initial?.started_before_app ?? false)
   const [startInstallment, setStartInstallment] = useState(initial?.start_installment ?? 1)
+  const [firstDueDate, setFirstDueDate] = useState(() => computeFirstDueDate(initial?.frequency ?? 'monthly', initial?.payment_day ?? 1))
   const [saving, setSaving] = useState(false)
+
+  // Auto-update first due date when frequency or payment day changes (only for new debts)
+  useEffect(() => {
+    if (!initial) setFirstDueDate(computeFirstDueDate(frequency, paymentDay))
+  }, [frequency, paymentDay, initial])
 
   const totalNum = parseAmount(totalAmount)
   const installmentNum = parseAmount(installment)
@@ -42,7 +67,7 @@ export function DebtForm({ userId, pockets, initial, onSave, onCancel }: Props) 
         source_pocket_id: sourcePocketId,
         started_before_app: startedBefore,
         start_installment: startedBefore ? startInstallment : 1
-      })
+      }, firstDueDate)
     } finally {
       setSaving(false)
     }
@@ -171,6 +196,21 @@ export function DebtForm({ userId, pockets, initial, onSave, onCancel }: Props) 
           ))}
         </div>
       </div>
+
+      {/* First due date — only for new debts */}
+      {!initial && (
+        <div className="mb-5">
+          <label className="block text-xs text-slate-400 mb-1">
+            {frequency === 'once' ? 'Fecha de pago' : 'Fecha del primer pago'}
+          </label>
+          <input
+            type="date"
+            value={firstDueDate}
+            onChange={e => setFirstDueDate(e.target.value)}
+            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-blue-500 [color-scheme:dark]"
+          />
+        </div>
+      )}
 
       {/* Before app toggle — only for recurring debts */}
       {frequency !== 'once' && <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 mb-6">

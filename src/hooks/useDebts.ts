@@ -7,7 +7,7 @@ type NewDebt = Omit<Debt, 'id' | 'created_at' | 'paid_amount' | 'status'>
 interface DebtsHook {
   debts: Debt[]
   loading: boolean
-  addDebt: (d: NewDebt) => Promise<Debt>
+  addDebt: (d: NewDebt, firstDueDate?: string) => Promise<Debt>
   updateDebt: (id: string, updates: Partial<Debt>) => Promise<void>
   recordPayment: (id: string, amount: number) => Promise<void>
   closeDebt: (id: string) => Promise<void>
@@ -28,7 +28,7 @@ export function useDebts(userId: string): DebtsHook {
 
   useEffect(() => { load() }, [load])
 
-  const addDebt = async (d: NewDebt): Promise<Debt> => {
+  const addDebt = async (d: NewDebt, firstDueDate?: string): Promise<Debt> => {
     const debt: Debt = {
       ...d,
       id: crypto.randomUUID(),
@@ -38,8 +38,8 @@ export function useDebts(userId: string): DebtsHook {
     }
     await db.debts.add(debt)
 
-    // Generate first scheduled event
-    await scheduleNextEvent(debt)
+    // Generate first scheduled event (use custom date if provided)
+    await scheduleNextEvent(debt, firstDueDate)
 
     await load()
     return debt
@@ -70,8 +70,8 @@ export function useDebts(userId: string): DebtsHook {
   return { debts, loading, addDebt, updateDebt, recordPayment, closeDebt }
 }
 
-async function scheduleNextEvent(debt: Debt) {
-  const dueDate = nextDueDate(debt.frequency, debt.payment_day)
+async function scheduleNextEvent(debt: Debt, overrideDueDate?: string) {
+  const dueDate = overrideDueDate ?? nextDueDate(debt.frequency, debt.payment_day)
   await db.scheduled_events.add({
     id: crypto.randomUUID(),
     user_id: debt.user_id,

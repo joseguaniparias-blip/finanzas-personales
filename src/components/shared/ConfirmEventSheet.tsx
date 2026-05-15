@@ -1,8 +1,16 @@
 import { useState } from 'react'
-import { Check, ArrowLeftRight, SkipForward, Minus } from 'lucide-react'
+import { Check, ArrowLeftRight, SkipForward, Minus, AlertTriangle } from 'lucide-react'
 import type { ScheduledEvent, Pocket } from '@/types'
 import { AmountInput, parseAmount } from './AmountInput'
 import { maskAmount } from './PrivacyToggle'
+
+const CONFIRM_LABELS: Record<string, string> = {
+  debt:            'Pagué',
+  cadena:          'Pagué',
+  saving:          'Guardé',
+  collection:      'Cobré',
+  platform_payout: 'Llegó',
+}
 
 interface Props {
   event: ScheduledEvent
@@ -25,6 +33,9 @@ export function ConfirmEventSheet({
   const [partialAmount, setPartialAmount] = useState('')
 
   const pocket = pockets.find(p => p.id === selectedPocket)
+  const confirmLabel = CONFIRM_LABELS[event.type] ?? 'Confirmar'
+  const isExpense = event.type === 'debt' || event.type === 'cadena' || event.type === 'saving'
+  const insufficientBalance = isExpense && pocket !== undefined && pocket.balance < event.amount
 
   return (
     <div className="fixed inset-0 bg-black/70 z-50 flex items-end justify-center">
@@ -43,9 +54,21 @@ export function ConfirmEventSheet({
             </div>
 
             {pocket && (
-              <p className="text-xs text-slate-500 mb-5">
+              <p className="text-xs text-slate-500 mb-3">
                 Bolsillo: <span className="text-slate-300">{pocket.icon} {pocket.name}</span>
+                <span className={`ml-2 ${insufficientBalance ? 'text-red-400' : 'text-slate-500'}`}>
+                  · {maskAmount(pocket.balance, false)}
+                </span>
               </p>
+            )}
+
+            {insufficientBalance && (
+              <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 rounded-xl px-3 py-2 mb-4">
+                <AlertTriangle size={14} className="text-red-400 flex-shrink-0" />
+                <p className="text-xs text-red-400">
+                  Saldo insuficiente — faltan {maskAmount(event.amount - (pocket?.balance ?? 0), false)}
+                </p>
+              </div>
             )}
 
             {/* Actions */}
@@ -54,7 +77,7 @@ export function ConfirmEventSheet({
                 onClick={() => onConfirm(selectedPocket)}
                 className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-semibold text-sm transition-colors"
               >
-                <Check size={16} /> Pagué
+                <Check size={16} /> {confirmLabel}
               </button>
               <button
                 onClick={() => setMode('partial')}

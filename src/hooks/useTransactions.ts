@@ -15,11 +15,12 @@ export function useTransactions(userId: string): TransactionsHook {
   const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
-    const today = new Date().toISOString().slice(0, 10)
-    const monthStart = today.slice(0, 7) + '-01'
+    // Load 35 days so "this week" always has data even if Mon is in the prev month
+    const d = new Date(); d.setDate(d.getDate() - 35)
+    const windowStart = d.toISOString().slice(0, 10)
     const data = await db.transactions
       .where('user_id').equals(userId)
-      .and(t => t.date >= monthStart)
+      .and(t => t.date >= windowStart)
       .sortBy('date')
     setTransactions(data.reverse())
     setLoading(false)

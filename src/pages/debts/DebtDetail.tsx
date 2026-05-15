@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { ArrowLeft, Check, SkipForward } from 'lucide-react'
+import { ArrowLeft, Check, SkipForward, Pencil, Trash2 } from 'lucide-react'
 import type { Debt, Pocket, ScheduledEvent } from '@/types'
 import { maskAmount } from '@/components/shared/PrivacyToggle'
 import { ConfirmEventSheet } from '@/components/shared/ConfirmEventSheet'
@@ -10,14 +10,17 @@ interface Props {
   debt: Debt
   pockets: Pocket[]
   onBack: () => void
+  onEdit: () => void
+  onDelete: () => void
   onConfirm: (eventId: string, pocketId: string) => void
   onPartial: (eventId: string, pocketId: string, amount: number) => void
   onPostpone: (eventId: string) => void
 }
 
-export function DebtDetail({ debt, pockets, onBack, onConfirm, onPartial, onPostpone }: Props) {
+export function DebtDetail({ debt, pockets, onBack, onEdit, onDelete, onConfirm, onPartial, onPostpone }: Props) {
   const [pendingEvent, setPendingEvent] = useState<ScheduledEvent | null>(null)
   const [confirmEvent, setConfirmEvent] = useState<ScheduledEvent | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -48,6 +51,9 @@ export function DebtDetail({ debt, pockets, onBack, onConfirm, onPartial, onPost
           <ArrowLeft size={18} />
         </button>
         <h2 className="text-slate-100 text-lg font-bold flex-1">{debt.name}</h2>
+        <button onClick={onEdit} className="p-2 rounded-full bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors">
+          <Pencil size={16} />
+        </button>
         {debt.status === 'paid_off' && (
           <span className="flex items-center gap-1 text-xs text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded-full">
             <Check size={12} /> Saldada
@@ -128,6 +134,26 @@ export function DebtDetail({ debt, pockets, onBack, onConfirm, onPartial, onPost
           onClose={() => setConfirmEvent(null)}
         />
       )}
+
+      {/* Delete */}
+      <div className="mt-6">
+        {!confirmDelete ? (
+          <button onClick={() => setConfirmDelete(true)}
+            className="w-full flex items-center justify-center gap-2 text-red-500 hover:text-red-400 py-2.5 rounded-xl text-sm transition-colors">
+            <Trash2 size={14} /> Eliminar deuda
+          </button>
+        ) : (
+          <div className="bg-red-950/40 border border-red-700/40 rounded-xl p-4 text-center">
+            <p className="text-slate-300 text-sm mb-3">¿Eliminar <strong>{debt.name}</strong>?</p>
+            <div className="flex gap-2">
+              <button onClick={() => setConfirmDelete(false)}
+                className="flex-1 py-2 rounded-lg bg-slate-700 text-slate-300 text-sm">No</button>
+              <button onClick={onDelete}
+                className="flex-1 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold">Sí, eliminar</button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ArrowLeft, Check, SkipForward } from 'lucide-react'
+import { ArrowLeft, Check, SkipForward, Trash2 } from 'lucide-react'
 import type { Collection, Pocket } from '@/types'
 import { maskAmount } from '@/components/shared/PrivacyToggle'
 import { ConfirmEventSheet } from '@/components/shared/ConfirmEventSheet'
@@ -9,12 +9,14 @@ interface Props {
   collection: Collection
   pockets: Pocket[]
   onBack: () => void
+  onDelete: () => void
   onPaymentRecorded: () => void
 }
 
-export function CollectionDetail({ collection, pockets, onBack, onPaymentRecorded }: Props) {
+export function CollectionDetail({ collection, pockets, onBack, onDelete, onPaymentRecorded }: Props) {
   const { getPendingByRef, confirmEvent, partialEvent, postponeEvent } = useScheduledEvents(collection.user_id)
   const [confirmSheet, setConfirmSheet] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   const pendingEvent = getPendingByRef(collection.id)
   const destPocket = pockets.find(p => p.id === collection.dest_pocket_id)
@@ -108,6 +110,26 @@ export function CollectionDetail({ collection, pockets, onBack, onPaymentRecorde
           onClose={() => setConfirmSheet(false)}
         />
       )}
+
+      {/* Delete */}
+      <div className="mt-6">
+        {!confirmDelete ? (
+          <button onClick={() => setConfirmDelete(true)}
+            className="w-full flex items-center justify-center gap-2 text-red-500 hover:text-red-400 py-2.5 rounded-xl text-sm transition-colors">
+            <Trash2 size={14} /> Eliminar cobro
+          </button>
+        ) : (
+          <div className="bg-red-950/40 border border-red-700/40 rounded-xl p-4 text-center">
+            <p className="text-slate-300 text-sm mb-3">¿Eliminar <strong>{collection.name}</strong>?</p>
+            <div className="flex gap-2">
+              <button onClick={() => setConfirmDelete(false)}
+                className="flex-1 py-2 rounded-lg bg-slate-700 text-slate-300 text-sm">No</button>
+              <button onClick={onDelete}
+                className="flex-1 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold">Sí, eliminar</button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

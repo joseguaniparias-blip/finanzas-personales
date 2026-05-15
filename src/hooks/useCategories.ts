@@ -10,6 +10,7 @@ interface CategoriesHook {
   loading: boolean
   addCategory: (c: NewCategory) => Promise<void>
   updateCategory: (id: string, updates: Partial<Category>) => Promise<void>
+  deleteCategory: (id: string) => Promise<void>
   seedDefaults: () => Promise<void>
 }
 
@@ -52,5 +53,10 @@ export function useCategories(userId: string): CategoriesHook {
     await load()
   }
 
-  return { categories, loading, addCategory, updateCategory, seedDefaults }
+  const deleteCategory = async (id: string) => {
+    await db.categories.delete(id)
+    await load()
+  }
+
+  return { categories, loading, addCategory, updateCategory, deleteCategory, seedDefaults }
 }

@@ -12,15 +12,19 @@ export function AmountInput({ value, onChange, placeholder = '0', label, classNa
   const [focused, setFocused] = useState(false)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value.replace(/\D/g, '')
-    onChange(raw)
+    const raw = e.target.value
+    const isNeg = raw.startsWith('-')
+    const digits = raw.replace(/\D/g, '')
+    onChange(isNeg ? '-' + digits : digits)
   }
 
-  // While focused: show raw digits so the user can type freely without dots interfering
-  // While blurred: show formatted number with thousand separators
+  const isNeg = value.startsWith('-')
+  const absNum = parseInt(value.replace(/\D/g, '') || '0', 10)
   const displayValue = focused
     ? value
-    : value ? Number(value).toLocaleString('es-CO') : ''
+    : absNum > 0
+      ? (isNeg ? '-' : '') + absNum.toLocaleString('es-CO')
+      : value === '-' ? '-' : ''
 
   return (
     <div className={className}>
@@ -29,7 +33,7 @@ export function AmountInput({ value, onChange, placeholder = '0', label, classNa
         <span className="pl-3 text-slate-500 text-sm font-medium">$</span>
         <input
           type="text"
-          inputMode="numeric"
+          inputMode="decimal"
           value={displayValue}
           onChange={handleChange}
           onFocus={() => setFocused(true)}
@@ -43,5 +47,7 @@ export function AmountInput({ value, onChange, placeholder = '0', label, classNa
 }
 
 export function parseAmount(raw: string): number {
-  return parseInt(raw.replace(/\D/g, '') || '0', 10)
+  const isNeg = raw.startsWith('-')
+  const abs = parseInt(raw.replace(/\D/g, '') || '0', 10)
+  return isNeg ? -abs : abs
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { db } from '@/lib/db'
-import type { ScheduledEvent, EventType } from '@/types'
+import type { ScheduledEvent, EventType, Platform } from '@/types'
 
 interface ScheduledEventsHook {
   events: ScheduledEvent[]
@@ -193,20 +193,73 @@ async function handleCadenaConfirm(event: ScheduledEvent) {
 }
 
 async function handlePlatformPayoutConfirm(event: ScheduledEvent, destPocketId: string, userId: string, today: string) {
-  // Find the platform pocket and move its full balance to dest pocket
+  // Get the platform record (has payout_pocket_id and name)
+  const platform = await db.platforms.get(event.reference_id)
+  if (!platform) return
+
+  // Find the platform wallet pocket
   const platformPockets = await db.pockets
-    .where('platform_id').equals(event.reference_id)
+    .where('platform_id').equals(platform.id)
     .and(p => Boolean(p.is_active))
     .toArray()
   const platformPocket = platformPockets[0]
-  if (!platformPocket || platformPocket.balance <= 0) return
+  if (!platformPocket) return
 
-  const amount = platformPocket.balance
-  await db.pockets.update(platformPocket.id, { balance: 0 })
-  await adjustPocket(destPocketId, amount)
+  // Always use the platform's configured payout pocket; fall back to destPocketId
+  const targetPocketId = platform.payout_pocket_id ?? destPocketId
 
-  const fakeEvent: ScheduledEvent = { ...event, amount }
-  await addTx(userId, 'income', amount, destPocketId, fakeEvent, today, `Pago plataforma → bolsillo`)
+  // Re-read current live balance (may differ from event.amount if income was added after event creation)
+  const balance = platformPocket.balance
+
+  if (balance > 0) {
+    // ✅ Positive balance: transfer to payout pocket, zero out platform wallet
+    await db.pockets.update(platformPocket.id, { balance: 0 })
+    await adjustPocket(targetPocketId, balance)
+    const fakeEvent: ScheduledEvent = { ...event, amount: balance }
+    await addTx(userId, 'income', balance, targetPocketId, fakeEvent, today,
+      `Pago ${platform.name} — período cerrado`)
+  }
+  // ≤ 0: negative balance stays on the platform wallet and carries forward to next period.
+  // No transaction recorded — the balance is already reflected in the wallet.
+
+  // Schedule next week's payout event
+  await scheduleNextPayoutEvent(platform, event.due_date, userId)
+}
+
+async function scheduleNextPayoutEvent(platform: Platform, fromDate: string, userId: string) {
+  // Next payout = same weekday, 7 days later
+  const d = new Date(fromDate + 'T12:00:00')
+  d.setDate(d.getDate() + 7)
+  const nextDate = d.toISOString().slice(0, 10)
+
+  // Don't duplicate
+  const existing = await db.scheduled_events
+    .where('user_id').equals(platform.user_id)
+    .and(e => e.type === 'platform_payout' && e.reference_id === platform.id && e.status === 'pending')
+    .count()
+  if (existing > 0) return
+
+  // Amount estimate = current platform wallet balance (informational only; re-read at confirm)
+  const platformPockets = await db.pockets
+    .where('platform_id').equals(platform.id)
+    .and(p => Boolean(p.is_active))
+    .toArray()
+  const currentBalance = platformPockets[0]?.balance ?? 0
+
+  await db.scheduled_events.add({
+    id: crypto.randomUUID(),
+    user_id: platform.user_id,
+    type: 'platform_payout',
+    reference_id: platform.id,
+    reference_type: 'platform',
+    amount: currentBalance,
+    due_date: nextDate,
+    status: 'pending',
+    actual_pocket_id: null,
+    partial_amount: null,
+    remaining_after_partial: null,
+    created_at: new Date().toISOString()
+  })
 }
 
 async function scheduleNext(prev: ScheduledEvent, frequency: string, amount: number) {

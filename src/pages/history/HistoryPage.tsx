@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
-import { ArrowUpRight, ArrowDownRight } from 'lucide-react'
+import { ArrowUpRight, ArrowDownRight, ArrowLeft, Pencil, Trash2 } from 'lucide-react'
 import { db } from '@/lib/db'
 import { usePockets } from '@/hooks/usePockets'
 import { useCategories } from '@/hooks/useCategories'
 import { maskAmount } from '@/components/shared/PrivacyToggle'
 import { PageHeader } from '@/components/shared/PageHeader'
+import { AmountInput, parseAmount } from '@/components/shared/AmountInput'
 import type { Transaction, Pocket, Category } from '@/types'
 
 interface Props { userId: string }
@@ -45,14 +46,30 @@ function formatDate(iso: string): string {
   return `${Number(d)} ${months[Number(m) - 1]} ${y}`
 }
 
+async function reverseTxOnPocket(tx: Transaction) {
+  const pocket = await db.pockets.get(tx.pocket_id)
+  if (!pocket) return
+  const delta = tx.type === 'income' ? -tx.amount : tx.amount
+  await db.pockets.update(tx.pocket_id, { balance: pocket.balance + delta })
+}
+
+async function applyTxOnPocket(tx: Pick<Transaction, 'type' | 'amount' | 'pocket_id'>) {
+  const pocket = await db.pockets.get(tx.pocket_id)
+  if (!pocket) return
+  const delta = tx.type === 'income' ? tx.amount : -tx.amount
+  await db.pockets.update(tx.pocket_id, { balance: pocket.balance + delta })
+}
+
 export function HistoryPage({ userId }: Props) {
-  const { pockets } = usePockets(userId)
+  const { pockets, load: reloadPockets } = usePockets(userId)
   const { categories } = useCategories(userId)
   const [period, setPeriod] = useState<Period>('month')
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
   const [pocketFilter, setPocketFilter] = useState<string>('all')
   const [txs, setTxs] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
+  const [selectedTx, setSelectedTx] = useState<Transaction | null>(null)
+  const [editingTx, setEditingTx] = useState<Transaction | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -93,6 +110,50 @@ export function HistoryPage({ userId }: Props) {
   }
 
   const nonPlatformPockets = pockets.filter(p => p.type !== 'platform')
+
+  const handleDelete = async (tx: Transaction) => {
+    await reverseTxOnPocket(tx)
+    await db.transactions.delete(tx.id)
+    await reloadPockets()
+    setSelectedTx(null)
+    load()
+  }
+
+  const handleUpdate = async (old: Transaction, updated: Partial<Transaction>) => {
+    await reverseTxOnPocket(old)
+    await db.transactions.update(old.id, updated)
+    const merged = { ...old, ...updated }
+    await applyTxOnPocket(merged)
+    await reloadPockets()
+    setEditingTx(null)
+    setSelectedTx(null)
+    load()
+  }
+
+  if (editingTx) {
+    return (
+      <TransactionEditForm
+        tx={editingTx}
+        pockets={nonPlatformPockets}
+        categories={categories}
+        onSave={updated => handleUpdate(editingTx, updated)}
+        onCancel={() => setEditingTx(null)}
+      />
+    )
+  }
+
+  if (selectedTx) {
+    return (
+      <TransactionDetailView
+        tx={selectedTx}
+        pocket={pocketMap[selectedTx.pocket_id]}
+        category={selectedTx.category_id ? categoryMap[selectedTx.category_id] : undefined}
+        onBack={() => setSelectedTx(null)}
+        onEdit={() => setEditingTx(selectedTx)}
+        onDelete={() => handleDelete(selectedTx)}
+      />
+    )
+  }
 
   return (
     <div className="p-4 max-w-lg mx-auto">
@@ -157,8 +218,8 @@ export function HistoryPage({ userId }: Props) {
                 const pocket = pocketMap[tx.pocket_id]
                 const isIncome = tx.type === 'income'
                 return (
-                  <div key={tx.id}
-                    className="flex items-center gap-3 bg-slate-800 border border-slate-700 rounded-xl p-3">
+                  <button key={tx.id} onClick={() => setSelectedTx(tx)}
+                    className="w-full flex items-center gap-3 bg-slate-800 border border-slate-700 rounded-xl p-3 hover:border-slate-600 transition-colors text-left">
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${isIncome ? 'bg-emerald-600/20' : 'bg-red-600/20'}`}>
                       {isIncome
                         ? <ArrowUpRight size={14} className="text-emerald-400" />
@@ -173,13 +234,215 @@ export function HistoryPage({ userId }: Props) {
                     <p className={`font-bold text-sm flex-shrink-0 ${isIncome ? 'text-emerald-400' : 'text-red-400'}`}>
                       {isIncome ? '+' : '−'} {maskAmount(tx.amount, false)}
                     </p>
-                  </div>
+                  </button>
                 )
               })}
             </div>
           </div>
         ))}
       </div>
+    </div>
+  )
+}
+
+// ─── Detail view ──────────────────────────────────────────────────────────────
+
+interface DetailProps {
+  tx: Transaction
+  pocket?: Pocket
+  category?: Category
+  onBack: () => void
+  onEdit: () => void
+  onDelete: () => void
+}
+
+function TransactionDetailView({ tx, pocket, category, onBack, onEdit, onDelete }: DetailProps) {
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const isIncome = tx.type === 'income'
+
+  return (
+    <div className="p-4 max-w-lg mx-auto">
+      <div className="flex items-center gap-3 mb-6">
+        <button onClick={onBack} className="p-2 rounded-full bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors">
+          <ArrowLeft size={18} />
+        </button>
+        <h2 className="text-slate-100 text-lg font-bold flex-1">Detalle</h2>
+        <button onClick={onEdit} className="p-2 rounded-full bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors">
+          <Pencil size={16} />
+        </button>
+      </div>
+
+      {/* Amount card */}
+      <div className={`rounded-2xl p-5 mb-5 border text-center ${isIncome ? 'bg-emerald-600/10 border-emerald-600/20' : 'bg-red-600/10 border-red-600/20'}`}>
+        <p className="text-xs text-slate-400 mb-1">{isIncome ? 'Ingreso' : 'Gasto'}</p>
+        <p className={`text-3xl font-bold ${isIncome ? 'text-emerald-400' : 'text-red-400'}`}>
+          {isIncome ? '+' : '−'} {maskAmount(tx.amount, false)}
+        </p>
+        <p className="text-slate-500 text-sm mt-1">{formatDate(tx.date)}</p>
+      </div>
+
+      {/* Info rows */}
+      <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 mb-5 space-y-3">
+        {pocket && <InfoRow label="Bolsillo" value={`${pocket.icon} ${pocket.name}`} />}
+        {category && <InfoRow label="Categoría" value={`${category.icon} ${category.name}`} />}
+        {tx.note && <InfoRow label="Nota" value={tx.note} />}
+        {tx.reference_type && (
+          <InfoRow label="Tipo" value={tx.reference_type.replace(/_/g, ' ')} />
+        )}
+      </div>
+
+      {/* Delete */}
+      <div className="mt-4">
+        {!confirmDelete ? (
+          <button onClick={() => setConfirmDelete(true)}
+            className="w-full flex items-center justify-center gap-2 text-red-500 hover:text-red-400 py-2.5 rounded-xl text-sm transition-colors">
+            <Trash2 size={14} /> Eliminar registro
+          </button>
+        ) : (
+          <div className="bg-red-950/40 border border-red-700/40 rounded-xl p-4 text-center">
+            <p className="text-slate-300 text-sm mb-3">¿Eliminar este registro? El saldo del bolsillo se ajustará.</p>
+            <div className="flex gap-2">
+              <button onClick={() => setConfirmDelete(false)}
+                className="flex-1 py-2 rounded-lg bg-slate-700 text-slate-300 text-sm">No</button>
+              <button onClick={onDelete}
+                className="flex-1 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold">Sí, eliminar</button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between text-sm gap-4">
+      <span className="text-slate-400 flex-shrink-0">{label}</span>
+      <span className="text-slate-200 font-medium text-right">{value}</span>
+    </div>
+  )
+}
+
+// ─── Edit form ────────────────────────────────────────────────────────────────
+
+interface EditProps {
+  tx: Transaction
+  pockets: Pocket[]
+  categories: Category[]
+  onSave: (updates: Partial<Transaction>) => void
+  onCancel: () => void
+}
+
+function TransactionEditForm({ tx, pockets, categories, onSave, onCancel }: EditProps) {
+  const [type, setType] = useState<'income' | 'expense'>(tx.type === 'transfer' ? 'expense' : tx.type)
+  const [amount, setAmount] = useState(tx.amount.toString())
+  const [pocketId, setPocketId] = useState(tx.pocket_id)
+  const [categoryId, setCategoryId] = useState(tx.category_id ?? '')
+  const [note, setNote] = useState(tx.note ?? '')
+  const [date, setDate] = useState(tx.date)
+  const [saving, setSaving] = useState(false)
+
+  const amountNum = parseAmount(amount)
+  const canSave = amountNum > 0 && pocketId
+
+  const handleSave = async () => {
+    if (!canSave) return
+    setSaving(true)
+    try {
+      await onSave({
+        type,
+        amount: amountNum,
+        pocket_id: pocketId,
+        category_id: categoryId || null,
+        note: note.trim() || null,
+        date
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="p-4 max-w-lg mx-auto">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-slate-100 text-lg font-bold">Editar registro</h2>
+        <button onClick={onCancel} className="text-slate-500 text-sm">Cancelar</button>
+      </div>
+
+      {/* Type */}
+      <div className="mb-5">
+        <p className="text-xs text-slate-400 mb-2">Tipo</p>
+        <div className="flex gap-2">
+          {(['income', 'expense'] as const).map(t => (
+            <button key={t} onClick={() => setType(t)}
+              className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors border ${
+                type === t
+                  ? t === 'income' ? 'bg-emerald-600/20 border-emerald-500 text-emerald-300' : 'bg-red-600/20 border-red-500 text-red-300'
+                  : 'border-slate-700 text-slate-400'
+              }`}>
+              {t === 'income' ? '↑ Ingreso' : '↓ Gasto'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Amount */}
+      <AmountInput label="Monto" value={amount} onChange={setAmount} className="mb-5" />
+
+      {/* Date */}
+      <div className="mb-5">
+        <label className="block text-xs text-slate-400 mb-1">Fecha</label>
+        <input type="date" value={date} onChange={e => setDate(e.target.value)}
+          className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-blue-500" />
+      </div>
+
+      {/* Pocket */}
+      <div className="mb-5">
+        <p className="text-xs text-slate-400 mb-2">Bolsillo</p>
+        <div className="space-y-1">
+          {pockets.map(p => (
+            <button key={p.id} onClick={() => setPocketId(p.id)}
+              className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm transition-colors border ${
+                pocketId === p.id ? 'bg-blue-600/20 border-blue-500 text-slate-200' : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'
+              }`}>
+              <span>{p.icon}</span><span className="flex-1 text-left">{p.name}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Category (only for expenses) */}
+      {type === 'expense' && categories.length > 0 && (
+        <div className="mb-5">
+          <p className="text-xs text-slate-400 mb-2">Categoría</p>
+          <div className="grid grid-cols-3 gap-2">
+            <button onClick={() => setCategoryId('')}
+              className={`py-2 rounded-xl text-xs transition-colors border ${!categoryId ? 'bg-slate-600 border-slate-500 text-slate-200' : 'border-slate-700 text-slate-500'}`}>
+              Sin categoría
+            </button>
+            {categories.map(c => (
+              <button key={c.id} onClick={() => setCategoryId(c.id)}
+                className={`py-2 rounded-xl text-xs transition-colors border flex flex-col items-center gap-0.5 ${categoryId === c.id ? 'bg-blue-600/20 border-blue-500 text-slate-200' : 'border-slate-700 text-slate-400'}`}>
+                <span>{c.icon}</span>
+                <span className="truncate w-full text-center px-1">{c.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Note */}
+      <div className="mb-6">
+        <label className="block text-xs text-slate-400 mb-1">Nota (opcional)</label>
+        <input value={note} onChange={e => setNote(e.target.value)}
+          placeholder="Descripción…"
+          className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-blue-500 placeholder:text-slate-600" />
+      </div>
+
+      <button onClick={handleSave} disabled={!canSave || saving}
+        className="w-full bg-blue-600 disabled:opacity-40 hover:bg-blue-500 text-white py-4 rounded-xl font-semibold text-sm transition-colors">
+        {saving ? 'Guardando…' : 'Guardar cambios'}
+      </button>
     </div>
   )
 }

@@ -14,7 +14,7 @@ export function RegisterPage({ userId }: Props) {
   const [mode, setMode] = useState<'select' | 'income' | 'expense'>('select')
   const { platforms } = usePlatforms(userId)
   const { pockets } = usePockets(userId)
-  const { categories, seedDefaults } = useCategories(userId)
+  const { categories, addCategory, deleteCategory, seedDefaults } = useCategories(userId)
   const { addTransaction } = useTransactions(userId)
 
   if (mode === 'income') {
@@ -23,6 +23,10 @@ export function RegisterPage({ userId }: Props) {
         userId={userId}
         platforms={platforms}
         pockets={pockets}
+        categories={categories}
+        addCategory={addCategory}
+        deleteCategory={deleteCategory}
+        seedDefaults={seedDefaults}
         addTransaction={addTransaction}
         onDone={() => setMode('select')}
         onCancel={() => setMode('select')}
@@ -37,6 +41,8 @@ export function RegisterPage({ userId }: Props) {
         pockets={pockets}
         categories={categories}
         seedDefaults={seedDefaults}
+        addCategory={addCategory}
+        deleteCategory={deleteCategory}
         addTransaction={addTransaction}
         onDone={() => setMode('select')}
         onCancel={() => setMode('select')}

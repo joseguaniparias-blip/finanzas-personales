@@ -1,12 +1,12 @@
 import { useState } from 'react'
-import { LogOut, ChevronRight, User, Bell, Trash2 } from 'lucide-react'
+import { LogOut, ChevronRight, User, Bell, Trash2, Plus } from 'lucide-react'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { usePlatforms } from '@/hooks/usePlatforms'
 import { usePockets } from '@/hooks/usePockets'
 import { useCategories } from '@/hooks/useCategories'
 import { useAuth } from '@/hooks/useAuth'
 import { db } from '@/lib/db'
-import { DAYS_OF_WEEK } from '@/types'
+import { DAYS_OF_WEEK, PLATFORM_DEFAULTS } from '@/types'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { AmountInput, parseAmount } from '@/components/shared/AmountInput'
 
@@ -14,10 +14,17 @@ interface Props { userId: string }
 
 type Section = 'main' | 'profile' | 'platforms' | 'categories'
 
+const PLATFORM_COLORS = ['#fb923c', '#60a5fa', '#4ade80', '#a78bfa', '#f87171', '#fbbf24', '#94a3b8']
+
 export function ConfigPage({ userId }: Props) {
   const { profile, setHidden } = useUserProfile(userId)
-  const { platforms, updatePlatform, deletePlatform } = usePlatforms(userId)
+  const { platforms, addPlatform, updatePlatform, deletePlatform } = usePlatforms(userId)
   const [confirmDeletePlatform, setConfirmDeletePlatform] = useState<string | null>(null)
+  const [showAddPlatform, setShowAddPlatform] = useState(false)
+  const [newPlatformName, setNewPlatformName] = useState('')
+  const [newPlatformColor, setNewPlatformColor] = useState('#fb923c')
+  const [newPlatformBalance, setNewPlatformBalance] = useState('')
+  const [savingPlatform, setSavingPlatform] = useState(false)
   const { pockets } = usePockets(userId)
   const { categories, updateCategory } = useCategories(userId)
   const { signOut } = useAuth()
@@ -53,10 +60,95 @@ export function ConfigPage({ userId }: Props) {
     )
   }
 
+  const handleAddPlatform = async () => {
+    if (!newPlatformName.trim()) return
+    setSavingPlatform(true)
+    try {
+      const pName = newPlatformName.trim()
+      const def = PLATFORM_DEFAULTS[pName] ?? { color: newPlatformColor, icon: '📲' }
+      const color = def.color ?? newPlatformColor
+      const icon = def.icon ?? '📲'
+      const initialBalance = parseAmount(newPlatformBalance)
+      const np = pockets.filter(p => p.type !== 'platform')
+      const platform = await addPlatform({
+        user_id: userId,
+        name: pName,
+        color,
+        payout_day: null,
+        payout_pocket_id: np[0]?.id ?? null,
+        is_active: true
+      })
+      // Create platform wallet pocket with initial balance
+      await db.pockets.add({
+        id: crypto.randomUUID(),
+        user_id: userId,
+        name: pName,
+        type: 'platform',
+        platform_id: platform.id,
+        balance: initialBalance,
+        color,
+        icon,
+        is_active: true,
+        created_at: new Date().toISOString()
+      })
+      setNewPlatformName('')
+      setNewPlatformColor('#fb923c')
+      setNewPlatformBalance('')
+      setShowAddPlatform(false)
+    } finally {
+      setSavingPlatform(false)
+    }
+  }
+
   if (section === 'platforms') {
     return (
       <div className="p-4 max-w-lg mx-auto">
-        <PageHeader title="Plataformas" />
+        <PageHeader title="Plataformas" right={
+          <button onClick={() => setShowAddPlatform(s => !s)}
+            className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded-xl text-xs font-semibold transition-colors">
+            <Plus size={14} /> Nueva
+          </button>
+        } />
+
+        {/* Add platform form */}
+        {showAddPlatform && (
+          <div className="bg-slate-800 rounded-2xl p-4 border border-slate-700 mb-4">
+            <p className="text-slate-300 text-sm font-medium mb-3">Nueva plataforma</p>
+            <input
+              value={newPlatformName}
+              onChange={e => {
+                setNewPlatformName(e.target.value)
+                const def = PLATFORM_DEFAULTS[e.target.value.trim()]
+                if (def) setNewPlatformColor(def.color)
+              }}
+              placeholder="Ej: Rappi, Uber, DiDi…"
+              className="w-full bg-slate-700 border border-slate-600 rounded-xl px-3 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500 mb-3"
+            />
+            <AmountInput
+              label="Saldo actual en la billetera"
+              value={newPlatformBalance}
+              onChange={setNewPlatformBalance}
+              placeholder="0"
+              className="mb-3"
+            />
+            <div className="flex gap-2 flex-wrap mb-3">
+              {PLATFORM_COLORS.map(c => (
+                <button key={c} type="button" onClick={() => setNewPlatformColor(c)}
+                  className={`w-7 h-7 rounded-full border-2 transition-colors ${newPlatformColor === c ? 'border-white' : 'border-transparent'}`}
+                  style={{ backgroundColor: c }} />
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setShowAddPlatform(false)}
+                className="flex-1 py-2 rounded-xl bg-slate-700 text-slate-300 text-sm">Cancelar</button>
+              <button onClick={handleAddPlatform} disabled={!newPlatformName.trim() || savingPlatform}
+                className="flex-1 py-2 rounded-xl bg-emerald-600 disabled:opacity-40 text-white text-sm font-semibold">
+                {savingPlatform ? 'Guardando…' : 'Agregar'}
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="space-y-4">
           {platforms.map(p => (
             <div key={p.id} className="bg-slate-800 rounded-2xl p-4 border border-slate-700">
