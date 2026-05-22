@@ -34,7 +34,7 @@ export function PocketForm({ userId, initial, onSave, onDelete, onCancel }: Prop
       user_id: userId,
       name: name.trim(),
       type,
-      platform_id: null,
+      platform_id: initial?.platform_id ?? null,
       balance: parseAmount(balance) * (negative ? -1 : 1),
       color,
       icon,

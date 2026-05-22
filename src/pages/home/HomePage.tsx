@@ -116,6 +116,11 @@ function formatAgendaDate(iso: string, today: string): string {
   return `${Number(d)} ${MONTHS_SHORT[Number(m) - 1]} ${y}`
 }
 
+function formatShortDate(iso: string): string {
+  const [, m, d] = iso.split('-')
+  return `${Number(d)} ${MONTHS_SHORT[Number(m) - 1]}`
+}
+
 // ─── Mini Calendar ────────────────────────────────────────────────────────────
 
 interface MiniCalendarProps {
@@ -189,7 +194,7 @@ function MiniCalendar({ days, allEvents, selectedDay, today, onSelectDay }: Mini
 export function HomePage({ userId }: Props) {
   const { pockets, totalBalance } = usePockets(userId)
   const { transactions } = useTransactions(userId)
-  const { events, confirmEvent, partialEvent, postponeEvent } = useScheduledEvents(userId)
+  const { events, confirmEvent, partialEvent, postponeEvent, rescheduleEvent, deleteEvent } = useScheduledEvents(userId)
   const { profile, setHidden } = useUserProfile(userId)
   const { platforms } = usePlatforms(userId)
 
@@ -261,7 +266,12 @@ export function HomePage({ userId }: Props) {
   const expense = periodTxs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0)
 
   const nonPlatformPockets = pockets.filter(p => p.type !== 'platform')
-  const platformPockets    = pockets.filter(p => p.type === 'platform' && p.balance > 0)
+  // Show a platform card if the wallet has any balance OR there's a pending payout event for it
+  const platformPockets    = pockets.filter(p => {
+    if (p.type !== 'platform') return false
+    if (p.balance !== 0) return true
+    return events.some(e => e.type === 'platform_payout' && e.reference_id === p.platform_id && e.status === 'pending')
+  })
 
   const emptyLabel =
     agendaPeriod === 'day'      ? ' hoy'
@@ -352,16 +362,29 @@ export function HomePage({ userId }: Props) {
             </Link>
           </div>
           <div className="flex gap-2 overflow-x-auto pb-1">
-            {platformPockets.map(p => (
-              <div key={p.id}
-                className="flex-shrink-0 bg-orange-600/5 border border-orange-600/20 rounded-xl px-3 py-2 min-w-[110px]">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <span className="text-sm">{p.icon}</span>
-                  <span className="text-xs text-slate-400 truncate">{p.name}</span>
+            {platformPockets.map(p => {
+              const pendingPayout = events.find(e => e.type === 'platform_payout' && e.reference_id === p.platform_id && e.status === 'pending')
+              const isNegative = p.balance < 0
+              return (
+                <div key={p.id}
+                  className={`flex-shrink-0 rounded-xl px-3 py-2 min-w-[130px] border ${isNegative ? 'bg-red-600/5 border-red-600/30' : 'bg-orange-600/5 border-orange-600/20'}`}>
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <span className="text-sm">{p.icon}</span>
+                    <span className="text-xs text-slate-400 truncate">{p.name}</span>
+                  </div>
+                  <p className={`font-semibold text-xs ${isNegative ? 'text-red-400' : 'text-orange-400'}`}>
+                    {maskVal(p.balance, hidden)}
+                  </p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">esta semana</p>
+                  {pendingPayout && (
+                    <div className="mt-1.5 pt-1.5 border-t border-slate-700/50">
+                      <p className="text-emerald-400 font-semibold text-xs">{maskVal(pendingPayout.amount, hidden)}</p>
+                      <p className="text-[10px] text-slate-500">por cobrar {formatShortDate(pendingPayout.due_date)}</p>
+                    </div>
+                  )}
                 </div>
-                <p className="text-orange-400 font-semibold text-xs">{maskVal(p.balance, hidden)}</p>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       )}
@@ -435,8 +458,7 @@ export function HomePage({ userId }: Props) {
 
                       // ── Platform payout: special card ────────────────────
                       if (ev.type === 'platform_payout') {
-                        const platWallet = pockets.find(p => p.platform_id === ev.reference_id)
-                        const balance = platWallet?.balance ?? ev.amount
+                        const balance = ev.amount
                         const willTransfer = balance > 0
                         return (
                           <div key={ev.id}
@@ -519,6 +541,7 @@ export function HomePage({ userId }: Props) {
           pockets={pockets}
           onConfirm={async pocketId => { await confirmEvent(confirmingPayout.id, pocketId); setConfirmingPayout(null) }}
           onPostpone={() => { postponeEvent(confirmingPayout.id); setConfirmingPayout(null) }}
+          onDelete={async () => { await deleteEvent(confirmingPayout.id); setConfirmingPayout(null) }}
           onClose={() => setConfirmingPayout(null)}
         />
       )}
@@ -534,6 +557,8 @@ export function HomePage({ userId }: Props) {
           onConfirm={async pocketId => { await confirmEvent(confirmingEvent.id, pocketId); setConfirmingEvent(null) }}
           onPartial={async (pocketId, amount) => { await partialEvent(confirmingEvent.id, pocketId, amount); setConfirmingEvent(null) }}
           onPostpone={() => { postponeEvent(confirmingEvent.id); setConfirmingEvent(null) }}
+          onReschedule={async newDate => { await rescheduleEvent(confirmingEvent.id, newDate); setConfirmingEvent(null) }}
+          onDelete={async () => { await deleteEvent(confirmingEvent.id); setConfirmingEvent(null) }}
           onClose={() => setConfirmingEvent(null)}
         />
       )}
@@ -549,10 +574,11 @@ interface PayoutSheetProps {
   pockets: Pocket[]
   onConfirm: (pocketId: string) => void
   onPostpone: () => void
+  onDelete: () => void
   onClose: () => void
 }
 
-function PlatformPayoutSheet({ event, platforms, pockets, onConfirm, onPostpone, onClose }: PayoutSheetProps) {
+function PlatformPayoutSheet({ event, platforms, pockets, onConfirm, onPostpone, onDelete, onClose }: PayoutSheetProps) {
   const platform = platforms.find(p => p.id === event.reference_id)
   const wallet = pockets.find(p => p.platform_id === event.reference_id)
   const payoutPocket = pockets.find(p => p.id === platform?.payout_pocket_id)
@@ -629,6 +655,10 @@ function PlatformPayoutSheet({ event, platforms, pockets, onConfirm, onPostpone,
             {willTransfer ? `Cobrar ${maskAmount(balance, false)}` : 'Cerrar período'}
           </button>
         </div>
+        <button onClick={onDelete}
+          className="w-full mt-3 flex items-center justify-center gap-2 text-red-500 hover:text-red-400 py-2.5 rounded-xl text-xs transition-colors">
+          Eliminar este pendiente
+        </button>
       </div>
     </div>
   )
