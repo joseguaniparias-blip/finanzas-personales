@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { Cadena, Pocket } from '@/types'
 import { AmountInput, parseAmount } from '@/components/shared/AmountInput'
 import { DAYS_OF_WEEK } from '@/types'
+import { useSubmitLock } from '@/hooks/useSubmitLock'
 
 interface Props {
   userId: string
@@ -21,16 +22,15 @@ export function CadenaForm({ userId, pockets, initial, onSave, onCancel }: Props
   const [sourcePocketId, setSourcePocketId] = useState(initial?.source_pocket_id ?? pockets[0]?.id ?? '')
   const [startedBefore, setStartedBefore] = useState(initial?.started_before_app ?? false)
   const [paidRounds, setPaidRounds] = useState(initial?.paid_rounds ?? 0)
-  const [saving, setSaving] = useState(false)
+  const { submitting: saving, submit } = useSubmitLock()
   const [triggerDay, setTriggerDay] = useState(1)
 
   const contributionNum = parseAmount(contribution)
   const canSave = name.trim() && participants >= 2 && contributionNum > 0 && payoutPocketId && sourcePocketId
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!canSave) return
-    setSaving(true)
-    try {
+    submit(async () => {
       await onSave({
         user_id: userId,
         name: name.trim(),
@@ -43,9 +43,7 @@ export function CadenaForm({ userId, pockets, initial, onSave, onCancel }: Props
         started_before_app: startedBefore,
         paid_rounds: startedBefore ? paidRounds : 0,
       })
-    } finally {
-      setSaving(false)
-    }
+    })
   }
 
   const nonPlatformPockets = pockets.filter(p => p.type !== 'platform')

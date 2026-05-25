@@ -55,6 +55,11 @@ export function useSavingGoals(userId: string): SavingGoalsHook {
   }
 
   const closeGoal = async (id: string) => {
+    const linked = await db.scheduled_events
+      .where('user_id').equals(userId)
+      .filter(e => e.reference_id === id && e.status === 'pending')
+      .toArray()
+    for (const e of linked) await db.scheduled_events.delete(e.id)
     await db.saving_goals.update(id, { is_active: false })
     await load()
   }

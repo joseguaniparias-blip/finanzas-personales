@@ -376,12 +376,17 @@ export function HomePage({ userId }: Props) {
                     {maskVal(p.balance, hidden)}
                   </p>
                   <p className="text-[10px] text-slate-500 mt-0.5">esta semana</p>
-                  {pendingPayout && (
+                  {pendingPayout ? (
                     <div className="mt-1.5 pt-1.5 border-t border-slate-700/50">
                       <p className="text-emerald-400 font-semibold text-xs">{maskVal(pendingPayout.amount, hidden)}</p>
                       <p className="text-[10px] text-slate-500">por cobrar {formatShortDate(pendingPayout.due_date)}</p>
                     </div>
-                  )}
+                  ) : p.balance > 0 ? (
+                    <div className="mt-1.5 pt-1.5 border-t border-slate-700/50">
+                      <p className="text-[10px] text-slate-400 font-medium">Saldo pendiente por cobrar</p>
+                      <p className="text-[10px] text-slate-500">Cierra el domingo</p>
+                    </div>
+                  ) : null}
                 </div>
               )
             })}
@@ -458,30 +463,24 @@ export function HomePage({ userId }: Props) {
 
                       // ── Platform payout: special card ────────────────────
                       if (ev.type === 'platform_payout') {
+                        if (ev.amount <= 0) return null  // skip stale/invalid events
                         const balance = ev.amount
-                        const willTransfer = balance > 0
                         return (
-                          <div key={ev.id}
-                            className="flex items-center gap-3 bg-orange-500/5 border border-orange-500/25 rounded-xl p-3">
+                          <button key={ev.id} onClick={() => setConfirmingPayout(ev)}
+                            className="w-full text-left flex items-center gap-3 bg-orange-500/5 border border-orange-500/25 rounded-xl p-3 hover:bg-orange-500/10 transition-colors">
                             <span className="text-lg leading-none">💰</span>
                             <div className="flex-1 min-w-0">
                               <p className="text-slate-200 text-sm font-medium truncate">{name}</p>
-                              {willTransfer
-                                ? <p className="text-xs text-orange-400">Transferir {maskVal(balance, hidden)}</p>
-                                : <p className="text-xs text-slate-500">Saldo negativo — arrastra próxima semana</p>
-                              }
+                              <p className="text-xs text-orange-400">Transferir {maskVal(balance, hidden)}</p>
                             </div>
-                            {canConfirm && (
-                              <button onClick={() => setConfirmingPayout(ev)}
-                                className={`flex-shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                                  willTransfer
-                                    ? 'bg-orange-500/20 hover:bg-orange-500/30 text-orange-300'
-                                    : 'bg-slate-700 hover:bg-slate-600 text-slate-400'
-                                }`}>
-                                <Check size={12} /> {willTransfer ? 'Cobrar' : 'Cerrar'}
-                              </button>
+                            {canConfirm ? (
+                              <span className="flex-shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-orange-500/20 text-orange-300">
+                                <Check size={12} /> Cobrar
+                              </span>
+                            ) : (
+                              <span className="flex-shrink-0 text-xs text-slate-500">Ver →</span>
                             )}
-                          </div>
+                          </button>
                         )
                       }
 
@@ -591,8 +590,8 @@ function PlatformPayoutSheet({ event, platforms, pockets, onConfirm, onPostpone,
   const handleConfirm = () => onConfirm(targetPocket?.id ?? '')
 
   return (
-    <div className="fixed inset-0 bg-black/70 z-50 flex items-end justify-center">
-      <div className="bg-slate-900 w-full max-w-lg rounded-t-3xl border-t border-slate-700 p-6">
+    <div className="fixed inset-0 bg-black/70 z-[60] flex items-end justify-center" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div className="bg-slate-900 w-full max-w-lg rounded-t-3xl border-t border-slate-700 px-6 pt-6 pb-8 overflow-y-auto overscroll-contain" style={{ maxHeight: '90dvh' }}>
 
         {/* Header */}
         <div className="flex items-center justify-between mb-5">

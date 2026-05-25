@@ -29,10 +29,14 @@ export function useDebts(userId: string): DebtsHook {
   useEffect(() => { load() }, [load])
 
   const addDebt = async (d: NewDebt, firstDueDate?: string): Promise<Debt> => {
+    // If user marked "started before app", seed paid_amount from prior installments
+    const priorPaid = d.started_before_app
+      ? Math.max(0, (d.start_installment - 1) * d.installment_amount)
+      : 0
     const debt: Debt = {
       ...d,
       id: crypto.randomUUID(),
-      paid_amount: 0,
+      paid_amount: priorPaid,
       status: 'active',
       created_at: new Date().toISOString()
     }
@@ -63,6 +67,11 @@ export function useDebts(userId: string): DebtsHook {
   }
 
   const closeDebt = async (id: string) => {
+    const linked = await db.scheduled_events
+      .where('user_id').equals(userId)
+      .filter(e => e.reference_id === id && e.status === 'pending')
+      .toArray()
+    for (const e of linked) await db.scheduled_events.delete(e.id)
     await db.debts.update(id, { status: 'cancelled' })
     await load()
   }

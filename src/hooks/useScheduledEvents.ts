@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { db } from '@/lib/db'
-import type { ScheduledEvent, EventType, Platform } from '@/types'
+import type { ScheduledEvent, EventType } from '@/types'
 
 interface ScheduledEventsHook {
   events: ScheduledEvent[]
@@ -10,6 +10,7 @@ interface ScheduledEventsHook {
   partialEvent: (id: string, pocketId: string, paidAmount: number) => Promise<void>
   postponeEvent: (id: string) => Promise<void>
   rescheduleEvent: (id: string, newDate: string) => Promise<void>
+  deleteEvent: (id: string) => Promise<void>
   getPendingByType: (type: EventType) => ScheduledEvent[]
   getPendingByRef: (referenceId: string) => ScheduledEvent | undefined
 }
@@ -23,7 +24,65 @@ export function useScheduledEvents(userId: string): ScheduledEventsHook {
       .where('user_id').equals(userId)
       .and(e => e.status === 'pending')
       .sortBy('due_date')
-    setEvents(data)
+
+    const toDelete: string[] = []
+
+    // ── Step 1: Orphan cleanup ──
+    // Delete events whose referenced entity no longer exists or is inactive.
+    // This handles records the user deleted (cancelled/paid_off/etc.) whose
+    // future events lingered in the agenda.
+    for (const ev of data) {
+      let orphan = false
+      if (ev.type === 'debt') {
+        const r = await db.debts.get(ev.reference_id)
+        orphan = !r || r.status !== 'active'
+      } else if (ev.type === 'collection') {
+        const r = await db.collections.get(ev.reference_id)
+        orphan = !r || r.status !== 'active'
+      } else if (ev.type === 'saving') {
+        const r = await db.saving_goals.get(ev.reference_id)
+        // is_active is coerced to 0/1 by the Dexie hook
+        orphan = !r || !r.is_active
+      } else if (ev.type === 'cadena') {
+        const r = await db.cadenas.get(ev.reference_id)
+        orphan = !r || r.status !== 'active'
+      } else if (ev.type === 'platform_payout') {
+        const r = await db.platforms.get(ev.reference_id)
+        orphan = !r || !r.is_active
+      }
+      if (orphan) toDelete.push(ev.id)
+    }
+
+    // Filter out orphans before dedup
+    const orphanSet = new Set(toDelete)
+    const alive = data.filter(e => !orphanSet.has(e.id))
+
+    // ── Step 2: Deduplicate ──
+    // If multiple pending events exist for the same (reference_id + type),
+    // keep the earliest due_date and delete the rest. Excludes platform_payout
+    // which has its own merge logic in usePlatformPayouts.
+    const seen = new Map<string, ScheduledEvent>()
+    for (const ev of alive) {
+      if (ev.type === 'platform_payout') continue
+      const key = `${ev.type}::${ev.reference_id}`
+      const existing = seen.get(key)
+      if (!existing) {
+        seen.set(key, ev)
+      } else if (ev.due_date < existing.due_date) {
+        toDelete.push(existing.id)
+        seen.set(key, ev)
+      } else {
+        toDelete.push(ev.id)
+      }
+    }
+
+    if (toDelete.length > 0) {
+      await db.scheduled_events.bulkDelete(toDelete)
+      const deletedSet = new Set(toDelete)
+      setEvents(data.filter(e => !deletedSet.has(e.id)))
+    } else {
+      setEvents(data)
+    }
     setLoading(false)
   }, [userId])
 
@@ -35,6 +94,9 @@ export function useScheduledEvents(userId: string): ScheduledEventsHook {
   const confirmEvent = async (id: string, pocketId: string) => {
     const event = await db.scheduled_events.get(id)
     if (!event) return
+    // Idempotency guard: if a previous tap already confirmed/partial-ed this event,
+    // do not re-process. Prevents duplicate "next event" creation from rapid double-taps.
+    if (event.status !== 'pending') return
 
     await db.scheduled_events.update(id, { status: 'confirmed', actual_pocket_id: pocketId })
 
@@ -73,6 +135,26 @@ export function useScheduledEvents(userId: string): ScheduledEventsHook {
   const partialEvent = async (id: string, pocketId: string, paidAmount: number) => {
     const event = await db.scheduled_events.get(id)
     if (!event) return
+    // Idempotency guard: same as confirmEvent
+    if (event.status !== 'pending') return
+
+    // If user paid >= cuota, treat as full confirm with the larger amount.
+    if (paidAmount >= event.amount) {
+      const overrideEvent: ScheduledEvent = { ...event, amount: paidAmount }
+      await db.scheduled_events.update(id, { status: 'confirmed', actual_pocket_id: pocketId })
+      const isIncome = event.type === 'collection'
+      if (event.type !== 'platform_payout') {
+        await adjustPocket(pocketId, isIncome ? +paidAmount : -paidAmount)
+        await addTx(userId, isIncome ? 'income' : 'expense', paidAmount, pocketId, overrideEvent, today)
+      }
+      if (event.type === 'debt')       await handleDebtConfirm(overrideEvent)
+      else if (event.type === 'collection') await handleCollectionConfirm(overrideEvent)
+      else if (event.type === 'saving')     await handleSavingConfirm(overrideEvent)
+      else if (event.type === 'cadena')     await handleCadenaConfirm(overrideEvent)
+      await load()
+      return
+    }
+
     const remaining = event.amount - paidAmount
 
     await db.scheduled_events.update(id, {
@@ -113,10 +195,15 @@ export function useScheduledEvents(userId: string): ScheduledEventsHook {
     await load()
   }
 
+  const deleteEvent = async (id: string) => {
+    await db.scheduled_events.delete(id)
+    await load()
+  }
+
   const getPendingByType = (type: EventType) => events.filter(e => e.type === type)
   const getPendingByRef = (referenceId: string) => events.find(e => e.reference_id === referenceId)
 
-  return { events, todayEvents, loading, confirmEvent, partialEvent, postponeEvent, rescheduleEvent, getPendingByType, getPendingByRef }
+  return { events, todayEvents, loading, confirmEvent, partialEvent, postponeEvent, rescheduleEvent, deleteEvent, getPendingByType, getPendingByRef }
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -193,76 +280,43 @@ async function handleCadenaConfirm(event: ScheduledEvent) {
 }
 
 async function handlePlatformPayoutConfirm(event: ScheduledEvent, destPocketId: string, userId: string, today: string) {
-  // Get the platform record (has payout_pocket_id and name)
   const platform = await db.platforms.get(event.reference_id)
   if (!platform) return
 
-  // Find the platform wallet pocket
-  const platformPockets = await db.pockets
-    .where('platform_id').equals(platform.id)
-    .and(p => Boolean(p.is_active))
-    .toArray()
-  const platformPocket = platformPockets[0]
-  if (!platformPocket) return
-
-  // Always use the platform's configured payout pocket; fall back to destPocketId
   const targetPocketId = platform.payout_pocket_id ?? destPocketId
 
-  // Re-read current live balance (may differ from event.amount if income was added after event creation)
-  const balance = platformPocket.balance
+  if (event.amount > 0) {
+    // Drain the platform pocket up to event.amount to keep the total balance
+    // conserved. Handles 3 cases:
+    //   - Pocket already at 0 (close already reset it): drains nothing, target gets event.amount.
+    //   - Stale event + pocket still has matching balance: drains pocket to 0, target gets event.amount (no double counting).
+    //   - Pocket has new-week earnings on top of last week's close: drains only up to event.amount, preserving new earnings.
+    const platformPockets = await db.pockets
+      .where('platform_id').equals(platform.id)
+      .toArray()
+    const platformPocket = platformPockets[0]
+    if (platformPocket && platformPocket.balance > 0) {
+      const drain = Math.min(platformPocket.balance, event.amount)
+      await db.pockets.update(platformPocket.id, { balance: platformPocket.balance - drain })
+    }
 
-  if (balance > 0) {
-    // ✅ Positive balance: transfer to payout pocket, zero out platform wallet
-    await db.pockets.update(platformPocket.id, { balance: 0 })
-    await adjustPocket(targetPocketId, balance)
-    const fakeEvent: ScheduledEvent = { ...event, amount: balance }
-    await addTx(userId, 'income', balance, targetPocketId, fakeEvent, today,
+    await adjustPocket(targetPocketId, event.amount)
+    await addTx(userId, 'income', event.amount, targetPocketId, event, today,
       `Pago ${platform.name} — período cerrado`)
   }
-  // ≤ 0: negative balance stays on the platform wallet and carries forward to next period.
-  // No transaction recorded — the balance is already reflected in the wallet.
 
-  // Schedule next week's payout event
-  await scheduleNextPayoutEvent(platform, event.due_date, userId)
-}
-
-async function scheduleNextPayoutEvent(platform: Platform, fromDate: string, userId: string) {
-  // Next payout = same weekday, 7 days later
-  const d = new Date(fromDate + 'T12:00:00')
-  d.setDate(d.getDate() + 7)
-  const nextDate = d.toISOString().slice(0, 10)
-
-  // Don't duplicate
-  const existing = await db.scheduled_events
-    .where('user_id').equals(platform.user_id)
-    .and(e => e.type === 'platform_payout' && e.reference_id === platform.id && e.status === 'pending')
-    .count()
-  if (existing > 0) return
-
-  // Amount estimate = current platform wallet balance (informational only; re-read at confirm)
-  const platformPockets = await db.pockets
-    .where('platform_id').equals(platform.id)
-    .and(p => Boolean(p.is_active))
-    .toArray()
-  const currentBalance = platformPockets[0]?.balance ?? 0
-
-  await db.scheduled_events.add({
-    id: crypto.randomUUID(),
-    user_id: platform.user_id,
-    type: 'platform_payout',
-    reference_id: platform.id,
-    reference_type: 'platform',
-    amount: currentBalance,
-    due_date: nextDate,
-    status: 'pending',
-    actual_pocket_id: null,
-    partial_amount: null,
-    remaining_after_partial: null,
-    created_at: new Date().toISOString()
-  })
+  // The next payout event is created automatically by usePlatformPayouts when
+  // the next Sunday closes — no scheduling here.
 }
 
 async function scheduleNext(prev: ScheduledEvent, frequency: string, amount: number) {
+  // Don't create a duplicate if a pending event already exists for this reference
+  const existing = await db.scheduled_events
+    .where('user_id').equals(prev.user_id)
+    .filter(e => e.reference_id === prev.reference_id && e.type === prev.type && e.status === 'pending')
+    .first()
+  if (existing) return
+
   const d = new Date(prev.due_date)
   if (frequency === 'monthly') d.setMonth(d.getMonth() + 1)
   else if (frequency === 'weekly') d.setDate(d.getDate() + 7)

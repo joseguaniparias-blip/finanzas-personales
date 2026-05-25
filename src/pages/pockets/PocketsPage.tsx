@@ -52,7 +52,7 @@ export function PocketsPage({ userId }: Props) {
       {/* Add/Edit form modal */}
       {(showForm || editing) && (
         <div
-          className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center px-4"
+          className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center px-4"
           onClick={e => { if (e.target === e.currentTarget) { setShowForm(false); setEditing(null) } }}
         >
           <div className="bg-slate-900 w-full max-w-lg rounded-2xl border border-slate-700 flex flex-col"

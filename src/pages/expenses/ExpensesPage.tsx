@@ -306,8 +306,8 @@ export function ExpensesPage({ userId }: Props) {
 
       {/* Edit limit sheet */}
       {editingCategory && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-end justify-center">
-          <div className="bg-slate-900 w-full max-w-lg rounded-t-3xl border-t border-slate-700 p-6">
+        <div className="fixed inset-0 bg-black/70 z-[60] flex items-end justify-center" onClick={e => { if (e.target === e.currentTarget) setEditingCategory(null) }}>
+          <div className="bg-slate-900 w-full max-w-lg rounded-t-3xl border-t border-slate-700 px-6 pt-6 pb-8 overflow-y-auto" style={{ maxHeight: '90dvh' }}>
             <div className="flex items-center gap-3 mb-5">
               <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-xl">
                 {editingCategory.icon}

@@ -62,6 +62,11 @@ export function useCadenas(userId: string): CadenasHook {
   }
 
   const closeCadena = async (id: string) => {
+    const linked = await db.scheduled_events
+      .where('user_id').equals(userId)
+      .filter(e => e.reference_id === id && e.status === 'pending')
+      .toArray()
+    for (const e of linked) await db.scheduled_events.delete(e.id)
     await db.cadenas.update(id, { status: 'completed' })
     await load()
   }

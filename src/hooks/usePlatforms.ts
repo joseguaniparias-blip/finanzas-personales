@@ -36,6 +36,33 @@ export function usePlatforms(userId: string): PlatformsHook {
 
   const updatePlatform = async (id: string, updates: Partial<Platform>) => {
     await db.platforms.update(id, updates)
+
+    // If the payout day changed, recompute the due_date of any pending
+    // platform_payout event so the agenda reflects the new schedule.
+    if (typeof updates.payout_day === 'number') {
+      const platform = await db.platforms.get(id)
+      if (platform) {
+        // Use today as the base so the new due_date lands on the next FUTURE
+        // occurrence of payout_day (not a past Tuesday).
+        const today = new Date()
+        const d = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+        let diff = (updates.payout_day - d.getDay() + 7) % 7
+        if (diff === 0) diff = 7
+        d.setDate(d.getDate() + diff)
+        const newDueDate = d.toISOString().slice(0, 10)
+
+        const pending = await db.scheduled_events
+          .where('user_id').equals(platform.user_id)
+          .filter(e => e.type === 'platform_payout' && e.reference_id === id && e.status === 'pending')
+          .toArray()
+        for (const ev of pending) {
+          if (ev.due_date !== newDueDate) {
+            await db.scheduled_events.update(ev.id, { due_date: newDueDate })
+          }
+        }
+      }
+    }
+
     await load()
   }
 

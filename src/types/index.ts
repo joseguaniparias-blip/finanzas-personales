@@ -31,6 +31,8 @@ export interface Platform {
   payout_pocket_id: string | null
   is_active: boolean
   created_at: string
+  /** ISO date (YYYY-MM-DD) of the most recent Sunday whose balance has been snapshotted into a payout event. */
+  last_closed_sunday?: string | null
 }
 
 export interface Pocket {

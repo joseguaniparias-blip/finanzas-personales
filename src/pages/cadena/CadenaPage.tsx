@@ -12,7 +12,7 @@ import type { Cadena } from '@/types'
 interface Props { userId: string }
 
 export function CadenaPage({ userId }: Props) {
-  const { cadenas, loading, addCadena, updateCadena, recordPayment, deleteCadena } = useCadenas(userId)
+  const { cadenas, loading, addCadena, updateCadena, deleteCadena } = useCadenas(userId)
   const { pockets } = usePockets(userId)
   const { getPendingByRef } = useScheduledEvents(userId)
   const [showForm, setShowForm] = useState(false)
@@ -39,10 +39,7 @@ export function CadenaPage({ userId }: Props) {
       <CadenaDetail
         cadena={selected} pockets={pockets}
         onBack={() => setSelected(null)}
-        onPaymentRecorded={() => {
-          recordPayment(selected.id)
-          setSelected(null)
-        }}
+        onPaymentRecorded={() => setSelected(null)}
         onDelete={async () => {
           await deleteCadena(selected.id)
           setSelected(null)

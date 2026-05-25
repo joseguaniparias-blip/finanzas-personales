@@ -2,12 +2,13 @@ import { useState, useEffect } from 'react'
 import type { Pocket, Debt } from '@/types'
 import { AmountInput, parseAmount } from '@/components/shared/AmountInput'
 import { DAYS_OF_WEEK } from '@/types'
+import { useSubmitLock } from '@/hooks/useSubmitLock'
 
 interface Props {
   userId: string
   pockets: Pocket[]
   initial?: Debt
-  onSave: (data: Omit<Debt, 'id' | 'created_at' | 'paid_amount' | 'status'>, firstDueDate?: string) => Promise<void>
+  onSave: (data: Omit<Debt, 'id' | 'created_at' | 'paid_amount' | 'status'> & { paid_amount?: number }, firstDueDate?: string) => Promise<void>
   onCancel: () => void
 }
 
@@ -41,7 +42,8 @@ export function DebtForm({ userId, pockets, initial, onSave, onCancel }: Props) 
   const [startedBefore, setStartedBefore] = useState(initial?.started_before_app ?? false)
   const [startInstallment, setStartInstallment] = useState(initial?.start_installment ?? 1)
   const [firstDueDate, setFirstDueDate] = useState(() => computeFirstDueDate(initial?.frequency ?? 'monthly', initial?.payment_day ?? 1))
-  const [saving, setSaving] = useState(false)
+  const [paidAmount, setPaidAmount] = useState(initial?.paid_amount?.toString() ?? '')
+  const { submitting: saving, submit } = useSubmitLock()
 
   // Auto-update first due date when frequency or payment day changes (only for new debts)
   useEffect(() => {
@@ -52,10 +54,9 @@ export function DebtForm({ userId, pockets, initial, onSave, onCancel }: Props) 
   const installmentNum = parseAmount(installment)
   const canSave = name.trim() && installmentNum > 0 && sourcePocketId && (!hasTotal || totalNum > 0)
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!canSave) return
-    setSaving(true)
-    try {
+    submit(async () => {
       await onSave({
         user_id: userId,
         name: name.trim(),
@@ -66,11 +67,10 @@ export function DebtForm({ userId, pockets, initial, onSave, onCancel }: Props) 
         payment_day: paymentDay,
         source_pocket_id: sourcePocketId,
         started_before_app: startedBefore,
-        start_installment: startedBefore ? startInstallment : 1
+        start_installment: startedBefore ? startInstallment : 1,
+        ...(initial && paidAmount !== '' ? { paid_amount: parseAmount(paidAmount) } : {})
       }, firstDueDate)
-    } finally {
-      setSaving(false)
-    }
+    })
   }
 
   return (
@@ -209,6 +209,18 @@ export function DebtForm({ userId, pockets, initial, onSave, onCancel }: Props) 
             onChange={e => setFirstDueDate(e.target.value)}
             className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-blue-500 [color-scheme:dark]"
           />
+        </div>
+      )}
+
+      {/* Edit total paid — only when editing existing debt */}
+      {initial && (
+        <div className="mb-5">
+          <AmountInput
+            label="Total ya pagado (editable)"
+            value={paidAmount}
+            onChange={setPaidAmount}
+          />
+          <p className="text-slate-500 text-xs mt-1">Ajusta si las cuotas registradas no cuadran</p>
         </div>
       )}
 

@@ -27,3 +27,9 @@ Thumbs.db
 
 # TypeScript
 *.tsbuildinfo
+
+.vercel
+
+# Local tooling
+.claude/
+.superpowers/

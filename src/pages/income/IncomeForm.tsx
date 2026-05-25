@@ -4,6 +4,7 @@ import type { Platform, Pocket, Transaction, Category } from '@/types'
 import { AmountInput, parseAmount } from '@/components/shared/AmountInput'
 import { maskAmount } from '@/components/shared/PrivacyToggle'
 import { db } from '@/lib/db'
+import { useSubmitLock } from '@/hooks/useSubmitLock'
 
 const QUICK_ICONS = ['⛽','🔧','📱','🛡️','🛣️','🍔','🛒','💊','📦','🎮','👕','🚌','☕','🍕','💡']
 
@@ -48,7 +49,7 @@ export function IncomeForm({ userId, platforms, pockets, categories, addCategory
   const [total, setTotal] = useState('')
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
   const [categoryId, setCategoryId] = useState<string | null>(null)
-  const [saving, setSaving] = useState(false)
+  const { submitting: saving, submit } = useSubmitLock()
   const [done, setDone] = useState(false)
 
   // Category manager
@@ -91,10 +92,9 @@ export function IncomeForm({ userId, platforms, pockets, categories, addCategory
   const updateSplit = (i: number, field: keyof CashSplit, value: string) =>
     setCashSplits(prev => prev.map((sp, idx) => idx === i ? { ...sp, [field]: value } : sp))
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!canSave) return
-    setSaving(true)
-    try {
+    submit(async () => {
       if (incomeType === 'other') {
         // Simple income → selected pocket
         const pocket = pockets.find(p => p.id === otherPocketId)
@@ -165,9 +165,7 @@ export function IncomeForm({ userId, platforms, pockets, categories, addCategory
 
       setDone(true)
       setTimeout(onDone, 1200)
-    } finally {
-      setSaving(false)
-    }
+    })
   }
 
   if (done) {

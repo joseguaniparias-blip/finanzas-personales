@@ -25,33 +25,49 @@ export function usePlatformPayouts(userId: string) {
         .and(p => Boolean(p.is_active))
         .toArray()
 
+      const todayDateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+
       for (const platform of platforms) {
         if (platform.payout_day === null) continue
 
-        // Correct due_date: next occurrence of payout_day after the last closed Sunday
-        const correctDueDate = isoDate(nextOccurrenceAfter(lastSunday, platform.payout_day))
+        // ── First install / new platform: set the baseline, don't close retroactively ──
+        // The current pocket balance is treated as "this week's accumulation"
+        // and will be closed at the END of the current week.
+        if (!platform.last_closed_sunday) {
+          await db.platforms.update(platform.id, { last_closed_sunday: lastSundayStr })
+          continue
+        }
 
-        // ── Step 1: Deduplicate pending events and fix their due_date ──────────
-        // Runs every load so stale/duplicate events from previous config changes
-        // or race conditions are cleaned up automatically.
+        // ── Stale marker check ──
+        // If last_closed_sunday is more than 7 days behind the most recent Sunday,
+        // the marker is stale (data restored, long absence, version upgrade).
+        // Don't retroactively close — just refresh the baseline.
+        const lastCloseDate = new Date(platform.last_closed_sunday + 'T00:00:00')
+        const daysGap = Math.round((lastSunday.getTime() - lastCloseDate.getTime()) / 86400000)
+        if (daysGap > 7) {
+          await db.platforms.update(platform.id, { last_closed_sunday: lastSundayStr })
+          continue
+        }
+
+        // ── Step 1: Clean up pending events (merge duplicates, delete invalid) ──
+        // Don't touch the due_date — let the user delete stale ones manually with
+        // the "Eliminar este pendiente" button.
         const allPending = await db.scheduled_events
           .where('user_id').equals(userId)
           .filter(e => e.type === 'platform_payout' && e.reference_id === platform.id && e.status === 'pending')
           .toArray()
 
-        const validPending   = allPending.filter(e => e.amount > 0)
-        const invalidPending = allPending.filter(e => e.amount <= 0)
-        for (const ev of invalidPending) await db.scheduled_events.delete(ev.id)
-
+        for (const ev of allPending.filter(e => e.amount <= 0)) {
+          await db.scheduled_events.delete(ev.id)
+        }
+        const validPending = allPending.filter(e => e.amount > 0)
         if (validPending.length > 1) {
-          // Merge all amounts into the first event, delete the rest
+          // Merge: sum amounts into the first event (keep its due_date), delete the rest
           const totalAmount = validPending.reduce((s, e) => s + e.amount, 0)
-          await db.scheduled_events.update(validPending[0].id, { amount: totalAmount, due_date: correctDueDate })
+          await db.scheduled_events.update(validPending[0].id, { amount: totalAmount })
           for (let i = 1; i < validPending.length; i++) {
             await db.scheduled_events.delete(validPending[i].id)
           }
-        } else if (validPending.length === 1 && validPending[0].due_date !== correctDueDate) {
-          await db.scheduled_events.update(validPending[0].id, { due_date: correctDueDate })
         }
 
         // ── Step 2: Close this week if not already done ────────────────────────
@@ -68,6 +84,14 @@ export function usePlatformPayouts(userId: string) {
         }
 
         const closingBalance = platformPocket.balance
+        // Date of the upcoming payout: next occurrence of payout_day AFTER the closed
+        // Sunday — and ALWAYS in the future. If the natural next occurrence is in the
+        // past (because the close ran late), advance by weeks until it lands today or later.
+        const payoutDate = nextOccurrenceAfter(lastSunday, platform.payout_day)
+        while (payoutDate < todayDateOnly) {
+          payoutDate.setDate(payoutDate.getDate() + 7)
+        }
+        const correctDueDate = isoDate(payoutDate)
 
         if (closingBalance > 0) {
           // Re-query after dedup — at most one pending event remains

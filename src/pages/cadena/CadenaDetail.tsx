@@ -14,7 +14,7 @@ interface Props {
 }
 
 export function CadenaDetail({ cadena, pockets, onBack, onPaymentRecorded, onDelete }: Props) {
-  const { getPendingByRef, confirmEvent, partialEvent, postponeEvent, rescheduleEvent } = useScheduledEvents(cadena.user_id)
+  const { getPendingByRef, confirmEvent, partialEvent, postponeEvent, rescheduleEvent, deleteEvent } = useScheduledEvents(cadena.user_id)
   const [confirmSheet, setConfirmSheet] = useState(false)
   const [editingDate, setEditingDate] = useState(false)
   const [newDate, setNewDate] = useState('')
@@ -129,7 +129,7 @@ export function CadenaDetail({ cadena, pockets, onBack, onPaymentRecorded, onDel
           )}
 
           <p className="text-slate-200 font-bold text-lg mb-4">{maskAmount(pendingEvent.amount, false)}</p>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-2 mb-2">
             <button onClick={() => setConfirmSheet(true)}
               className="flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-500 text-white py-2.5 rounded-xl text-sm font-semibold transition-colors">
               <Check size={14} /> Registrar aporte
@@ -139,6 +139,10 @@ export function CadenaDetail({ cadena, pockets, onBack, onPaymentRecorded, onDel
               <SkipForward size={14} /> Posponer
             </button>
           </div>
+          <button onClick={async () => { await deleteEvent(pendingEvent.id); onPaymentRecorded() }}
+            className="w-full flex items-center justify-center gap-2 text-red-400 hover:text-red-300 py-2 rounded-xl text-xs transition-colors">
+            <Trash2 size={12} /> Eliminar este evento
+          </button>
         </div>
       )}
 
@@ -181,6 +185,8 @@ export function CadenaDetail({ cadena, pockets, onBack, onPaymentRecorded, onDel
           onConfirm={async pocketId => { await confirmEvent(pendingEvent.id, pocketId); setConfirmSheet(false); onPaymentRecorded() }}
           onPartial={async (pocketId, amount) => { await partialEvent(pendingEvent.id, pocketId, amount); setConfirmSheet(false); onPaymentRecorded() }}
           onPostpone={() => { postponeEvent(pendingEvent.id); setConfirmSheet(false) }}
+          onReschedule={async newDate => { await rescheduleEvent(pendingEvent.id, newDate); setConfirmSheet(false); onPaymentRecorded() }}
+          onDelete={async () => { await deleteEvent(pendingEvent.id); setConfirmSheet(false); onPaymentRecorded() }}
           onClose={() => setConfirmSheet(false)}
         />
       )}

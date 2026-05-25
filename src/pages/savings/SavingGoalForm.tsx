@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { SavingGoal, Pocket } from '@/types'
 import { AmountInput, parseAmount } from '@/components/shared/AmountInput'
 import { DAYS_OF_WEEK } from '@/types'
+import { useSubmitLock } from '@/hooks/useSubmitLock'
 
 interface Props {
   userId: string
@@ -19,16 +20,15 @@ export function SavingGoalForm({ userId, pockets, initial, onSave, onCancel }: P
   const [frequency, setFrequency] = useState<'weekly' | 'monthly' | 'on_payout'>(initial?.frequency ?? 'monthly')
   const [triggerDay, setTriggerDay] = useState(initial?.trigger_day ?? 1)
   const [sourcePocketId, setSourcePocketId] = useState(initial?.source_pocket_id ?? pockets[0]?.id ?? '')
-  const [saving, setSaving] = useState(false)
+  const { submitting: saving, submit } = useSubmitLock()
 
   const targetNum = parseAmount(targetAmount)
   const contributionNum = parseAmount(contribution)
   const canSave = name.trim() && contributionNum > 0 && sourcePocketId && (!hasTarget || targetNum > 0)
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!canSave) return
-    setSaving(true)
-    try {
+    submit(async () => {
       await onSave({
         user_id: userId,
         name: name.trim(),
@@ -39,9 +39,7 @@ export function SavingGoalForm({ userId, pockets, initial, onSave, onCancel }: P
         trigger_day: frequency !== 'on_payout' ? triggerDay : null,
         source_pocket_id: sourcePocketId,
       })
-    } finally {
-      setSaving(false)
-    }
+    })
   }
 
   return (

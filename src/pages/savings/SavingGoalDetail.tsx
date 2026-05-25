@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ArrowLeft, Check, SkipForward } from 'lucide-react'
+import { ArrowLeft, Check, SkipForward, Trash2 } from 'lucide-react'
 import type { SavingGoal, Pocket } from '@/types'
 import { maskAmount } from '@/components/shared/PrivacyToggle'
 import { ConfirmEventSheet } from '@/components/shared/ConfirmEventSheet'
@@ -13,7 +13,7 @@ interface Props {
 }
 
 export function SavingGoalDetail({ goal, pockets, onBack, onSavingRecorded }: Props) {
-  const { getPendingByRef, confirmEvent, partialEvent, postponeEvent } = useScheduledEvents(goal.user_id)
+  const { getPendingByRef, confirmEvent, partialEvent, postponeEvent, rescheduleEvent, deleteEvent } = useScheduledEvents(goal.user_id)
   const [confirmSheet, setConfirmSheet] = useState(false)
 
   const pendingEvent = getPendingByRef(goal.id)
@@ -75,7 +75,7 @@ export function SavingGoalDetail({ goal, pockets, onBack, onSavingRecorded }: Pr
             {isOverdue ? '🔔 Aporte pendiente' : `📅 Próximo aporte · ${pendingEvent.due_date}`}
           </p>
           <p className="text-slate-200 font-bold text-lg mb-4">{maskAmount(pendingEvent.amount, false)}</p>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-2 mb-2">
             <button onClick={() => setConfirmSheet(true)}
               className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white py-2.5 rounded-xl text-sm font-semibold transition-colors">
               <Check size={14} /> Registrar aporte
@@ -85,6 +85,10 @@ export function SavingGoalDetail({ goal, pockets, onBack, onSavingRecorded }: Pr
               <SkipForward size={14} /> Posponer
             </button>
           </div>
+          <button onClick={async () => { await deleteEvent(pendingEvent.id); onSavingRecorded() }}
+            className="w-full flex items-center justify-center gap-2 text-red-400 hover:text-red-300 py-2 rounded-xl text-xs transition-colors">
+            <Trash2 size={12} /> Eliminar este evento
+          </button>
         </div>
       )}
 
@@ -98,6 +102,8 @@ export function SavingGoalDetail({ goal, pockets, onBack, onSavingRecorded }: Pr
           onConfirm={async pocketId => { await confirmEvent(pendingEvent.id, pocketId); setConfirmSheet(false); onSavingRecorded() }}
           onPartial={async (pocketId, amount) => { await partialEvent(pendingEvent.id, pocketId, amount); setConfirmSheet(false); onSavingRecorded() }}
           onPostpone={() => { postponeEvent(pendingEvent.id); setConfirmSheet(false) }}
+          onReschedule={async newDate => { await rescheduleEvent(pendingEvent.id, newDate); setConfirmSheet(false); onSavingRecorded() }}
+          onDelete={async () => { await deleteEvent(pendingEvent.id); setConfirmSheet(false); onSavingRecorded() }}
           onClose={() => setConfirmSheet(false)}
         />
       )}
