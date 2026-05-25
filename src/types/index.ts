@@ -10,7 +10,7 @@ export type EventStatus = 'pending' | 'confirmed' | 'postponed' | 'partial'
 export type EventType = 'debt' | 'collection' | 'saving' | 'cadena' | 'platform_payout'
 export type DebtStatus = 'active' | 'paid_off' | 'cancelled'
 export type CollectionStatus = 'active' | 'fully_collected' | 'cancelled'
-export type CadenaStatus = 'active' | 'completed'
+export type CadenaStatus = 'active' | 'completed' | 'cancelled'
 
 // ─── Core entities ────────────────────────────────────────────────────────────
 

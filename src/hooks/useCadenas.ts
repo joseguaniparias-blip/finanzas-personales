@@ -62,12 +62,17 @@ export function useCadenas(userId: string): CadenasHook {
   }
 
   const closeCadena = async (id: string) => {
-    const linked = await db.scheduled_events
-      .where('user_id').equals(userId)
-      .filter(e => e.reference_id === id && e.status === 'pending')
-      .toArray()
-    for (const e of linked) await db.scheduled_events.delete(e.id)
-    await db.cadenas.update(id, { status: 'completed' })
+    // 'cancelled' = el usuario abandonó / cerró manualmente.
+    // 'completed' se reserva para cuando todas las rondas naturalmente terminaron
+    // (ver recordPayment que setea completed cuando current_round > participants).
+    await db.transaction('rw', db.cadenas, db.scheduled_events, async () => {
+      const linked = await db.scheduled_events
+        .where('user_id').equals(userId)
+        .filter(e => e.reference_id === id && e.status === 'pending')
+        .toArray()
+      for (const e of linked) await db.scheduled_events.delete(e.id)
+      await db.cadenas.update(id, { status: 'cancelled' })
+    })
     await load()
   }
 
