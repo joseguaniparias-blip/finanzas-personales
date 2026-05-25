@@ -96,9 +96,8 @@ export function IncomeForm({ userId, platforms, pockets, categories, addCategory
     if (!canSave) return
     submit(async () => {
       if (incomeType === 'other') {
-        // Simple income → selected pocket
-        const pocket = pockets.find(p => p.id === otherPocketId)
-        if (!pocket) return
+        // Simple income → selected pocket.
+        // addTransaction (useTransactions) is atomic and already updates the pocket balance.
         await addTransaction({
           user_id: userId,
           type: 'income',
@@ -112,16 +111,13 @@ export function IncomeForm({ userId, platforms, pockets, categories, addCategory
           receipt_url: null,
           date
         })
-        await db.pockets.update(otherPocketId, { balance: pocket.balance + totalNum })
       } else {
         // Platform income
-        // Cash splits → their pockets
+        // Cash splits → their pockets. addTransaction handles the pocket update atomically.
         if (hasCash) {
           for (const split of cashSplits) {
             const amt = parseAmount(split.amount)
             if (amt <= 0 || !split.pocketId) continue
-            const p = pockets.find(pk => pk.id === split.pocketId)
-            if (!p) continue
             await addTransaction({
               user_id: userId,
               type: 'income',
@@ -135,30 +131,35 @@ export function IncomeForm({ userId, platforms, pockets, categories, addCategory
               receipt_url: null,
               date
             })
-            await db.pockets.update(split.pocketId, { balance: p.balance + amt })
           }
         }
 
-        // Digital portion → platform wallet (guaranteed to exist, can be positive or negative)
+        // Digital portion → platform wallet (guaranteed to exist, can be positive or negative).
+        // Done atomically because we mix a raw pocket update with a tx insert (not via addTransaction
+        // because we want a custom amount sign + reference_type).
         if (platformPocket && digital !== 0) {
-          const newBalance = platformPocket.balance + digital
-          await db.pockets.update(platformPocket.id, { balance: newBalance })
-          await db.transactions.add({
-            id: crypto.randomUUID(),
-            user_id: userId,
-            type: digital > 0 ? 'income' : 'expense',
-            amount: Math.abs(digital),
-            pocket_id: platformPocket.id,
-            category_id: null,
-            platform_id: platformId,
-            reference_id: null,
-            reference_type: digital > 0 ? 'income_digital' : 'income_cash_excess',
-            note: digital > 0
-              ? `Digital ${platform?.name ?? ''}`
-              : `Adelanto efectivo ${platform?.name ?? ''} — deuda con plataforma`,
-            receipt_url: null,
-            date,
-            created_at: new Date().toISOString()
+          const platformPocketId = platformPocket.id
+          await db.transaction('rw', db.pockets, db.transactions, async () => {
+            const fresh = await db.pockets.get(platformPocketId)
+            if (!fresh) return
+            await db.pockets.update(platformPocketId, { balance: fresh.balance + digital })
+            await db.transactions.add({
+              id: crypto.randomUUID(),
+              user_id: userId,
+              type: digital > 0 ? 'income' : 'expense',
+              amount: Math.abs(digital),
+              pocket_id: platformPocketId,
+              category_id: null,
+              platform_id: platformId,
+              reference_id: null,
+              reference_type: digital > 0 ? 'income_digital' : 'income_cash_excess',
+              note: digital > 0
+                ? `Digital ${platform?.name ?? ''}`
+                : `Adelanto efectivo ${platform?.name ?? ''} — deuda con plataforma`,
+              receipt_url: null,
+              date,
+              created_at: new Date().toISOString()
+            })
           })
         }
       }

@@ -46,6 +46,10 @@ function formatDate(iso: string): string {
   return `${Number(d)} ${months[Number(m) - 1]} ${y}`
 }
 
+/**
+ * Reverses the balance effect of a transaction on its pocket.
+ * Caller must invoke inside a Dexie 'rw' transaction that includes db.pockets.
+ */
 async function reverseTxOnPocket(tx: Transaction) {
   const pocket = await db.pockets.get(tx.pocket_id)
   if (!pocket) return
@@ -53,6 +57,10 @@ async function reverseTxOnPocket(tx: Transaction) {
   await db.pockets.update(tx.pocket_id, { balance: pocket.balance + delta })
 }
 
+/**
+ * Applies the balance effect of a transaction on its pocket.
+ * Caller must invoke inside a Dexie 'rw' transaction that includes db.pockets.
+ */
 async function applyTxOnPocket(tx: Pick<Transaction, 'type' | 'amount' | 'pocket_id'>) {
   const pocket = await db.pockets.get(tx.pocket_id)
   if (!pocket) return
@@ -112,18 +120,25 @@ export function HistoryPage({ userId }: Props) {
   const nonPlatformPockets = pockets.filter(p => p.type !== 'platform')
 
   const handleDelete = async (tx: Transaction) => {
-    await reverseTxOnPocket(tx)
-    await db.transactions.delete(tx.id)
+    // Atomic: reverse pocket balance + delete tx in one transaction so a parallel
+    // edit/delete cannot race on the pocket balance.
+    await db.transaction('rw', db.transactions, db.pockets, async () => {
+      await reverseTxOnPocket(tx)
+      await db.transactions.delete(tx.id)
+    })
     await reloadPockets()
     setSelectedTx(null)
     load()
   }
 
   const handleUpdate = async (old: Transaction, updated: Partial<Transaction>) => {
-    await reverseTxOnPocket(old)
-    await db.transactions.update(old.id, updated)
     const merged = { ...old, ...updated }
-    await applyTxOnPocket(merged)
+    // Atomic: reverse old effect + write update + apply new effect together.
+    await db.transaction('rw', db.transactions, db.pockets, async () => {
+      await reverseTxOnPocket(old)
+      await db.transactions.update(old.id, updated)
+      await applyTxOnPocket(merged)
+    })
     await reloadPockets()
     setEditingTx(null)
     setSelectedTx(null)
