@@ -20,69 +20,13 @@ export function useScheduledEvents(userId: string): ScheduledEventsHook {
   const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
+    // Pure read. Orphan/duplicate cleanup runs once per session via
+    // useOrphanCleanup (mounted in App.tsx), so this hook stays cheap.
     const data = await db.scheduled_events
       .where('user_id').equals(userId)
       .and(e => e.status === 'pending')
       .sortBy('due_date')
-
-    const toDelete: string[] = []
-
-    // ── Step 1: Orphan cleanup ──
-    // Delete events whose referenced entity no longer exists or is inactive.
-    // This handles records the user deleted (cancelled/paid_off/etc.) whose
-    // future events lingered in the agenda.
-    for (const ev of data) {
-      let orphan = false
-      if (ev.type === 'debt') {
-        const r = await db.debts.get(ev.reference_id)
-        orphan = !r || r.status !== 'active'
-      } else if (ev.type === 'collection') {
-        const r = await db.collections.get(ev.reference_id)
-        orphan = !r || r.status !== 'active'
-      } else if (ev.type === 'saving') {
-        const r = await db.saving_goals.get(ev.reference_id)
-        // is_active is coerced to 0/1 by the Dexie hook
-        orphan = !r || !r.is_active
-      } else if (ev.type === 'cadena') {
-        const r = await db.cadenas.get(ev.reference_id)
-        orphan = !r || r.status !== 'active'
-      } else if (ev.type === 'platform_payout') {
-        const r = await db.platforms.get(ev.reference_id)
-        orphan = !r || !r.is_active
-      }
-      if (orphan) toDelete.push(ev.id)
-    }
-
-    // Filter out orphans before dedup
-    const orphanSet = new Set(toDelete)
-    const alive = data.filter(e => !orphanSet.has(e.id))
-
-    // ── Step 2: Deduplicate ──
-    // If multiple pending events exist for the same (reference_id + type),
-    // keep the earliest due_date and delete the rest. Excludes platform_payout
-    // which has its own merge logic in usePlatformPayouts.
-    const seen = new Map<string, ScheduledEvent>()
-    for (const ev of alive) {
-      if (ev.type === 'platform_payout') continue
-      const key = `${ev.type}::${ev.reference_id}`
-      const existing = seen.get(key)
-      if (!existing) {
-        seen.set(key, ev)
-      } else if (ev.due_date < existing.due_date) {
-        toDelete.push(existing.id)
-        seen.set(key, ev)
-      } else {
-        toDelete.push(ev.id)
-      }
-    }
-
-    if (toDelete.length > 0) {
-      await db.scheduled_events.bulkDelete(toDelete)
-      const deletedSet = new Set(toDelete)
-      setEvents(data.filter(e => !deletedSet.has(e.id)))
-    } else {
-      setEvents(data)
-    }
+    setEvents(data)
     setLoading(false)
   }, [userId])
 

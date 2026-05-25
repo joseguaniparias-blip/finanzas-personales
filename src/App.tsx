@@ -12,6 +12,7 @@ import { RegisterPage } from '@/pages/register/RegisterPage'
 import { HistoryPage } from '@/pages/history/HistoryPage'
 import { ReportsPage } from '@/pages/reports/ReportsPage'
 import { usePlatformPayouts } from '@/hooks/usePlatformPayouts'
+import { useOrphanCleanup } from '@/hooks/useOrphanCleanup'
 import { setupSyncHooks, pullFromSupabase } from '@/lib/sync'
 import { IncomePage } from '@/pages/income/IncomePage'
 import { ExpensesPage } from '@/pages/expenses/ExpensesPage'
@@ -26,7 +27,9 @@ function AppRoutes() {
   const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null)
 
   // Must be called unconditionally before any returns
-  usePlatformPayouts(user && onboardingDone ? user.id : '')
+  const cleanupId = user && onboardingDone ? user.id : ''
+  usePlatformPayouts(cleanupId)
+  useOrphanCleanup(cleanupId)
 
   // Set up Dexie → Supabase push hooks once (global to the DB instance)
   useEffect(() => { setupSyncHooks() }, [])
