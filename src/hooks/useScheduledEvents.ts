@@ -292,20 +292,15 @@ async function handlePlatformPayoutConfirm(event: ScheduledEvent, destPocketId: 
   const targetPocketId = platform.payout_pocket_id ?? destPocketId
 
   if (event.amount > 0) {
-    // Drain the platform pocket up to event.amount to keep the total balance
-    // conserved. Handles 3 cases:
-    //   - Pocket already at 0 (close already reset it): drains nothing, target gets event.amount.
-    //   - Stale event + pocket still has matching balance: drains pocket to 0, target gets event.amount (no double counting).
-    //   - Pocket has new-week earnings on top of last week's close: drains only up to event.amount, preserving new earnings.
-    const platformPockets = await db.pockets
-      .where('platform_id').equals(platform.id)
-      .toArray()
-    const platformPocket = platformPockets[0]
-    if (platformPocket && platformPocket.balance > 0) {
-      const drain = Math.min(platformPocket.balance, event.amount)
-      await db.pockets.update(platformPocket.id, { balance: platformPocket.balance - drain })
-    }
-
+    // The weekly close (usePlatformPayouts) already subtracted closingBalance
+    // from the platform pocket and recorded it as this event's amount. At
+    // collect time we ONLY move event.amount into the destination — we do
+    // NOT touch the platform pocket again. Any positive remainder there is
+    // current-week earnings that must be preserved.
+    //
+    // If a legacy stale event exists (created by older buggy code without a
+    // matching close), the user can remove it via the "Eliminar este pendiente"
+    // button in the agenda sheet.
     await adjustPocket(targetPocketId, event.amount)
     await addTx(userId, 'income', event.amount, targetPocketId, event, today,
       `Pago ${platform.name} — período cerrado`)
