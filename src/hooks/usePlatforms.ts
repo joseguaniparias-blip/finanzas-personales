@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { db } from '@/lib/db'
 import type { Platform } from '@/types'
 
@@ -16,11 +16,15 @@ export function usePlatforms(userId: string): PlatformsHook {
   const [platforms, setPlatforms] = useState<Platform[]>([])
   const [loading, setLoading] = useState(true)
 
+  const mountedRef = useRef(true)
+  useEffect(() => () => { mountedRef.current = false }, [])
+
   const load = useCallback(async () => {
     const data = await db.platforms
       .where('user_id').equals(userId)
       .and(p => Boolean(p.is_active))
       .sortBy('created_at')
+    if (!mountedRef.current) return
     setPlatforms(data)
     setLoading(false)
   }, [userId])

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { db } from '@/lib/db'
 import type { Category } from '@/types'
 import { DEFAULT_CATEGORIES } from '@/types'
@@ -18,8 +18,12 @@ export function useCategories(userId: string): CategoriesHook {
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
 
+  const mountedRef = useRef(true)
+  useEffect(() => () => { mountedRef.current = false }, [])
+
   const load = useCallback(async () => {
     const data = await db.categories.where('user_id').equals(userId).sortBy('name')
+    if (!mountedRef.current) return
     setCategories(data)
     setLoading(false)
   }, [userId])

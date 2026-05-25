@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { db } from '@/lib/db'
 import type { Collection } from '@/types'
 
@@ -17,11 +17,15 @@ export function useCollections(userId: string): CollectionsHook {
   const [collections, setCollections] = useState<Collection[]>([])
   const [loading, setLoading] = useState(true)
 
+  const mountedRef = useRef(true)
+  useEffect(() => () => { mountedRef.current = false }, [])
+
   const load = useCallback(async () => {
     const data = await db.collections
       .where('user_id').equals(userId)
       .and(c => c.status === 'active')
       .sortBy('created_at')
+    if (!mountedRef.current) return
     setCollections(data)
     setLoading(false)
   }, [userId])

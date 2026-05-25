@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { db } from '@/lib/db'
 import type { SavingGoal } from '@/types'
 
@@ -17,11 +17,15 @@ export function useSavingGoals(userId: string): SavingGoalsHook {
   const [goals, setGoals] = useState<SavingGoal[]>([])
   const [loading, setLoading] = useState(true)
 
+  const mountedRef = useRef(true)
+  useEffect(() => () => { mountedRef.current = false }, [])
+
   const load = useCallback(async () => {
     const data = await db.saving_goals
       .where('user_id').equals(userId)
       .and(g => Boolean(g.is_active))
       .sortBy('created_at')
+    if (!mountedRef.current) return
     setGoals(data)
     setLoading(false)
   }, [userId])

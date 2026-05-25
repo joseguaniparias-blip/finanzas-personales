@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { db } from '@/lib/db'
 import type { Debt } from '@/types'
 
@@ -17,11 +17,15 @@ export function useDebts(userId: string): DebtsHook {
   const [debts, setDebts] = useState<Debt[]>([])
   const [loading, setLoading] = useState(true)
 
+  const mountedRef = useRef(true)
+  useEffect(() => () => { mountedRef.current = false }, [])
+
   const load = useCallback(async () => {
     const data = await db.debts
       .where('user_id').equals(userId)
       .and(d => d.status === 'active')
       .sortBy('created_at')
+    if (!mountedRef.current) return
     setDebts(data)
     setLoading(false)
   }, [userId])

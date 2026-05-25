@@ -6,7 +6,11 @@ export function useUserProfile(userId: string) {
   const [profile, setProfile] = useState<UserProfile | null>(null)
 
   useEffect(() => {
-    db.user_profiles.get(userId).then(p => setProfile(p ?? null))
+    let ignore = false
+    db.user_profiles.get(userId).then(p => {
+      if (!ignore) setProfile(p ?? null)
+    })
+    return () => { ignore = true }
   }, [userId])
 
   const setHidden = async (hidden: boolean) => {

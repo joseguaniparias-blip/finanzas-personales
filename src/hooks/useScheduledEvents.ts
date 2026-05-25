@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { db } from '@/lib/db'
 import type { ScheduledEvent, EventType } from '@/types'
 
@@ -19,6 +19,9 @@ export function useScheduledEvents(userId: string): ScheduledEventsHook {
   const [events, setEvents] = useState<ScheduledEvent[]>([])
   const [loading, setLoading] = useState(true)
 
+  const mountedRef = useRef(true)
+  useEffect(() => () => { mountedRef.current = false }, [])
+
   const load = useCallback(async () => {
     // Pure read. Orphan/duplicate cleanup runs once per session via
     // useOrphanCleanup (mounted in App.tsx), so this hook stays cheap.
@@ -26,6 +29,7 @@ export function useScheduledEvents(userId: string): ScheduledEventsHook {
       .where('user_id').equals(userId)
       .and(e => e.status === 'pending')
       .sortBy('due_date')
+    if (!mountedRef.current) return
     setEvents(data)
     setLoading(false)
   }, [userId])
