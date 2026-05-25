@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { db } from '@/lib/db'
 import type { Pocket } from '@/types'
 
@@ -34,7 +34,10 @@ export function usePockets(userId: string): PocketsHook {
 
   useEffect(() => { load() }, [load])
 
-  const totalBalance = pockets.reduce((sum, p) => sum + p.balance, 0)
+  const totalBalance = useMemo(
+    () => pockets.reduce((sum, p) => sum + p.balance, 0),
+    [pockets]
+  )
 
   const addPocket = async (pocket: NewPocket) => {
     const newPocket: Pocket = {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Check, Plus, Trash2, Pencil, X } from 'lucide-react'
 import type { Platform, Pocket, Transaction, Category } from '@/types'
 import { AmountInput, parseAmount } from '@/components/shared/AmountInput'
@@ -51,6 +51,16 @@ export function IncomeForm({ userId, platforms, pockets, categories, addCategory
   const [categoryId, setCategoryId] = useState<string | null>(null)
   const { submitting: saving, submit } = useSubmitLock()
   const [done, setDone] = useState(false)
+  const doneTimeoutRef = useRef<number | null>(null)
+
+  // Cancel the post-success onDone timeout if the user navigates away or
+  // unmounts the form before it fires — avoids onDone running on an unmounted
+  // component (no-op warning in dev, potential memory leak).
+  useEffect(() => () => {
+    if (doneTimeoutRef.current !== null) {
+      window.clearTimeout(doneTimeoutRef.current)
+    }
+  }, [])
 
   // Category manager
   const [managingCats, setManagingCats] = useState(false)
@@ -165,7 +175,7 @@ export function IncomeForm({ userId, platforms, pockets, categories, addCategory
       }
 
       setDone(true)
-      setTimeout(onDone, 1200)
+      doneTimeoutRef.current = window.setTimeout(onDone, 1200)
     })
   }
 

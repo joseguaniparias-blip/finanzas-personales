@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Check, Pencil, X, Plus } from 'lucide-react'
 import type { Pocket, Category, Transaction } from '@/types'
 import { AmountInput, parseAmount } from '@/components/shared/AmountInput'
@@ -28,6 +28,13 @@ export function ExpenseForm({ userId, pockets, categories, seedDefaults, addCate
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
   const { submitting: saving, submit } = useSubmitLock()
   const [done, setDone] = useState(false)
+  const doneTimeoutRef = useRef<number | null>(null)
+
+  useEffect(() => () => {
+    if (doneTimeoutRef.current !== null) {
+      window.clearTimeout(doneTimeoutRef.current)
+    }
+  }, [])
 
   // Category manager state
   const [managingCats, setManagingCats] = useState(false)
@@ -62,7 +69,7 @@ export function ExpenseForm({ userId, pockets, categories, seedDefaults, addCate
         date
       })
       setDone(true)
-      setTimeout(onDone, 1200)
+      doneTimeoutRef.current = window.setTimeout(onDone, 1200)
     })
   }
 

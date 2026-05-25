@@ -6,6 +6,7 @@ import { useTransactions } from '@/hooks/useTransactions'
 import { useScheduledEvents } from '@/hooks/useScheduledEvents'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { usePlatforms } from '@/hooks/usePlatforms'
+import { useToday } from '@/hooks/useToday'
 import { ConfirmEventSheet } from '@/components/shared/ConfirmEventSheet'
 import { db } from '@/lib/db'
 import type { ScheduledEvent, Platform, Pocket } from '@/types'
@@ -207,7 +208,9 @@ export function HomePage({ userId }: Props) {
   const [confirmingPayout, setConfirmingPayout] = useState<ScheduledEvent | null>(null)
 
   const hidden = profile?.balance_hidden ?? false
-  const today = new Date().toISOString().slice(0, 10)
+  // 'today' as YYYY-MM-DD in LOCAL time, auto-refreshing at midnight so the
+  // agenda stays correct even if the app stays open across midnight.
+  const today = useToday()
 
   // Init specificDate to today on mount
   useEffect(() => {
