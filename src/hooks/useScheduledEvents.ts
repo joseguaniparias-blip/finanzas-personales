@@ -223,9 +223,13 @@ async function addTx(
   userId: string, type: 'income' | 'expense', amount: number,
   pocketId: string, event: ScheduledEvent, date: string, note?: string
 ) {
+  // For platform_payout events the reference_id IS the platform id, so we
+  // tag the transaction with platform_id too — Reports / dashboards filter
+  // ingresos by plataforma and these payouts must show up there.
+  const platformId = event.type === 'platform_payout' ? event.reference_id : null
   await db.transactions.add({
     id: crypto.randomUUID(), user_id: userId, type, amount,
-    pocket_id: pocketId, category_id: null, platform_id: null,
+    pocket_id: pocketId, category_id: null, platform_id: platformId,
     reference_id: event.reference_id, reference_type: event.reference_type,
     note: note ?? null, receipt_url: null, date,
     created_at: new Date().toISOString()
