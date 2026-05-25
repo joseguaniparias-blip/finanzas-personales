@@ -6,10 +6,13 @@ import { db } from '@/lib/db'
  *
  * Work week is Monday → Sunday. The platform balance accumulates work done
  * during the week. At end of Sunday it "closes":
- *  - positive balance  → snapshotted into a payout scheduled_event due on the
- *                        configured payout_day; platform balance reset to 0
- *  - negative balance  → stays on the platform pocket (debt carries to new week);
- *                        no payout event created
+ *  - The closing balance is computed from TRANSACTIONS dated Mon-Sun of the
+ *    closed week (NOT the current pocket balance, which may already include
+ *    income from the new week if the user opens the app late).
+ *  - positive closing → snapshot into a payout scheduled_event due on the
+ *    configured payout_day; pocket balance reduced by that amount (not zeroed,
+ *    so any newer-week earnings are preserved).
+ *  - non-positive    → no payout event; pocket untouched.
  *
  * Runs on app load; re-evaluates if a Sunday has passed since the last close.
  */
@@ -83,10 +86,24 @@ export function usePlatformPayouts(userId: string) {
           continue
         }
 
-        const closingBalance = platformPocket.balance
-        // Date of the upcoming payout: next occurrence of payout_day AFTER the closed
-        // Sunday — and ALWAYS in the future. If the natural next occurrence is in the
-        // past (because the close ran late), advance by weeks until it lands today or later.
+        // ── Compute closing balance from TRANSACTIONS in the closed week ──
+        // (Mon → Sun, inclusive). This is the correct closing snapshot even if
+        // the user opens the app days later, by which point the pocket balance
+        // already includes new-week earnings.
+        const closeWeekStart = isoDate(addDays(lastSunday, -6))  // Monday
+        const closeWeekEnd = lastSundayStr                       // Sunday
+        const closeWeekTxs = await db.transactions
+          .where('pocket_id').equals(platformPocket.id)
+          .filter(t => t.date >= closeWeekStart && t.date <= closeWeekEnd)
+          .toArray()
+        const closingBalance = closeWeekTxs.reduce(
+          (s, t) => s + (t.type === 'income' ? t.amount : -t.amount),
+          0
+        )
+
+        // Date of the upcoming payout: next occurrence of payout_day AFTER the
+        // closed Sunday — and ALWAYS in the future. If the natural next
+        // occurrence is in the past (close ran late), advance by weeks.
         const payoutDate = nextOccurrenceAfter(lastSunday, platform.payout_day)
         while (payoutDate < todayDateOnly) {
           payoutDate.setDate(payoutDate.getDate() + 7)
@@ -122,10 +139,12 @@ export function usePlatformPayouts(userId: string) {
             })
           }
 
-          // Reset platform balance — the closed amount is now "owed" via the event
-          await db.pockets.update(platformPocket.id, { balance: 0 })
+          // Subtract the closed amount from the pocket (preserves new-week earnings)
+          await db.pockets.update(platformPocket.id, {
+            balance: platformPocket.balance - closingBalance
+          })
         }
-        // closingBalance <= 0: debt remains on platform pocket, no payout event
+        // closingBalance <= 0: no payout event, pocket untouched
 
         await db.platforms.update(platform.id, { last_closed_sunday: lastSundayStr })
       }
@@ -160,4 +179,10 @@ function nextOccurrenceAfter(fromDate: Date, dayOfWeek: number): Date {
 
 function isoDate(d: Date): string {
   return d.toISOString().slice(0, 10)
+}
+
+function addDays(d: Date, days: number): Date {
+  const r = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+  r.setDate(r.getDate() + days)
+  return r
 }
