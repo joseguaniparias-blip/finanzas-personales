@@ -10,7 +10,7 @@ export type EventStatus = 'pending' | 'confirmed' | 'postponed' | 'partial'
 export type EventType = 'debt' | 'collection' | 'saving' | 'cadena' | 'platform_payout'
 export type DebtStatus = 'active' | 'paid_off' | 'cancelled'
 export type CollectionStatus = 'active' | 'fully_collected' | 'cancelled'
-export type CadenaStatus = 'active' | 'completed'
+export type CadenaStatus = 'active' | 'completed' | 'cancelled'
 
 // ─── Core entities ────────────────────────────────────────────────────────────
 
@@ -31,6 +31,8 @@ export interface Platform {
   payout_pocket_id: string | null
   is_active: boolean
   created_at: string
+  /** ISO date (YYYY-MM-DD) of the most recent Sunday whose balance has been snapshotted into a payout event. */
+  last_closed_sunday?: string | null
 }
 
 export interface Pocket {

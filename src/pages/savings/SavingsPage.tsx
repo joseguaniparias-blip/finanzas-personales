@@ -26,7 +26,7 @@ function formatDue(iso: string, today: string): { label: string; urgent: boolean
 }
 
 export function SavingsPage({ userId }: Props) {
-  const { goals, loading, addGoal, updateGoal, recordSaving } = useSavingGoals(userId)
+  const { goals, loading, addGoal, updateGoal } = useSavingGoals(userId)
   const { pockets } = usePockets(userId)
   const { events } = useScheduledEvents(userId)
   const [showForm, setShowForm] = useState(false)
@@ -53,10 +53,7 @@ export function SavingsPage({ userId }: Props) {
       <SavingGoalDetail
         goal={selected} pockets={pockets}
         onBack={() => setSelected(null)}
-        onSavingRecorded={() => {
-          recordSaving(selected.id, selected.contribution_amount)
-          setSelected(null)
-        }}
+        onSavingRecorded={() => setSelected(null)}
       />
     )
   }

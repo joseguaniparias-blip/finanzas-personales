@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { db } from '@/lib/db'
 import type { Transaction } from '@/types'
 
@@ -14,6 +14,9 @@ export function useTransactions(userId: string): TransactionsHook {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
 
+  const mountedRef = useRef(true)
+  useEffect(() => () => { mountedRef.current = false }, [])
+
   const load = useCallback(async () => {
     // Load 35 days so "this week" always has data even if Mon is in the prev month
     const d = new Date(); d.setDate(d.getDate() - 35)
@@ -22,6 +25,7 @@ export function useTransactions(userId: string): TransactionsHook {
       .where('user_id').equals(userId)
       .and(t => t.date >= windowStart)
       .sortBy('date')
+    if (!mountedRef.current) return
     setTransactions(data.reverse())
     setLoading(false)
   }, [userId])
@@ -30,13 +34,16 @@ export function useTransactions(userId: string): TransactionsHook {
 
   const addTransaction = async (t: Omit<Transaction, 'id' | 'created_at'>): Promise<Transaction> => {
     const tx: Transaction = { ...t, id: crypto.randomUUID(), created_at: new Date().toISOString() }
-    await db.transactions.add(tx)
-    // update pocket balance
-    const pocket = await db.pockets.get(t.pocket_id)
-    if (pocket) {
-      const delta = t.type === 'expense' ? -t.amount : t.amount
-      await db.pockets.update(t.pocket_id, { balance: pocket.balance + delta })
-    }
+    // Atomic: tx insert + pocket balance update in one Dexie transaction so
+    // parallel calls cannot lose updates against the same pocket balance.
+    await db.transaction('rw', db.transactions, db.pockets, async () => {
+      await db.transactions.add(tx)
+      const pocket = await db.pockets.get(t.pocket_id)
+      if (pocket) {
+        const delta = t.type === 'expense' ? -t.amount : t.amount
+        await db.pockets.update(t.pocket_id, { balance: pocket.balance + delta })
+      }
+    })
     await load()
     return tx
   }

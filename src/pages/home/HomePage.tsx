@@ -6,6 +6,7 @@ import { useTransactions } from '@/hooks/useTransactions'
 import { useScheduledEvents } from '@/hooks/useScheduledEvents'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { usePlatforms } from '@/hooks/usePlatforms'
+import { useToday } from '@/hooks/useToday'
 import { ConfirmEventSheet } from '@/components/shared/ConfirmEventSheet'
 import { db } from '@/lib/db'
 import type { ScheduledEvent, Platform, Pocket } from '@/types'
@@ -207,7 +208,9 @@ export function HomePage({ userId }: Props) {
   const [confirmingPayout, setConfirmingPayout] = useState<ScheduledEvent | null>(null)
 
   const hidden = profile?.balance_hidden ?? false
-  const today = new Date().toISOString().slice(0, 10)
+  // 'today' as YYYY-MM-DD in LOCAL time, auto-refreshing at midnight so the
+  // agenda stays correct even if the app stays open across midnight.
+  const today = useToday()
 
   // Init specificDate to today on mount
   useEffect(() => {
@@ -216,14 +219,26 @@ export function HomePage({ userId }: Props) {
 
   const weekDaysList = buildWeekDays(today)
 
-  // Compute which events to show in agenda
+  // Compute which events to show in agenda.
+  // We separate strictly-overdue events (due_date < today) from the "current"
+  // agenda so they don't pile up under "Hoy". The overdue section is hidden
+  // when the user pinned a specific date (specific view / calendar day filter).
   const agendaEnd = agendaEndDate(agendaPeriod, specificDate || today, today)
+  const showOverdueSection = agendaPeriod !== 'specific' && !calendarDayFilter
+
+  const overdueEvents = showOverdueSection
+    ? events.filter(e => e.due_date < today)
+    : []
+
   const agendaEvents = events.filter(e => {
     if (agendaPeriod === 'specific') return e.due_date === (specificDate || today)
     if (agendaPeriod === 'week' && calendarDayFilter) return e.due_date === calendarDayFilter
-    return e.due_date <= agendaEnd
+    if (agendaPeriod === 'day') return e.due_date === today
+    // week or month: from today (inclusive) to agendaEnd
+    return e.due_date >= today && e.due_date <= agendaEnd
   })
   const groupedAgenda = groupByDate(agendaEvents)
+  const groupedOverdue = groupByDate(overdueEvents)
 
   // Switch period and reset mini-calendar filter
   const handleAgendaPeriodChange = (p: AgendaPeriod) => {
@@ -280,6 +295,63 @@ export function HomePage({ userId }: Props) {
       ? ` el ${formatAgendaDate(calendarDayFilter, today).toLowerCase()}`
     : agendaPeriod === 'week'   ? ' esta semana'
     : ' este mes'
+
+  // Renders one event card. `isOverdue` lets us style overdue payouts/events
+  // a bit dimmer without re-implementing the whole card. The card is always
+  // confirmable when its date is <= today (the user can still act on overdue).
+  function renderEventCard(ev: ScheduledEvent, isOverdue: boolean) {
+    const meta = EVENT_META[ev.type] ?? { color: 'text-slate-400', icon: '📋', label: ev.type }
+    const name = eventNames[ev.id] ?? '…'
+    const canConfirm = ev.due_date <= today
+
+    if (ev.type === 'platform_payout') {
+      if (ev.amount <= 0) return null
+      const balance = ev.amount
+      return (
+        <button key={ev.id} onClick={() => setConfirmingPayout(ev)}
+          className={`w-full text-left flex items-center gap-3 rounded-xl p-3 border transition-colors ${
+            isOverdue
+              ? 'bg-orange-500/10 border-orange-500/40 hover:bg-orange-500/15'
+              : 'bg-orange-500/5 border-orange-500/25 hover:bg-orange-500/10'
+          }`}>
+          <span className="text-lg leading-none">💰</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-slate-200 text-sm font-medium truncate">{name}</p>
+            <p className="text-xs text-orange-400">Transferir {maskVal(balance, hidden)}</p>
+          </div>
+          {canConfirm ? (
+            <span className="flex-shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-orange-500/20 text-orange-300">
+              <Check size={12} /> Cobrar
+            </span>
+          ) : (
+            <span className="flex-shrink-0 text-xs text-slate-500">Ver →</span>
+          )}
+        </button>
+      )
+    }
+
+    return (
+      <div key={ev.id}
+        className={`flex items-center gap-3 rounded-xl p-3 border ${
+          isOverdue ? 'bg-slate-800/80 border-red-900/40' : 'bg-slate-800 border-slate-700'
+        }`}>
+        <span className="text-lg leading-none">{meta.icon}</span>
+        <div className="flex-1 min-w-0">
+          <p className="text-slate-200 text-sm font-medium truncate">{name}</p>
+          <p className="text-xs text-slate-500">{meta.label}</p>
+        </div>
+        <div className="text-right mr-2">
+          <p className={`${meta.color} font-bold text-sm`}>{maskVal(ev.amount, hidden)}</p>
+        </div>
+        {canConfirm && (
+          <button onClick={() => setConfirmingEvent(ev)}
+            className="flex-shrink-0 flex items-center gap-1 bg-slate-700 hover:bg-slate-600 text-slate-300 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors">
+            <Check size={12} /> Ok
+          </button>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="p-4 max-w-lg mx-auto">
@@ -376,12 +448,17 @@ export function HomePage({ userId }: Props) {
                     {maskVal(p.balance, hidden)}
                   </p>
                   <p className="text-[10px] text-slate-500 mt-0.5">esta semana</p>
-                  {pendingPayout && (
+                  {pendingPayout ? (
                     <div className="mt-1.5 pt-1.5 border-t border-slate-700/50">
                       <p className="text-emerald-400 font-semibold text-xs">{maskVal(pendingPayout.amount, hidden)}</p>
                       <p className="text-[10px] text-slate-500">por cobrar {formatShortDate(pendingPayout.due_date)}</p>
                     </div>
-                  )}
+                  ) : p.balance > 0 ? (
+                    <div className="mt-1.5 pt-1.5 border-t border-slate-700/50">
+                      <p className="text-[10px] text-slate-400 font-medium">Saldo pendiente por cobrar</p>
+                      <p className="text-[10px] text-slate-500">Cierra el domingo</p>
+                    </div>
+                  ) : null}
                 </div>
               )
             })}
@@ -435,81 +512,54 @@ export function HomePage({ userId }: Props) {
         )}
 
         {/* Events list */}
-        {agendaEvents.length === 0 ? (
+        {agendaEvents.length === 0 && overdueEvents.length === 0 ? (
           <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 text-center">
             <p className="text-slate-500 text-sm">Sin eventos{emptyLabel} 🎉</p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {groupedAgenda.map(({ date, items }) => {
-              const isToday   = date === today
-              const isOverdue = date < today
-              return (
-                <div key={date}>
-                  <p className={`text-xs font-semibold mb-1.5 ${isOverdue ? 'text-red-400' : isToday ? 'text-slate-300' : 'text-slate-500'}`}>
-                    {isOverdue && '⚠️ '}
-                    {formatAgendaDate(date, today)}
+          <div className="space-y-5">
+            {/* Overdue section (only when there are overdue events and we're not pinned to a specific date) */}
+            {groupedOverdue.length > 0 && (
+              <div className="bg-red-950/20 border border-red-900/40 rounded-2xl p-3 space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold text-red-400 uppercase tracking-wide flex items-center gap-1.5">
+                    ⚠️ Vencidos
+                    <span className="text-[10px] text-red-500 font-normal normal-case">
+                      ({overdueEvents.length})
+                    </span>
                   </p>
-                  <div className="space-y-2">
-                    {items.map(ev => {
-                      const meta = EVENT_META[ev.type] ?? { color: 'text-slate-400', icon: '📋', label: ev.type }
-                      const name = eventNames[ev.id] ?? '…'
-                      const canConfirm = date <= today
-
-                      // ── Platform payout: special card ────────────────────
-                      if (ev.type === 'platform_payout') {
-                        const balance = ev.amount
-                        const willTransfer = balance > 0
-                        return (
-                          <div key={ev.id}
-                            className="flex items-center gap-3 bg-orange-500/5 border border-orange-500/25 rounded-xl p-3">
-                            <span className="text-lg leading-none">💰</span>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-slate-200 text-sm font-medium truncate">{name}</p>
-                              {willTransfer
-                                ? <p className="text-xs text-orange-400">Transferir {maskVal(balance, hidden)}</p>
-                                : <p className="text-xs text-slate-500">Saldo negativo — arrastra próxima semana</p>
-                              }
-                            </div>
-                            {canConfirm && (
-                              <button onClick={() => setConfirmingPayout(ev)}
-                                className={`flex-shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                                  willTransfer
-                                    ? 'bg-orange-500/20 hover:bg-orange-500/30 text-orange-300'
-                                    : 'bg-slate-700 hover:bg-slate-600 text-slate-400'
-                                }`}>
-                                <Check size={12} /> {willTransfer ? 'Cobrar' : 'Cerrar'}
-                              </button>
-                            )}
-                          </div>
-                        )
-                      }
-
-                      // ── Generic event card ───────────────────────────────
-                      return (
-                        <div key={ev.id}
-                          className="flex items-center gap-3 bg-slate-800 border border-slate-700 rounded-xl p-3">
-                          <span className="text-lg leading-none">{meta.icon}</span>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-slate-200 text-sm font-medium truncate">{name}</p>
-                            <p className="text-xs text-slate-500">{meta.label}</p>
-                          </div>
-                          <div className="text-right mr-2">
-                            <p className={`${meta.color} font-bold text-sm`}>{maskVal(ev.amount, hidden)}</p>
-                          </div>
-                          {canConfirm && (
-                            <button onClick={() => setConfirmingEvent(ev)}
-                              className="flex-shrink-0 flex items-center gap-1 bg-slate-700 hover:bg-slate-600 text-slate-300 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors">
-                              <Check size={12} /> Ok
-                            </button>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
                 </div>
-              )
-            })}
+                {groupedOverdue.map(({ date, items }) => (
+                  <div key={date}>
+                    <p className="text-[10px] font-semibold mb-1.5 text-red-500/80">
+                      {formatAgendaDate(date, today)}
+                    </p>
+                    <div className="space-y-2">
+                      {items.map(ev => renderEventCard(ev, true))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Current / upcoming agenda */}
+            {groupedAgenda.length > 0 && (
+              <div className="space-y-4">
+                {groupedAgenda.map(({ date, items }) => {
+                  const isToday = date === today
+                  return (
+                    <div key={date}>
+                      <p className={`text-xs font-semibold mb-1.5 ${isToday ? 'text-slate-300' : 'text-slate-500'}`}>
+                        {formatAgendaDate(date, today)}
+                      </p>
+                      <div className="space-y-2">
+                        {items.map(ev => renderEventCard(ev, false))}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -591,8 +641,8 @@ function PlatformPayoutSheet({ event, platforms, pockets, onConfirm, onPostpone,
   const handleConfirm = () => onConfirm(targetPocket?.id ?? '')
 
   return (
-    <div className="fixed inset-0 bg-black/70 z-50 flex items-end justify-center">
-      <div className="bg-slate-900 w-full max-w-lg rounded-t-3xl border-t border-slate-700 p-6">
+    <div className="fixed inset-0 bg-black/70 z-[60] flex items-end justify-center" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div className="bg-slate-900 w-full max-w-lg rounded-t-3xl border-t border-slate-700 px-6 pt-6 pb-8 overflow-y-auto overscroll-contain" style={{ maxHeight: '90dvh' }}>
 
         {/* Header */}
         <div className="flex items-center justify-between mb-5">

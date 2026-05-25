@@ -2,12 +2,13 @@ import { useState } from 'react'
 import type { Collection, Pocket } from '@/types'
 import { AmountInput, parseAmount } from '@/components/shared/AmountInput'
 import { DAYS_OF_WEEK } from '@/types'
+import { useSubmitLock } from '@/hooks/useSubmitLock'
 
 interface Props {
   userId: string
   pockets: Pocket[]
   initial?: Collection
-  onSave: (data: Omit<Collection, 'id' | 'created_at' | 'collected_amount' | 'status'>) => Promise<void>
+  onSave: (data: Omit<Collection, 'id' | 'created_at' | 'collected_amount' | 'status'> & { collected_amount?: number }) => Promise<void>
   onCancel: () => void
 }
 
@@ -23,16 +24,16 @@ export function CollectionForm({ userId, pockets, initial, onSave, onCancel }: P
   const [startDate, setStartDate] = useState(initial?.start_date ?? new Date().toISOString().slice(0, 10))
   const [startedBefore, setStartedBefore] = useState(initial?.started_before_app ?? false)
   const [startInstallment, setStartInstallment] = useState(initial?.start_installment ?? 1)
-  const [saving, setSaving] = useState(false)
+  const [collectedAmount, setCollectedAmount] = useState(initial?.collected_amount?.toString() ?? '')
+  const { submitting: saving, submit } = useSubmitLock()
 
   const totalNum = parseAmount(totalAmount)
   const installmentNum = parseAmount(installment)
   const canSave = name.trim() && personName.trim() && installmentNum > 0 && destPocketId && (!hasTotal || totalNum > 0)
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!canSave) return
-    setSaving(true)
-    try {
+    submit(async () => {
       await onSave({
         user_id: userId,
         name: name.trim(),
@@ -45,11 +46,10 @@ export function CollectionForm({ userId, pockets, initial, onSave, onCancel }: P
         dest_pocket_id: destPocketId,
         start_date: startDate,
         started_before_app: startedBefore,
-        start_installment: startedBefore ? startInstallment : 1
+        start_installment: startedBefore ? startInstallment : 1,
+        ...(initial && collectedAmount !== '' ? { collected_amount: parseAmount(collectedAmount) } : {})
       })
-    } finally {
-      setSaving(false)
-    }
+    })
   }
 
   return (
@@ -143,6 +143,18 @@ export function CollectionForm({ userId, pockets, initial, onSave, onCancel }: P
           ))}
         </div>
       </div>
+
+      {/* Edit collected total — only when editing existing collection */}
+      {initial && (
+        <div className="mb-5">
+          <AmountInput
+            label="Total ya cobrado (editable)"
+            value={collectedAmount}
+            onChange={setCollectedAmount}
+          />
+          <p className="text-slate-500 text-xs mt-1">Ajusta si las cuotas registradas no cuadran</p>
+        </div>
+      )}
 
       {/* Before app */}
       {frequency !== 'once' && (

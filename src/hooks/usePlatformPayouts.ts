@@ -6,10 +6,13 @@ import { db } from '@/lib/db'
  *
  * Work week is Monday → Sunday. The platform balance accumulates work done
  * during the week. At end of Sunday it "closes":
- *  - positive balance  → snapshotted into a payout scheduled_event due on the
- *                        configured payout_day; platform balance reset to 0
- *  - negative balance  → stays on the platform pocket (debt carries to new week);
- *                        no payout event created
+ *  - The closing balance is computed from TRANSACTIONS dated Mon-Sun of the
+ *    closed week (NOT the current pocket balance, which may already include
+ *    income from the new week if the user opens the app late).
+ *  - positive closing → snapshot into a payout scheduled_event due on the
+ *    configured payout_day; pocket balance reduced by that amount (not zeroed,
+ *    so any newer-week earnings are preserved).
+ *  - non-positive    → no payout event; pocket untouched.
  *
  * Runs on app load; re-evaluates if a Sunday has passed since the last close.
  */
@@ -25,33 +28,49 @@ export function usePlatformPayouts(userId: string) {
         .and(p => Boolean(p.is_active))
         .toArray()
 
+      const todayDateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+
       for (const platform of platforms) {
         if (platform.payout_day === null) continue
 
-        // Correct due_date: next occurrence of payout_day after the last closed Sunday
-        const correctDueDate = isoDate(nextOccurrenceAfter(lastSunday, platform.payout_day))
+        // ── First install / new platform: set the baseline, don't close retroactively ──
+        // The current pocket balance is treated as "this week's accumulation"
+        // and will be closed at the END of the current week.
+        if (!platform.last_closed_sunday) {
+          await db.platforms.update(platform.id, { last_closed_sunday: lastSundayStr })
+          continue
+        }
 
-        // ── Step 1: Deduplicate pending events and fix their due_date ──────────
-        // Runs every load so stale/duplicate events from previous config changes
-        // or race conditions are cleaned up automatically.
+        // ── Stale marker check ──
+        // If last_closed_sunday is more than 7 days behind the most recent Sunday,
+        // the marker is stale (data restored, long absence, version upgrade).
+        // Don't retroactively close — just refresh the baseline.
+        const lastCloseDate = new Date(platform.last_closed_sunday + 'T00:00:00')
+        const daysGap = Math.round((lastSunday.getTime() - lastCloseDate.getTime()) / 86400000)
+        if (daysGap > 7) {
+          await db.platforms.update(platform.id, { last_closed_sunday: lastSundayStr })
+          continue
+        }
+
+        // ── Step 1: Clean up pending events (merge duplicates, delete invalid) ──
+        // Don't touch the due_date — let the user delete stale ones manually with
+        // the "Eliminar este pendiente" button.
         const allPending = await db.scheduled_events
           .where('user_id').equals(userId)
           .filter(e => e.type === 'platform_payout' && e.reference_id === platform.id && e.status === 'pending')
           .toArray()
 
-        const validPending   = allPending.filter(e => e.amount > 0)
-        const invalidPending = allPending.filter(e => e.amount <= 0)
-        for (const ev of invalidPending) await db.scheduled_events.delete(ev.id)
-
+        for (const ev of allPending.filter(e => e.amount <= 0)) {
+          await db.scheduled_events.delete(ev.id)
+        }
+        const validPending = allPending.filter(e => e.amount > 0)
         if (validPending.length > 1) {
-          // Merge all amounts into the first event, delete the rest
+          // Merge: sum amounts into the first event (keep its due_date), delete the rest
           const totalAmount = validPending.reduce((s, e) => s + e.amount, 0)
-          await db.scheduled_events.update(validPending[0].id, { amount: totalAmount, due_date: correctDueDate })
+          await db.scheduled_events.update(validPending[0].id, { amount: totalAmount })
           for (let i = 1; i < validPending.length; i++) {
             await db.scheduled_events.delete(validPending[i].id)
           }
-        } else if (validPending.length === 1 && validPending[0].due_date !== correctDueDate) {
-          await db.scheduled_events.update(validPending[0].id, { due_date: correctDueDate })
         }
 
         // ── Step 2: Close this week if not already done ────────────────────────
@@ -67,7 +86,29 @@ export function usePlatformPayouts(userId: string) {
           continue
         }
 
-        const closingBalance = platformPocket.balance
+        // ── Compute closing balance from TRANSACTIONS in the closed week ──
+        // (Mon → Sun, inclusive). This is the correct closing snapshot even if
+        // the user opens the app days later, by which point the pocket balance
+        // already includes new-week earnings.
+        const closeWeekStart = isoDate(addDays(lastSunday, -6))  // Monday
+        const closeWeekEnd = lastSundayStr                       // Sunday
+        const closeWeekTxs = await db.transactions
+          .where('pocket_id').equals(platformPocket.id)
+          .filter(t => t.date >= closeWeekStart && t.date <= closeWeekEnd)
+          .toArray()
+        const closingBalance = closeWeekTxs.reduce(
+          (s, t) => s + (t.type === 'income' ? t.amount : -t.amount),
+          0
+        )
+
+        // Date of the upcoming payout: next occurrence of payout_day AFTER the
+        // closed Sunday — and ALWAYS in the future. If the natural next
+        // occurrence is in the past (close ran late), advance by weeks.
+        const payoutDate = nextOccurrenceAfter(lastSunday, platform.payout_day)
+        while (payoutDate < todayDateOnly) {
+          payoutDate.setDate(payoutDate.getDate() + 7)
+        }
+        const correctDueDate = isoDate(payoutDate)
 
         if (closingBalance > 0) {
           // Re-query after dedup — at most one pending event remains
@@ -98,10 +139,12 @@ export function usePlatformPayouts(userId: string) {
             })
           }
 
-          // Reset platform balance — the closed amount is now "owed" via the event
-          await db.pockets.update(platformPocket.id, { balance: 0 })
+          // Subtract the closed amount from the pocket (preserves new-week earnings)
+          await db.pockets.update(platformPocket.id, {
+            balance: platformPocket.balance - closingBalance
+          })
         }
-        // closingBalance <= 0: debt remains on platform pocket, no payout event
+        // closingBalance <= 0: no payout event, pocket untouched
 
         await db.platforms.update(platform.id, { last_closed_sunday: lastSundayStr })
       }
@@ -136,4 +179,10 @@ function nextOccurrenceAfter(fromDate: Date, dayOfWeek: number): Date {
 
 function isoDate(d: Date): string {
   return d.toISOString().slice(0, 10)
+}
+
+function addDays(d: Date, days: number): Date {
+  const r = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+  r.setDate(r.getDate() + days)
+  return r
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { db } from '@/lib/db'
 import type { Collection } from '@/types'
 
@@ -17,11 +17,15 @@ export function useCollections(userId: string): CollectionsHook {
   const [collections, setCollections] = useState<Collection[]>([])
   const [loading, setLoading] = useState(true)
 
+  const mountedRef = useRef(true)
+  useEffect(() => () => { mountedRef.current = false }, [])
+
   const load = useCallback(async () => {
     const data = await db.collections
       .where('user_id').equals(userId)
       .and(c => c.status === 'active')
       .sortBy('created_at')
+    if (!mountedRef.current) return
     setCollections(data)
     setLoading(false)
   }, [userId])
@@ -29,10 +33,13 @@ export function useCollections(userId: string): CollectionsHook {
   useEffect(() => { load() }, [load])
 
   const addCollection = async (c: NewCollection): Promise<Collection> => {
+    const priorCollected = c.started_before_app
+      ? Math.max(0, (c.start_installment - 1) * c.installment_amount)
+      : 0
     const collection: Collection = {
       ...c,
       id: crypto.randomUUID(),
-      collected_amount: 0,
+      collected_amount: priorCollected,
       status: 'active',
       created_at: new Date().toISOString()
     }
@@ -60,6 +67,11 @@ export function useCollections(userId: string): CollectionsHook {
   }
 
   const closeCollection = async (id: string) => {
+    const linked = await db.scheduled_events
+      .where('user_id').equals(userId)
+      .filter(e => e.reference_id === id && e.status === 'pending')
+      .toArray()
+    for (const e of linked) await db.scheduled_events.delete(e.id)
     await db.collections.update(id, { status: 'cancelled' })
     await load()
   }

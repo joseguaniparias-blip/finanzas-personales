@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { db } from '@/lib/db'
 import type { Cadena } from '@/types'
 
@@ -18,11 +18,15 @@ export function useCadenas(userId: string): CadenasHook {
   const [cadenas, setCadenas] = useState<Cadena[]>([])
   const [loading, setLoading] = useState(true)
 
+  const mountedRef = useRef(true)
+  useEffect(() => () => { mountedRef.current = false }, [])
+
   const load = useCallback(async () => {
     const data = await db.cadenas
       .where('user_id').equals(userId)
       .and(c => c.status === 'active')
       .sortBy('created_at')
+    if (!mountedRef.current) return
     setCadenas(data)
     setLoading(false)
   }, [userId])
@@ -62,7 +66,17 @@ export function useCadenas(userId: string): CadenasHook {
   }
 
   const closeCadena = async (id: string) => {
-    await db.cadenas.update(id, { status: 'completed' })
+    // 'cancelled' = el usuario abandonó / cerró manualmente.
+    // 'completed' se reserva para cuando todas las rondas naturalmente terminaron
+    // (ver recordPayment que setea completed cuando current_round > participants).
+    await db.transaction('rw', db.cadenas, db.scheduled_events, async () => {
+      const linked = await db.scheduled_events
+        .where('user_id').equals(userId)
+        .filter(e => e.reference_id === id && e.status === 'pending')
+        .toArray()
+      for (const e of linked) await db.scheduled_events.delete(e.id)
+      await db.cadenas.update(id, { status: 'cancelled' })
+    })
     await load()
   }
 

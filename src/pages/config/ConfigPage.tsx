@@ -5,6 +5,7 @@ import { usePlatforms } from '@/hooks/usePlatforms'
 import { usePockets } from '@/hooks/usePockets'
 import { useCategories } from '@/hooks/useCategories'
 import { useAuth } from '@/hooks/useAuth'
+import { useSubmitLock } from '@/hooks/useSubmitLock'
 import { db } from '@/lib/db'
 import { DAYS_OF_WEEK, PLATFORM_DEFAULTS } from '@/types'
 import { PageHeader } from '@/components/shared/PageHeader'
@@ -24,7 +25,7 @@ export function ConfigPage({ userId }: Props) {
   const [newPlatformName, setNewPlatformName] = useState('')
   const [newPlatformColor, setNewPlatformColor] = useState('#fb923c')
   const [newPlatformBalance, setNewPlatformBalance] = useState('')
-  const [savingPlatform, setSavingPlatform] = useState(false)
+  const { submitting: savingPlatform, submit: submitPlatform } = useSubmitLock()
   const { pockets } = usePockets(userId)
   const { categories, updateCategory } = useCategories(userId)
   const { signOut } = useAuth()
@@ -60,10 +61,9 @@ export function ConfigPage({ userId }: Props) {
     )
   }
 
-  const handleAddPlatform = async () => {
+  const handleAddPlatform = () => {
     if (!newPlatformName.trim()) return
-    setSavingPlatform(true)
-    try {
+    submitPlatform(async () => {
       const pName = newPlatformName.trim()
       const def = PLATFORM_DEFAULTS[pName] ?? { color: newPlatformColor, icon: '📲' }
       const color = def.color ?? newPlatformColor
@@ -95,9 +95,7 @@ export function ConfigPage({ userId }: Props) {
       setNewPlatformColor('#fb923c')
       setNewPlatformBalance('')
       setShowAddPlatform(false)
-    } finally {
-      setSavingPlatform(false)
-    }
+    })
   }
 
   if (section === 'platforms') {

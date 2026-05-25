@@ -26,7 +26,7 @@ function formatDue(iso: string, today: string): { label: string; urgent: boolean
 }
 
 export function CollectionsPage({ userId }: Props) {
-  const { collections, loading, addCollection, updateCollection, recordCollection, closeCollection } = useCollections(userId)
+  const { collections, loading, addCollection, updateCollection, closeCollection } = useCollections(userId)
   const { pockets } = usePockets(userId)
   const { events } = useScheduledEvents(userId)
   const [showForm, setShowForm] = useState(false)
@@ -54,10 +54,7 @@ export function CollectionsPage({ userId }: Props) {
         collection={selected} pockets={pockets}
         onBack={() => setSelected(null)}
         onDelete={async () => { await closeCollection(selected.id); setSelected(null) }}
-        onPaymentRecorded={() => {
-          recordCollection(selected.id, selected.installment_amount)
-          setSelected(null)
-        }}
+        onPaymentRecorded={() => setSelected(null)}
       />
     )
   }

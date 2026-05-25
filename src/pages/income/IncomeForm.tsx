@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Check, Plus, Trash2, Pencil, X } from 'lucide-react'
 import type { Platform, Pocket, Transaction, Category } from '@/types'
 import { AmountInput, parseAmount } from '@/components/shared/AmountInput'
 import { maskAmount } from '@/components/shared/PrivacyToggle'
 import { db } from '@/lib/db'
+import { useSubmitLock } from '@/hooks/useSubmitLock'
 
 const QUICK_ICONS = ['⛽','🔧','📱','🛡️','🛣️','🍔','🛒','💊','📦','🎮','👕','🚌','☕','🍕','💡']
 
@@ -48,8 +49,18 @@ export function IncomeForm({ userId, platforms, pockets, categories, addCategory
   const [total, setTotal] = useState('')
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
   const [categoryId, setCategoryId] = useState<string | null>(null)
-  const [saving, setSaving] = useState(false)
+  const { submitting: saving, submit } = useSubmitLock()
   const [done, setDone] = useState(false)
+  const doneTimeoutRef = useRef<number | null>(null)
+
+  // Cancel the post-success onDone timeout if the user navigates away or
+  // unmounts the form before it fires — avoids onDone running on an unmounted
+  // component (no-op warning in dev, potential memory leak).
+  useEffect(() => () => {
+    if (doneTimeoutRef.current !== null) {
+      window.clearTimeout(doneTimeoutRef.current)
+    }
+  }, [])
 
   // Category manager
   const [managingCats, setManagingCats] = useState(false)
@@ -91,14 +102,12 @@ export function IncomeForm({ userId, platforms, pockets, categories, addCategory
   const updateSplit = (i: number, field: keyof CashSplit, value: string) =>
     setCashSplits(prev => prev.map((sp, idx) => idx === i ? { ...sp, [field]: value } : sp))
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!canSave) return
-    setSaving(true)
-    try {
+    submit(async () => {
       if (incomeType === 'other') {
-        // Simple income → selected pocket
-        const pocket = pockets.find(p => p.id === otherPocketId)
-        if (!pocket) return
+        // Simple income → selected pocket.
+        // addTransaction (useTransactions) is atomic and already updates the pocket balance.
         await addTransaction({
           user_id: userId,
           type: 'income',
@@ -112,16 +121,13 @@ export function IncomeForm({ userId, platforms, pockets, categories, addCategory
           receipt_url: null,
           date
         })
-        await db.pockets.update(otherPocketId, { balance: pocket.balance + totalNum })
       } else {
         // Platform income
-        // Cash splits → their pockets
+        // Cash splits → their pockets. addTransaction handles the pocket update atomically.
         if (hasCash) {
           for (const split of cashSplits) {
             const amt = parseAmount(split.amount)
             if (amt <= 0 || !split.pocketId) continue
-            const p = pockets.find(pk => pk.id === split.pocketId)
-            if (!p) continue
             await addTransaction({
               user_id: userId,
               type: 'income',
@@ -135,39 +141,42 @@ export function IncomeForm({ userId, platforms, pockets, categories, addCategory
               receipt_url: null,
               date
             })
-            await db.pockets.update(split.pocketId, { balance: p.balance + amt })
           }
         }
 
-        // Digital portion → platform wallet (guaranteed to exist, can be positive or negative)
+        // Digital portion → platform wallet (guaranteed to exist, can be positive or negative).
+        // Done atomically because we mix a raw pocket update with a tx insert (not via addTransaction
+        // because we want a custom amount sign + reference_type).
         if (platformPocket && digital !== 0) {
-          const newBalance = platformPocket.balance + digital
-          await db.pockets.update(platformPocket.id, { balance: newBalance })
-          await db.transactions.add({
-            id: crypto.randomUUID(),
-            user_id: userId,
-            type: digital > 0 ? 'income' : 'expense',
-            amount: Math.abs(digital),
-            pocket_id: platformPocket.id,
-            category_id: null,
-            platform_id: platformId,
-            reference_id: null,
-            reference_type: digital > 0 ? 'income_digital' : 'income_cash_excess',
-            note: digital > 0
-              ? `Digital ${platform?.name ?? ''}`
-              : `Adelanto efectivo ${platform?.name ?? ''} — deuda con plataforma`,
-            receipt_url: null,
-            date,
-            created_at: new Date().toISOString()
+          const platformPocketId = platformPocket.id
+          await db.transaction('rw', db.pockets, db.transactions, async () => {
+            const fresh = await db.pockets.get(platformPocketId)
+            if (!fresh) return
+            await db.pockets.update(platformPocketId, { balance: fresh.balance + digital })
+            await db.transactions.add({
+              id: crypto.randomUUID(),
+              user_id: userId,
+              type: digital > 0 ? 'income' : 'expense',
+              amount: Math.abs(digital),
+              pocket_id: platformPocketId,
+              category_id: null,
+              platform_id: platformId,
+              reference_id: null,
+              reference_type: digital > 0 ? 'income_digital' : 'income_cash_excess',
+              note: digital > 0
+                ? `Digital ${platform?.name ?? ''}`
+                : `Adelanto efectivo ${platform?.name ?? ''} — deuda con plataforma`,
+              receipt_url: null,
+              date,
+              created_at: new Date().toISOString()
+            })
           })
         }
       }
 
       setDone(true)
-      setTimeout(onDone, 1200)
-    } finally {
-      setSaving(false)
-    }
+      doneTimeoutRef.current = window.setTimeout(onDone, 1200)
+    })
   }
 
   if (done) {

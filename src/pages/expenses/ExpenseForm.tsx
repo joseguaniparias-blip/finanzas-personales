@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Check, Pencil, X, Plus } from 'lucide-react'
 import type { Pocket, Category, Transaction } from '@/types'
 import { AmountInput, parseAmount } from '@/components/shared/AmountInput'
 import { maskAmount } from '@/components/shared/PrivacyToggle'
+import { useSubmitLock } from '@/hooks/useSubmitLock'
 
 interface Props {
   userId: string
@@ -25,8 +26,15 @@ export function ExpenseForm({ userId, pockets, categories, seedDefaults, addCate
   const [note, setNote] = useState('')
   const [detailed, setDetailed] = useState(false)
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
-  const [saving, setSaving] = useState(false)
+  const { submitting: saving, submit } = useSubmitLock()
   const [done, setDone] = useState(false)
+  const doneTimeoutRef = useRef<number | null>(null)
+
+  useEffect(() => () => {
+    if (doneTimeoutRef.current !== null) {
+      window.clearTimeout(doneTimeoutRef.current)
+    }
+  }, [])
 
   // Category manager state
   const [managingCats, setManagingCats] = useState(false)
@@ -44,10 +52,9 @@ export function ExpenseForm({ userId, pockets, categories, seedDefaults, addCate
   const category = categories.find(c => c.id === categoryId)
   const canSave = amountNum > 0 && pocketId
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!canSave) return
-    setSaving(true)
-    try {
+    submit(async () => {
       await addTransaction({
         user_id: userId,
         type: 'expense',
@@ -62,10 +69,8 @@ export function ExpenseForm({ userId, pockets, categories, seedDefaults, addCate
         date
       })
       setDone(true)
-      setTimeout(onDone, 1200)
-    } finally {
-      setSaving(false)
-    }
+      doneTimeoutRef.current = window.setTimeout(onDone, 1200)
+    })
   }
 
   const handleAddCategory = async () => {

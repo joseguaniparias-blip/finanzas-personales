@@ -26,7 +26,12 @@ export default defineConfig({
         ]
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}']
+        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        // Force the new SW to activate immediately and take control of all clients,
+        // so code updates land on the phone without needing a manual cache clear.
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true
       }
     })
   ],

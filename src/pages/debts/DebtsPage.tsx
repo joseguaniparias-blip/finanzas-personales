@@ -26,9 +26,9 @@ function formatShort(iso: string): string {
 }
 
 export function DebtsPage({ userId }: Props) {
-  const { debts, loading, addDebt, updateDebt, recordPayment, closeDebt } = useDebts(userId)
+  const { debts, loading, addDebt, updateDebt, closeDebt } = useDebts(userId)
   const { pockets } = usePockets(userId)
-  const { events, confirmEvent, partialEvent, postponeEvent } = useScheduledEvents(userId)
+  const { events, confirmEvent, partialEvent, postponeEvent, rescheduleEvent, deleteEvent } = useScheduledEvents(userId)
   const [showForm, setShowForm] = useState(false)
   const [selectedDebt, setSelectedDebt] = useState<Debt | null>(null)
   const [editingDebt, setEditingDebt] = useState<Debt | null>(null)
@@ -57,14 +57,14 @@ export function DebtsPage({ userId }: Props) {
         onDelete={async () => { await closeDebt(selectedDebt.id); setSelectedDebt(null) }}
         onConfirm={async (eventId, pocketId) => {
           await confirmEvent(eventId, pocketId)
-          await recordPayment(selectedDebt.id, selectedDebt.installment_amount)
           setSelectedDebt(null)
         }}
         onPartial={async (eventId, pocketId, amount) => {
           await partialEvent(eventId, pocketId, amount)
-          await recordPayment(selectedDebt.id, amount)
         }}
         onPostpone={async (eventId) => { await postponeEvent(eventId) }}
+        onReschedule={async (eventId, newDate) => { await rescheduleEvent(eventId, newDate) }}
+        onDeleteEvent={async (eventId) => { await deleteEvent(eventId) }}
       />
     )
   }

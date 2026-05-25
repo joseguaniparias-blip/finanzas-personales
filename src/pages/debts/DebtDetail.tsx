@@ -15,9 +15,11 @@ interface Props {
   onConfirm: (eventId: string, pocketId: string) => void
   onPartial: (eventId: string, pocketId: string, amount: number) => void
   onPostpone: (eventId: string) => void
+  onReschedule: (eventId: string, newDate: string) => void
+  onDeleteEvent: (eventId: string) => void
 }
 
-export function DebtDetail({ debt, pockets, onBack, onEdit, onDelete, onConfirm, onPartial, onPostpone }: Props) {
+export function DebtDetail({ debt, pockets, onBack, onEdit, onDelete, onConfirm, onPartial, onPostpone, onReschedule, onDeleteEvent }: Props) {
   const [pendingEvent, setPendingEvent] = useState<ScheduledEvent | null>(null)
   const [confirmEvent, setConfirmEvent] = useState<ScheduledEvent | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -104,7 +106,7 @@ export function DebtDetail({ debt, pockets, onBack, onEdit, onDelete, onConfirm,
             {pendingEvent.due_date <= new Date().toISOString().slice(0, 10) ? '⚠️ Cuota pendiente' : `📅 Próxima cuota · ${pendingEvent.due_date}`}
           </p>
           <p className="text-slate-200 font-bold text-lg mb-4">{maskAmount(pendingEvent.amount, false)}</p>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-2 mb-2">
             <button
               onClick={() => setConfirmEvent(pendingEvent)}
               className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 rounded-xl text-sm font-semibold transition-colors"
@@ -118,6 +120,12 @@ export function DebtDetail({ debt, pockets, onBack, onEdit, onDelete, onConfirm,
               <SkipForward size={14} /> Posponer
             </button>
           </div>
+          <button
+            onClick={() => { onDeleteEvent(pendingEvent.id); setPendingEvent(null) }}
+            className="w-full flex items-center justify-center gap-2 text-red-400 hover:text-red-300 py-2 rounded-xl text-xs transition-colors"
+          >
+            <Trash2 size={12} /> Eliminar este evento
+          </button>
         </div>
       )}
 
@@ -131,6 +139,8 @@ export function DebtDetail({ debt, pockets, onBack, onEdit, onDelete, onConfirm,
           onConfirm={(pocketId) => { onConfirm(confirmEvent.id, pocketId); setConfirmEvent(null); setPendingEvent(null) }}
           onPartial={(pocketId, amount) => { onPartial(confirmEvent.id, pocketId, amount); setConfirmEvent(null) }}
           onPostpone={() => { onPostpone(confirmEvent.id); setConfirmEvent(null) }}
+          onReschedule={(newDate) => { onReschedule(confirmEvent.id, newDate); setConfirmEvent(null); setPendingEvent(null) }}
+          onDelete={() => { onDeleteEvent(confirmEvent.id); setConfirmEvent(null); setPendingEvent(null) }}
           onClose={() => setConfirmEvent(null)}
         />
       )}
