@@ -190,9 +190,14 @@ export function useScheduledEvents(userId: string): ScheduledEventsHook {
   }
 
   const postponeEvent = async (id: string) => {
-    const tomorrow = new Date()
-    tomorrow.setDate(tomorrow.getDate() + 1)
-    await db.scheduled_events.update(id, { due_date: tomorrow.toISOString().slice(0, 10) })
+    // Posponer = correr 1 día desde la fecha ACTUAL del evento, no regresar
+    // a "mañana". Si el evento estaba para dentro de 30 días, posponer un día
+    // lo mueve al día 31 — antes lo regresaba a mañana, una regresión brutal.
+    const ev = await db.scheduled_events.get(id)
+    if (!ev) return
+    const d = new Date(ev.due_date + 'T12:00:00')  // noon → no DST/timezone surprises
+    d.setDate(d.getDate() + 1)
+    await db.scheduled_events.update(id, { due_date: d.toISOString().slice(0, 10) })
     await load()
   }
 
