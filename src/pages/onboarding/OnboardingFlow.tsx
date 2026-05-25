@@ -42,6 +42,16 @@ export function OnboardingFlow({ userId, onComplete }: Props) {
       savedPockets.push({ id: pocket.id, name: pocket.name })
     }
 
+    // Build mapping from the draft-${i} IDs used in Step5 back to real pocket UUIDs.
+    // Step3Pockets only collects non-platform pockets, so finalData.pockets and
+    // savedPockets share index alignment after filtering.
+    const draftIdToRealPocketId: Record<string, string> = {}
+    finalData.pockets
+      .filter(p => p.type !== 'platform')
+      .forEach((_, i) => {
+        if (savedPockets[i]) draftIdToRealPocketId[`draft-${i}`] = savedPockets[i].id
+      })
+
     // 2. Save platforms + their pockets to Dexie
     for (const platformName of finalData.platforms) {
       const def = PLATFORM_DEFAULTS[platformName] ?? { color: '#94a3b8', icon: '📲' }
@@ -54,8 +64,12 @@ export function OnboardingFlow({ userId, onComplete }: Props) {
         color: def.color, icon: def.icon, is_active: true, created_at: new Date().toISOString()
       })
 
-      const payoutPocketId = finalData.payoutConfig[platformName]?.pocket_id
-        ?? savedPockets[0]?.id ?? ''
+      // Translate the draft-${i} id from Step5 into the real pocket UUID.
+      // Fallback to the first non-platform pocket if the mapping is missing.
+      const cfgPocketId = finalData.payoutConfig[platformName]?.pocket_id
+      const payoutPocketId = (cfgPocketId && draftIdToRealPocketId[cfgPocketId])
+        || savedPockets[0]?.id
+        || ''
 
       await db.platforms.add({
         id: platformId, user_id: userId, name: platformName, color: def.color,
