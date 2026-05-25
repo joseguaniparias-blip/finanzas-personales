@@ -67,7 +67,26 @@ export function usePlatforms(userId: string): PlatformsHook {
   }
 
   const deletePlatform = async (id: string) => {
-    await db.platforms.update(id, { is_active: false })
+    // Cascade soft-delete: deactivate the platform + its pockets, and remove
+    // pending payout events. Without this, the linked pocket lingered in the
+    // active list (with platform_id pointing to an inactive platform) and the
+    // pending events kept appearing in the agenda as ghosts.
+    await db.transaction('rw', db.platforms, db.pockets, db.scheduled_events, async () => {
+      await db.platforms.update(id, { is_active: false })
+
+      const linkedPockets = await db.pockets.where('platform_id').equals(id).toArray()
+      for (const p of linkedPockets) {
+        await db.pockets.update(p.id, { is_active: false })
+      }
+
+      const linkedEvents = await db.scheduled_events
+        .where('user_id').equals(userId)
+        .filter(e => e.type === 'platform_payout' && e.reference_id === id && e.status === 'pending')
+        .toArray()
+      for (const ev of linkedEvents) {
+        await db.scheduled_events.delete(ev.id)
+      }
+    })
     await load()
   }
 
