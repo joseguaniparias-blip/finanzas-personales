@@ -92,93 +92,99 @@ export function useScheduledEvents(userId: string): ScheduledEventsHook {
   const todayEvents = events.filter(e => e.due_date <= today)
 
   const confirmEvent = async (id: string, pocketId: string) => {
-    const event = await db.scheduled_events.get(id)
-    if (!event) return
-    // Idempotency guard: if a previous tap already confirmed/partial-ed this event,
-    // do not re-process. Prevents duplicate "next event" creation from rapid double-taps.
-    if (event.status !== 'pending') return
+    // Wrap everything in a single Dexie transaction so the status check + side
+    // effects are truly atomic. Without this, two parallel taps both see status
+    // === 'pending', both pass the guard, and both run side-effects → doubled
+    // balance, doubled transactions, doubled scheduleNext.
+    await db.transaction('rw', [
+      db.scheduled_events, db.pockets, db.transactions,
+      db.debts, db.collections, db.saving_goals, db.cadenas, db.platforms,
+    ], async () => {
+        const event = await db.scheduled_events.get(id)
+        if (!event || event.status !== 'pending') return
 
-    await db.scheduled_events.update(id, { status: 'confirmed', actual_pocket_id: pocketId })
+        await db.scheduled_events.update(id, { status: 'confirmed', actual_pocket_id: pocketId })
 
-    if (event.type === 'debt') {
-      // Expense: deduct from pocket
-      await adjustPocket(pocketId, -event.amount)
-      await addTx(userId, 'expense', event.amount, pocketId, event, today)
-      await handleDebtConfirm(event)
+        if (event.type === 'debt') {
+          await adjustPocket(pocketId, -event.amount)
+          await addTx(userId, 'expense', event.amount, pocketId, event, today)
+          await handleDebtConfirm(event)
 
-    } else if (event.type === 'collection') {
-      // Income: add to pocket
-      await adjustPocket(pocketId, +event.amount)
-      await addTx(userId, 'income', event.amount, pocketId, event, today)
-      await handleCollectionConfirm(event)
+        } else if (event.type === 'collection') {
+          await adjustPocket(pocketId, +event.amount)
+          await addTx(userId, 'income', event.amount, pocketId, event, today)
+          await handleCollectionConfirm(event)
 
-    } else if (event.type === 'saving') {
-      // Expense from source: deduct from pocket, update goal saved_amount
-      await adjustPocket(pocketId, -event.amount)
-      await addTx(userId, 'expense', event.amount, pocketId, event, today)
-      await handleSavingConfirm(event)
+        } else if (event.type === 'saving') {
+          await adjustPocket(pocketId, -event.amount)
+          await addTx(userId, 'expense', event.amount, pocketId, event, today)
+          await handleSavingConfirm(event)
 
-    } else if (event.type === 'cadena') {
-      // Expense: deduct from pocket, advance cadena round
-      await adjustPocket(pocketId, -event.amount)
-      await addTx(userId, 'expense', event.amount, pocketId, event, today)
-      await handleCadenaConfirm(event)
+        } else if (event.type === 'cadena') {
+          await adjustPocket(pocketId, -event.amount)
+          await addTx(userId, 'expense', event.amount, pocketId, event, today)
+          await handleCadenaConfirm(event)
 
-    } else if (event.type === 'platform_payout') {
-      // Move full platform pocket balance to dest pocket
-      await handlePlatformPayoutConfirm(event, pocketId, userId, today)
-    }
+        } else if (event.type === 'platform_payout') {
+          await handlePlatformPayoutConfirm(event, pocketId, userId, today)
+        }
+      }
+    )
 
     await load()
   }
 
   const partialEvent = async (id: string, pocketId: string, paidAmount: number) => {
-    const event = await db.scheduled_events.get(id)
-    if (!event) return
-    // Idempotency guard: same as confirmEvent
-    if (event.status !== 'pending') return
+    // Same atomicity strategy as confirmEvent.
+    await db.transaction('rw', [
+      db.scheduled_events, db.pockets, db.transactions,
+      db.debts, db.collections, db.saving_goals, db.cadenas, db.platforms,
+    ], async () => {
+        const event = await db.scheduled_events.get(id)
+        if (!event || event.status !== 'pending') return
 
-    // If user paid >= cuota, treat as full confirm with the larger amount.
-    if (paidAmount >= event.amount) {
-      const overrideEvent: ScheduledEvent = { ...event, amount: paidAmount }
-      await db.scheduled_events.update(id, { status: 'confirmed', actual_pocket_id: pocketId })
-      const isIncome = event.type === 'collection'
-      if (event.type !== 'platform_payout') {
+        // If user paid >= cuota, treat as full confirm with the larger amount.
+        if (paidAmount >= event.amount) {
+          const overrideEvent: ScheduledEvent = { ...event, amount: paidAmount }
+          await db.scheduled_events.update(id, { status: 'confirmed', actual_pocket_id: pocketId })
+          const isIncome = event.type === 'collection'
+          if (event.type !== 'platform_payout') {
+            await adjustPocket(pocketId, isIncome ? +paidAmount : -paidAmount)
+            await addTx(userId, isIncome ? 'income' : 'expense', paidAmount, pocketId, overrideEvent, today)
+          }
+          if (event.type === 'debt')       await handleDebtConfirm(overrideEvent)
+          else if (event.type === 'collection') await handleCollectionConfirm(overrideEvent)
+          else if (event.type === 'saving')     await handleSavingConfirm(overrideEvent)
+          else if (event.type === 'cadena')     await handleCadenaConfirm(overrideEvent)
+          return
+        }
+
+        const remaining = event.amount - paidAmount
+
+        await db.scheduled_events.update(id, {
+          status: 'partial',
+          actual_pocket_id: pocketId,
+          partial_amount: paidAmount,
+          remaining_after_partial: remaining
+        })
+
+        const isIncome = event.type === 'collection'
         await adjustPocket(pocketId, isIncome ? +paidAmount : -paidAmount)
-        await addTx(userId, isIncome ? 'income' : 'expense', paidAmount, pocketId, overrideEvent, today)
+        await addTx(userId, isIncome ? 'income' : 'expense', paidAmount, pocketId, event, today,
+          `Abono parcial — quedan $${remaining.toLocaleString('es-CO')}`)
+
+        if (event.type === 'debt') {
+          const debt = await db.debts.get(event.reference_id)
+          if (debt) await db.debts.update(debt.id, { paid_amount: debt.paid_amount + paidAmount })
+        } else if (event.type === 'collection') {
+          const col = await db.collections.get(event.reference_id)
+          if (col) await db.collections.update(col.id, { collected_amount: col.collected_amount + paidAmount })
+        } else if (event.type === 'saving') {
+          const goal = await db.saving_goals.get(event.reference_id)
+          if (goal) await db.saving_goals.update(goal.id, { saved_amount: goal.saved_amount + paidAmount })
+        }
       }
-      if (event.type === 'debt')       await handleDebtConfirm(overrideEvent)
-      else if (event.type === 'collection') await handleCollectionConfirm(overrideEvent)
-      else if (event.type === 'saving')     await handleSavingConfirm(overrideEvent)
-      else if (event.type === 'cadena')     await handleCadenaConfirm(overrideEvent)
-      await load()
-      return
-    }
-
-    const remaining = event.amount - paidAmount
-
-    await db.scheduled_events.update(id, {
-      status: 'partial',
-      actual_pocket_id: pocketId,
-      partial_amount: paidAmount,
-      remaining_after_partial: remaining
-    })
-
-    const isIncome = event.type === 'collection'
-    await adjustPocket(pocketId, isIncome ? +paidAmount : -paidAmount)
-    await addTx(userId, isIncome ? 'income' : 'expense', paidAmount, pocketId, event, today,
-      `Abono parcial — quedan $${remaining.toLocaleString('es-CO')}`)
-
-    if (event.type === 'debt') {
-      const debt = await db.debts.get(event.reference_id)
-      if (debt) await db.debts.update(debt.id, { paid_amount: debt.paid_amount + paidAmount })
-    } else if (event.type === 'collection') {
-      const col = await db.collections.get(event.reference_id)
-      if (col) await db.collections.update(col.id, { collected_amount: col.collected_amount + paidAmount })
-    } else if (event.type === 'saving') {
-      const goal = await db.saving_goals.get(event.reference_id)
-      if (goal) await db.saving_goals.update(goal.id, { saved_amount: goal.saved_amount + paidAmount })
-    }
+    )
 
     await load()
   }
