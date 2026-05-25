@@ -71,9 +71,36 @@ export function setupSyncHooks() {
   }
 }
 
+/**
+ * Pulls data from Supabase into the local Dexie store.
+ *
+ * IMPORTANT — only runs when the local store is EMPTY for this user.
+ * Previously this ran on every login and `bulkPut` overwrote local records
+ * with whatever the server had, silently destroying offline-only changes
+ * that hadn't been pushed yet (network failure, slow background sync).
+ *
+ * Trade-off: multi-device sync is degraded. Changes made on device B won't
+ * automatically appear on device A unless A's local store is cleared. The
+ * proper fix requires `updated_at` columns + per-row conflict resolution,
+ * which is a schema change deferred to a separate task.
+ */
 export async function pullFromSupabase(userId: string) {
   syncing = true
   try {
+    // Decide if local store is "empty" for this user. We check a few key
+    // tables; if any has data, we treat local as the source of truth and skip
+    // the pull entirely.
+    const [localPocketsCount, localTxsCount, localProfile] = await Promise.all([
+      db.pockets.where('user_id').equals(userId).count(),
+      db.transactions.where('user_id').equals(userId).count(),
+      db.user_profiles.get(userId),
+    ])
+    const hasLocalData = localPocketsCount > 0 || localTxsCount > 0 || !!localProfile
+    if (hasLocalData) {
+      // Skip — local store wins. Push hooks will keep server in sync going forward.
+      return
+    }
+
     const [
       { data: platforms },
       { data: pockets },
