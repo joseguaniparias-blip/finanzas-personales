@@ -22,7 +22,7 @@ function formatDue(iso: string, today: string): { label: string; urgent: boolean
   if (iso < today) return { label: `Vencido ${formatShort(iso)}`, urgent: true }
   if (iso === today) return { label: 'Aporte hoy', urgent: true }
   const tom = new Date(); tom.setDate(tom.getDate() + 1)
-  if (iso === toISODate(tom)) return { label: 'MaÃ±ana', urgent: false }
+  if (iso === toISODate(tom)) return { label: 'Mañana', urgent: false }
   return { label: formatShort(iso), urgent: false }
 }
 
@@ -34,7 +34,7 @@ export function SavingsPage({ userId }: Props) {
   const [selected, setSelected] = useState<SavingGoal | null>(null)
   const [editing, setEditing] = useState<SavingGoal | null>(null)
 
-  if (loading) return <div className="p-4 text-slate-400 text-sm animate-pulse">Cargandoâ€¦</div>
+  if (loading) return <div className="p-4 text-slate-400 text-sm animate-pulse">Cargando…</div>
 
   if (showForm || editing) {
     return (
@@ -137,7 +137,7 @@ export function SavingsPage({ userId }: Props) {
   )
 }
 
-// â”€â”€â”€ Saving goal card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Saving goal card ─────────────────────────────────────────────────────────
 
 function SavingGoalCard({ goal: g, pendingEvent, today, onTap }: {
   goal: SavingGoal
@@ -164,7 +164,7 @@ function SavingGoalCard({ goal: g, pendingEvent, today, onTap }: {
             <div className="flex items-center gap-2 mb-1">
               <p className="text-slate-200 font-semibold text-sm truncate">{g.name}</p>
               {isComplete && (
-                <span className="flex-shrink-0 text-xs text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full">âœ“ Meta</span>
+                <span className="flex-shrink-0 text-xs text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full">✓ Meta</span>
               )}
               {!g.target_amount && (
                 <span className="flex-shrink-0 text-xs text-slate-500 bg-slate-700 px-2 py-0.5 rounded-full">Sin meta</span>
@@ -172,7 +172,7 @@ function SavingGoalCard({ goal: g, pendingEvent, today, onTap }: {
             </div>
             <div className="flex items-center gap-1.5">
               <span className="text-xs text-slate-500">{freqLabel}</span>
-              <span className="text-slate-700">Â·</span>
+              <span className="text-slate-700">·</span>
               <span className="text-xs text-slate-500">{maskAmount(g.contribution_amount, false)} / aporte</span>
             </div>
           </div>

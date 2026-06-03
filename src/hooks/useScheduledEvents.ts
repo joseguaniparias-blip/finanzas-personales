@@ -43,7 +43,7 @@ export function useScheduledEvents(userId: string): ScheduledEventsHook {
   const confirmEvent = async (id: string, pocketId: string) => {
     // Wrap everything in a single Dexie transaction so the status check + side
     // effects are truly atomic. Without this, two parallel taps both see status
-    // === 'pending', both pass the guard, and both run side-effects â†’ doubled
+    // === 'pending', both pass the guard, and both run side-effects → doubled
     // balance, doubled transactions, doubled scheduleNext.
     await db.transaction('rw', [
       db.scheduled_events, db.pockets, db.transactions,
@@ -76,6 +76,11 @@ export function useScheduledEvents(userId: string): ScheduledEventsHook {
 
         } else if (event.type === 'platform_payout') {
           await handlePlatformPayoutConfirm(event, pocketId, userId, today)
+
+        } else if (event.type === 'recurring') {
+          await adjustPocket(pocketId, -event.amount)
+          await addTx(userId, 'expense', event.amount, pocketId, event, today)
+          await handleRecurringConfirm(event)
         }
       }
     )
@@ -105,6 +110,7 @@ export function useScheduledEvents(userId: string): ScheduledEventsHook {
           else if (event.type === 'collection') await handleCollectionConfirm(overrideEvent)
           else if (event.type === 'saving')     await handleSavingConfirm(overrideEvent)
           else if (event.type === 'cadena')     await handleCadenaConfirm(overrideEvent)
+          else if (event.type === 'recurring')  await handleRecurringConfirm(overrideEvent)
           return
         }
 
@@ -120,7 +126,7 @@ export function useScheduledEvents(userId: string): ScheduledEventsHook {
         const isIncome = event.type === 'collection'
         await adjustPocket(pocketId, isIncome ? +paidAmount : -paidAmount)
         await addTx(userId, isIncome ? 'income' : 'expense', paidAmount, pocketId, event, today,
-          `Abono parcial â€” quedan $${remaining.toLocaleString('es-CO')}`)
+          `Abono parcial — quedan $${remaining.toLocaleString('es-CO')}`)
 
         if (event.type === 'debt') {
           const debt = await db.debts.get(event.reference_id)
@@ -139,12 +145,12 @@ export function useScheduledEvents(userId: string): ScheduledEventsHook {
   }
 
   const postponeEvent = async (id: string) => {
-    // Posponer = correr 1 dÃ­a desde la fecha ACTUAL del evento, no regresar
-    // a "maÃ±ana". Si el evento estaba para dentro de 30 dÃ­as, posponer un dÃ­a
-    // lo mueve al dÃ­a 31 â€” antes lo regresaba a maÃ±ana, una regresiÃ³n brutal.
+    // Posponer = correr 1 día desde la fecha ACTUAL del evento, no regresar
+    // a "mañana". Si el evento estaba para dentro de 30 días, posponer un día
+    // lo mueve al día 31 — antes lo regresaba a mañana, una regresión brutal.
     const ev = await db.scheduled_events.get(id)
     if (!ev) return
-    const d = new Date(ev.due_date + 'T12:00:00')  // noon â†’ no DST/timezone surprises
+    const d = new Date(ev.due_date + 'T12:00:00')  // noon → no DST/timezone surprises
     d.setDate(d.getDate() + 1)
     await db.scheduled_events.update(id, { due_date: toISODate(d) })
     await load()
@@ -166,7 +172,7 @@ export function useScheduledEvents(userId: string): ScheduledEventsHook {
   return { events, todayEvents, loading, confirmEvent, partialEvent, postponeEvent, rescheduleEvent, deleteEvent, getPendingByType, getPendingByRef }
 }
 
-// â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 async function adjustPocket(pocketId: string, delta: number) {
   const pocket = await db.pockets.get(pocketId)
@@ -178,7 +184,7 @@ async function addTx(
   pocketId: string, event: ScheduledEvent, date: string, note?: string
 ) {
   // For platform_payout events the reference_id IS the platform id, so we
-  // tag the transaction with platform_id too â€” Reports / dashboards filter
+  // tag the transaction with platform_id too — Reports / dashboards filter
   // ingresos by plataforma and these payouts must show up there.
   const platformId = event.type === 'platform_payout' ? event.reference_id : null
   await db.transactions.add({
@@ -196,7 +202,7 @@ async function handleDebtConfirm(event: ScheduledEvent) {
   const newPaid = debt.paid_amount + event.amount
   const updates: Record<string, unknown> = { paid_amount: newPaid }
   if (debt.frequency === 'once') {
-    // Single payment â€” always mark as paid_off after confirming
+    // Single payment — always mark as paid_off after confirming
     updates.status = 'paid_off'
   } else if (debt.has_total && debt.total_amount && newPaid >= debt.total_amount) {
     updates.status = 'paid_off'
@@ -252,7 +258,7 @@ async function handlePlatformPayoutConfirm(event: ScheduledEvent, destPocketId: 
   if (event.amount > 0) {
     // The weekly close (usePlatformPayouts) already subtracted closingBalance
     // from the platform pocket and recorded it as this event's amount. At
-    // collect time we ONLY move event.amount into the destination â€” we do
+    // collect time we ONLY move event.amount into the destination — we do
     // NOT touch the platform pocket again. Any positive remainder there is
     // current-week earnings that must be preserved.
     //
@@ -261,11 +267,11 @@ async function handlePlatformPayoutConfirm(event: ScheduledEvent, destPocketId: 
     // button in the agenda sheet.
     await adjustPocket(targetPocketId, event.amount)
     await addTx(userId, 'income', event.amount, targetPocketId, event, today,
-      `Pago ${platform.name} â€” perÃ­odo cerrado`)
+      `Pago ${platform.name} — período cerrado`)
   }
 
   // The next payout event is created automatically by usePlatformPayouts when
-  // the next Sunday closes â€” no scheduling here.
+  // the next Sunday closes — no scheduling here.
 }
 
 async function scheduleNext(prev: ScheduledEvent, frequency: string, amount: number) {
@@ -276,10 +282,11 @@ async function scheduleNext(prev: ScheduledEvent, frequency: string, amount: num
     .first()
   if (existing) return
 
-  const d = new Date(prev.due_date)
-  if (frequency === 'monthly') d.setMonth(d.getMonth() + 1)
-  else if (frequency === 'weekly') d.setDate(d.getDate() + 7)
-  else d.setDate(d.getDate() + 1)
+  const d = new Date(prev.due_date + 'T12:00:00')
+  if (frequency === 'monthly')      d.setMonth(d.getMonth() + 1)
+  else if (frequency === 'weekly')  d.setDate(d.getDate() + 7)
+  else if (frequency === 'yearly')  d.setFullYear(d.getFullYear() + 1)
+  else                              d.setDate(d.getDate() + 1)
 
   await db.scheduled_events.add({
     id: crypto.randomUUID(),
@@ -295,4 +302,14 @@ async function scheduleNext(prev: ScheduledEvent, frequency: string, amount: num
     remaining_after_partial: null,
     created_at: new Date().toISOString()
   })
+}
+
+async function handleRecurringConfirm(event: ScheduledEvent) {
+  const rec = await db.recurring_payments.get(event.reference_id)
+  if (!rec || !rec.is_active) return
+  // Always schedule the next period — recurring payments are open-ended.
+  // For variable amounts we re-use the configured base amount (the user can
+  // override at confirm time via the partial sheet); the next event keeps
+  // the configured suggestion.
+  await scheduleNext(event, rec.frequency, rec.amount)
 }

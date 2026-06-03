@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect, useCallback } from 'react'
-import { ArrowUpRight, ArrowDownRight, ArrowLeft, Pencil, Trash2 } from 'lucide-react'
+import { ArrowUpRight, ArrowDownRight, ArrowLeft, Pencil, Trash2, ArrowRightLeft } from 'lucide-react'
 import { db } from '@/lib/db'
 import { usePockets } from '@/hooks/usePockets'
 import { useCategories } from '@/hooks/useCategories'
@@ -7,23 +7,12 @@ import { maskAmount } from '@/components/shared/PrivacyToggle'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { AmountInput, parseAmount } from '@/components/shared/AmountInput'
 import type { Transaction, Pocket, Category } from '@/types'
-import { todayISO, toISODate, addDaysISO } from '@/lib/date'
+import { todayISO, addDaysISO } from '@/lib/date'
+import { DateRangeFilter, buildPreset, type DateRange } from '@/components/shared/DateRangeFilter'
 
 interface Props { userId: string }
 
-type Period = 'day' | 'week' | 'month'
 type TypeFilter = 'all' | 'income' | 'expense'
-
-function periodDates(period: Period): { from: string; to: string } {
-  const today = new Date()
-  const to = toISODate(today)
-  if (period === 'day') return { from: to, to }
-  if (period === 'week') {
-    const d = new Date(today); d.setDate(d.getDate() - 6)
-    return { from: toISODate(d), to }
-  }
-  return { from: today.toISOString().slice(0, 7) + '-01', to }
-}
 
 function groupByDate(txs: Transaction[]): { date: string; items: Transaction[] }[] {
   const map = new Map<string, Transaction[]>()
@@ -58,6 +47,15 @@ async function reverseTxOnPocket(tx: Transaction) {
   await db.pockets.update(tx.pocket_id, { balance: pocket.balance + delta })
 }
 
+/** Reverses one leg of a transfer (transfer_in adds back, transfer_out subtracts back). */
+async function reverseTransferLegOnPocket(tx: Transaction) {
+  const pocket = await db.pockets.get(tx.pocket_id)
+  if (!pocket) return
+  const isIn = tx.reference_type === 'transfer_in'
+  const delta = isIn ? -tx.amount : tx.amount
+  await db.pockets.update(tx.pocket_id, { balance: pocket.balance + delta })
+}
+
 /**
  * Applies the balance effect of a transaction on its pocket.
  * Caller must invoke inside a Dexie 'rw' transaction that includes db.pockets.
@@ -72,7 +70,7 @@ async function applyTxOnPocket(tx: Pick<Transaction, 'type' | 'amount' | 'pocket
 export function HistoryPage({ userId }: Props) {
   const { pockets, load: reloadPockets } = usePockets(userId)
   const { categories } = useCategories(userId)
-  const [period, setPeriod] = useState<Period>('month')
+  const [range, setRange] = useState<DateRange>(() => buildPreset('this_month'))
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
   const [pocketFilter, setPocketFilter] = useState<string>('all')
   const [txs, setTxs] = useState<Transaction[]>([])
@@ -82,7 +80,7 @@ export function HistoryPage({ userId }: Props) {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const { from, to } = periodDates(period)
+    const { from, to } = range
     let data = await db.transactions
       .where('user_id').equals(userId)
       .and(t => t.date >= from && t.date <= to)
@@ -90,7 +88,7 @@ export function HistoryPage({ userId }: Props) {
     data = data.reverse()
     setTxs(data)
     setLoading(false)
-  }, [userId, period])
+  }, [userId, range])
 
   useEffect(() => { load() }, [load])
 
@@ -124,8 +122,20 @@ export function HistoryPage({ userId }: Props) {
     // Atomic: reverse pocket balance + delete tx in one transaction so a parallel
     // edit/delete cannot race on the pocket balance.
     await db.transaction('rw', db.transactions, db.pockets, async () => {
-      await reverseTxOnPocket(tx)
-      await db.transactions.delete(tx.id)
+      if (tx.type === 'transfer' && tx.transfer_group_id) {
+        // Delete BOTH legs of the transfer and reverse both pocket balances.
+        const pair = await db.transactions
+          .where('user_id').equals(userId)
+          .filter(t => t.transfer_group_id === tx.transfer_group_id)
+          .toArray()
+        for (const leg of pair) {
+          await reverseTransferLegOnPocket(leg)
+          await db.transactions.delete(leg.id)
+        }
+      } else {
+        await reverseTxOnPocket(tx)
+        await db.transactions.delete(tx.id)
+      }
     })
     await reloadPockets()
     setSelectedTx(null)
@@ -175,14 +185,9 @@ export function HistoryPage({ userId }: Props) {
     <div className="p-4 max-w-lg mx-auto">
       <PageHeader title="Historial" />
 
-      {/* Period tabs */}
-      <div className="flex gap-1 bg-slate-800 rounded-xl p-1 mb-4">
-        {([['day','Hoy'],['week','Semana'],['month','Mes']] as [Period,string][]).map(([p,label]) => (
-          <button key={p} onClick={() => setPeriod(p)}
-            className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${period === p ? 'bg-slate-600 text-slate-100' : 'text-slate-500 hover:text-slate-400'}`}>
-            {label}
-          </button>
-        ))}
+      {/* Date range filter */}
+      <div className="mb-4">
+        <DateRangeFilter value={range} onChange={setRange} />
       </div>
 
       {/* Type + Pocket filters */}
@@ -216,11 +221,11 @@ export function HistoryPage({ userId }: Props) {
         </div>
       </div>
 
-      {loading && <p className="text-slate-500 text-sm animate-pulse text-center py-8">Cargandoâ€¦</p>}
+      {loading && <p className="text-slate-500 text-sm animate-pulse text-center py-8">Cargando…</p>}
 
       {!loading && groups.length === 0 && (
         <div className="text-center py-12">
-          <p className="text-slate-500 text-sm">Sin movimientos en este perÃ­odo</p>
+          <p className="text-slate-500 text-sm">Sin movimientos en este período</p>
         </div>
       )}
 
@@ -233,22 +238,37 @@ export function HistoryPage({ userId }: Props) {
               {items.map(tx => {
                 const pocket = pocketMap[tx.pocket_id]
                 const isIncome = tx.type === 'income'
+                const isTransfer = tx.type === 'transfer'
+                const isTransferIn = isTransfer && tx.reference_type === 'transfer_in'
+                const otherPocket = isTransfer && tx.transfer_other_pocket_id
+                  ? pocketMap[tx.transfer_other_pocket_id]
+                  : undefined
                 return (
                   <button key={tx.id} onClick={() => setSelectedTx(tx)}
                     className="w-full flex items-center gap-3 bg-slate-800 border border-slate-700 rounded-xl p-3 hover:border-slate-600 transition-colors text-left">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${isIncome ? 'bg-emerald-600/20' : 'bg-red-600/20'}`}>
-                      {isIncome
-                        ? <ArrowUpRight size={14} className="text-emerald-400" />
-                        : <ArrowDownRight size={14} className="text-red-400" />}
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                      isTransfer ? 'bg-blue-600/20' : isIncome ? 'bg-emerald-600/20' : 'bg-red-600/20'
+                    }`}>
+                      {isTransfer
+                        ? <ArrowRightLeft size={14} className="text-blue-400" />
+                        : isIncome
+                          ? <ArrowUpRight size={14} className="text-emerald-400" />
+                          : <ArrowDownRight size={14} className="text-red-400" />}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-slate-200 text-sm truncate">{txLabel(tx)}</p>
+                      <p className="text-slate-200 text-sm truncate">
+                        {isTransfer
+                          ? (isTransferIn ? `Transferencia de ${otherPocket?.name ?? '…'}` : `Transferencia a ${otherPocket?.name ?? '…'}`)
+                          : txLabel(tx)}
+                      </p>
                       {pocket && (
                         <p className="text-xs text-slate-500">{pocket.icon} {pocket.name}</p>
                       )}
                     </div>
-                    <p className={`font-bold text-sm flex-shrink-0 ${isIncome ? 'text-emerald-400' : 'text-red-400'}`}>
-                      {isIncome ? '+' : 'âˆ’'} {maskAmount(tx.amount, false)}
+                    <p className={`font-bold text-sm flex-shrink-0 ${
+                      isTransfer ? 'text-blue-400' : isIncome ? 'text-emerald-400' : 'text-red-400'
+                    }`}>
+                      {isTransfer ? (isTransferIn ? '+' : '−') : isIncome ? '+' : '−'} {maskAmount(tx.amount, false)}
                     </p>
                   </button>
                 )
@@ -261,7 +281,7 @@ export function HistoryPage({ userId }: Props) {
   )
 }
 
-// â”€â”€â”€ Detail view â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Detail view ──────────────────────────────────────────────────────────────
 
 interface DetailProps {
   tx: Transaction
@@ -275,6 +295,7 @@ interface DetailProps {
 function TransactionDetailView({ tx, pocket, category, onBack, onEdit, onDelete }: DetailProps) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const isIncome = tx.type === 'income'
+  const isTransfer = tx.type === 'transfer'
 
   return (
     <div className="p-4 max-w-lg mx-auto">
@@ -283,16 +304,24 @@ function TransactionDetailView({ tx, pocket, category, onBack, onEdit, onDelete 
           <ArrowLeft size={18} />
         </button>
         <h2 className="text-slate-100 text-lg font-bold flex-1">Detalle</h2>
-        <button onClick={onEdit} className="p-2 rounded-full bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors">
-          <Pencil size={16} />
-        </button>
+        {!isTransfer && (
+          <button onClick={onEdit} className="p-2 rounded-full bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors">
+            <Pencil size={16} />
+          </button>
+        )}
       </div>
 
       {/* Amount card */}
-      <div className={`rounded-2xl p-5 mb-5 border text-center ${isIncome ? 'bg-emerald-600/10 border-emerald-600/20' : 'bg-red-600/10 border-red-600/20'}`}>
-        <p className="text-xs text-slate-400 mb-1">{isIncome ? 'Ingreso' : 'Gasto'}</p>
-        <p className={`text-3xl font-bold ${isIncome ? 'text-emerald-400' : 'text-red-400'}`}>
-          {isIncome ? '+' : 'âˆ’'} {maskAmount(tx.amount, false)}
+      <div className={`rounded-2xl p-5 mb-5 border text-center ${
+        isTransfer ? 'bg-blue-600/10 border-blue-600/20'
+        : isIncome ? 'bg-emerald-600/10 border-emerald-600/20'
+        : 'bg-red-600/10 border-red-600/20'
+      }`}>
+        <p className="text-xs text-slate-400 mb-1">{isTransfer ? 'Transferencia' : isIncome ? 'Ingreso' : 'Gasto'}</p>
+        <p className={`text-3xl font-bold ${
+          isTransfer ? 'text-blue-400' : isIncome ? 'text-emerald-400' : 'text-red-400'
+        }`}>
+          {isTransfer ? '' : isIncome ? '+' : '−'} {maskAmount(tx.amount, false)}
         </p>
         <p className="text-slate-500 text-sm mt-1">{formatDate(tx.date)}</p>
       </div>
@@ -300,7 +329,7 @@ function TransactionDetailView({ tx, pocket, category, onBack, onEdit, onDelete 
       {/* Info rows */}
       <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 mb-5 space-y-3">
         {pocket && <InfoRow label="Bolsillo" value={`${pocket.icon} ${pocket.name}`} />}
-        {category && <InfoRow label="CategorÃ­a" value={`${category.icon} ${category.name}`} />}
+        {category && <InfoRow label="Categoría" value={`${category.icon} ${category.name}`} />}
         {tx.note && <InfoRow label="Nota" value={tx.note} />}
         {tx.reference_type && (
           <InfoRow label="Tipo" value={tx.reference_type.replace(/_/g, ' ')} />
@@ -316,12 +345,12 @@ function TransactionDetailView({ tx, pocket, category, onBack, onEdit, onDelete 
           </button>
         ) : (
           <div className="bg-red-950/40 border border-red-700/40 rounded-xl p-4 text-center">
-            <p className="text-slate-300 text-sm mb-3">Â¿Eliminar este registro? El saldo del bolsillo se ajustarÃ¡.</p>
+            <p className="text-slate-300 text-sm mb-3">¿Eliminar este registro? El saldo del bolsillo se ajustará.</p>
             <div className="flex gap-2">
               <button onClick={() => setConfirmDelete(false)}
                 className="flex-1 py-2 rounded-lg bg-slate-700 text-slate-300 text-sm">No</button>
               <button onClick={onDelete}
-                className="flex-1 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold">SÃ­, eliminar</button>
+                className="flex-1 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold">Sí, eliminar</button>
             </div>
           </div>
         )}
@@ -339,7 +368,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   )
 }
 
-// â”€â”€â”€ Edit form â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Edit form ────────────────────────────────────────────────────────────────
 
 interface EditProps {
   tx: Transaction
@@ -396,7 +425,7 @@ function TransactionEditForm({ tx, pockets, categories, onSave, onCancel }: Edit
                   ? t === 'income' ? 'bg-emerald-600/20 border-emerald-500 text-emerald-300' : 'bg-red-600/20 border-red-500 text-red-300'
                   : 'border-slate-700 text-slate-400'
               }`}>
-              {t === 'income' ? 'â†‘ Ingreso' : 'â†“ Gasto'}
+              {t === 'income' ? '↑ Ingreso' : '↓ Gasto'}
             </button>
           ))}
         </div>
@@ -430,11 +459,11 @@ function TransactionEditForm({ tx, pockets, categories, onSave, onCancel }: Edit
       {/* Category (only for expenses) */}
       {type === 'expense' && categories.length > 0 && (
         <div className="mb-5">
-          <p className="text-xs text-slate-400 mb-2">CategorÃ­a</p>
+          <p className="text-xs text-slate-400 mb-2">Categoría</p>
           <div className="grid grid-cols-3 gap-2">
             <button onClick={() => setCategoryId('')}
               className={`py-2 rounded-xl text-xs transition-colors border ${!categoryId ? 'bg-slate-600 border-slate-500 text-slate-200' : 'border-slate-700 text-slate-500'}`}>
-              Sin categorÃ­a
+              Sin categoría
             </button>
             {categories.map(c => (
               <button key={c.id} onClick={() => setCategoryId(c.id)}
@@ -451,13 +480,13 @@ function TransactionEditForm({ tx, pockets, categories, onSave, onCancel }: Edit
       <div className="mb-6">
         <label className="block text-xs text-slate-400 mb-1">Nota (opcional)</label>
         <input value={note} onChange={e => setNote(e.target.value)}
-          placeholder="DescripciÃ³nâ€¦"
+          placeholder="Descripción…"
           className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-blue-500 placeholder:text-slate-600" />
       </div>
 
       <button onClick={handleSave} disabled={!canSave || saving}
         className="w-full bg-blue-600 disabled:opacity-40 hover:bg-blue-500 text-white py-4 rounded-xl font-semibold text-sm transition-colors">
-        {saving ? 'Guardandoâ€¦' : 'Guardar cambios'}
+        {saving ? 'Guardando…' : 'Guardar cambios'}
       </button>
     </div>
   )

@@ -22,7 +22,7 @@ function formatDue(iso: string, today: string): { label: string; urgent: boolean
   if (iso < today) return { label: `Vencido ${formatShort(iso)}`, urgent: true }
   if (iso === today) return { label: 'Vence hoy', urgent: true }
   const tom = new Date(); tom.setDate(tom.getDate() + 1)
-  if (iso === toISODate(tom)) return { label: 'MaÃ±ana', urgent: false }
+  if (iso === toISODate(tom)) return { label: 'Mañana', urgent: false }
   return { label: formatShort(iso), urgent: false }
 }
 
@@ -34,7 +34,7 @@ export function CollectionsPage({ userId }: Props) {
   const [selected, setSelected] = useState<Collection | null>(null)
   const [editing, setEditing] = useState<Collection | null>(null)
 
-  if (loading) return <div className="p-4 text-slate-400 text-sm animate-pulse">Cargandoâ€¦</div>
+  if (loading) return <div className="p-4 text-slate-400 text-sm animate-pulse">Cargando…</div>
 
   if (showForm || editing) {
     return (
@@ -131,7 +131,7 @@ export function CollectionsPage({ userId }: Props) {
   )
 }
 
-// â”€â”€â”€ Collection card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Collection card ──────────────────────────────────────────────────────────
 
 function CollectionCard({ collection: c, pendingEvent, today, onTap }: {
   collection: Collection
@@ -162,10 +162,10 @@ function CollectionCard({ collection: c, pendingEvent, today, onTap }: {
             <div className="flex items-center gap-1.5">
               <User size={10} className="text-slate-600" />
               <p className="text-xs text-slate-500">{c.person_name}</p>
-              <span className="text-slate-700">Â·</span>
+              <span className="text-slate-700">·</span>
               <p className="text-xs text-slate-500">
                 {maskAmount(c.installment_amount, false)}
-                {c.frequency !== 'once' && `/${c.frequency === 'monthly' ? 'mes' : c.frequency === 'weekly' ? 'sem' : 'dÃ­a'}`}
+                {c.frequency !== 'once' && `/${c.frequency === 'monthly' ? 'mes' : c.frequency === 'weekly' ? 'sem' : 'día'}`}
               </p>
             </div>
           </div>

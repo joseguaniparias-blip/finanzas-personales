@@ -7,8 +7,18 @@ interface TransactionsHook {
   transactions: Transaction[]
   loading: boolean
   addTransaction: (t: Omit<Transaction, 'id' | 'created_at'>) => Promise<Transaction>
+  transferBetweenPockets: (params: TransferParams) => Promise<void>
   getByPocket: (pocketId: string, limit?: number) => Promise<Transaction[]>
   getByPlatform: (platformId: string, from: string, to: string) => Promise<Transaction[]>
+}
+
+export interface TransferParams {
+  userId: string
+  fromPocketId: string
+  toPocketId: string
+  amount: number
+  date: string
+  note?: string | null
 }
 
 export function useTransactions(userId: string): TransactionsHook {
@@ -49,6 +59,47 @@ export function useTransactions(userId: string): TransactionsHook {
     return tx
   }
 
+  const transferBetweenPockets = async (params: TransferParams) => {
+    const { userId: uid, fromPocketId, toPocketId, amount, date, note } = params
+    if (fromPocketId === toPocketId) throw new Error('Origen y destino deben ser distintos')
+    if (amount <= 0) throw new Error('El monto debe ser mayor a 0')
+
+    const groupId = crypto.randomUUID()
+    const now = new Date().toISOString()
+
+    await db.transaction('rw', db.transactions, db.pockets, async () => {
+      const fromPocket = await db.pockets.get(fromPocketId)
+      const toPocket   = await db.pockets.get(toPocketId)
+      if (!fromPocket || !toPocket) throw new Error('Bolsillo no encontrado')
+      if (fromPocket.type === 'platform' || toPocket.type === 'platform') {
+        throw new Error('Las billeteras de plataforma no participan en transferencias')
+      }
+
+      // Outflow leg
+      await db.transactions.add({
+        id: crypto.randomUUID(), user_id: uid, type: 'transfer', amount,
+        pocket_id: fromPocketId, category_id: null, platform_id: null,
+        reference_id: null, reference_type: 'transfer_out',
+        note: note ?? null, receipt_url: null, date,
+        transfer_group_id: groupId, transfer_other_pocket_id: toPocketId,
+        created_at: now,
+      })
+      // Inflow leg
+      await db.transactions.add({
+        id: crypto.randomUUID(), user_id: uid, type: 'transfer', amount,
+        pocket_id: toPocketId, category_id: null, platform_id: null,
+        reference_id: null, reference_type: 'transfer_in',
+        note: note ?? null, receipt_url: null, date,
+        transfer_group_id: groupId, transfer_other_pocket_id: fromPocketId,
+        created_at: now,
+      })
+      // Pocket balance updates
+      await db.pockets.update(fromPocketId, { balance: fromPocket.balance - amount })
+      await db.pockets.update(toPocketId,   { balance: toPocket.balance + amount })
+    })
+    await load()
+  }
+
   const getByPocket = async (pocketId: string, limit = 50): Promise<Transaction[]> => {
     const data = await db.transactions
       .where('pocket_id').equals(pocketId)
@@ -65,5 +116,5 @@ export function useTransactions(userId: string): TransactionsHook {
     return data
   }
 
-  return { transactions, loading, addTransaction, getByPocket, getByPlatform }
+  return { transactions, loading, addTransaction, transferBetweenPockets, getByPocket, getByPlatform }
 }

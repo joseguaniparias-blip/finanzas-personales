@@ -5,24 +5,9 @@ import { useCategories } from '@/hooks/useCategories'
 import { maskAmount } from '@/components/shared/PrivacyToggle'
 import { PageHeader } from '@/components/shared/PageHeader'
 import type { Transaction } from '@/types'
-import { toISODate } from '@/lib/date'
+import { DateRangeFilter, buildPreset, type DateRange } from '@/components/shared/DateRangeFilter'
 
 interface Props { userId: string }
-
-type Period = 'week' | 'month' | 'year'
-
-function periodDates(period: Period): { from: string; to: string } {
-  const today = new Date()
-  const to = toISODate(today)
-  if (period === 'week') {
-    const d = new Date(today); d.setDate(d.getDate() - 6)
-    return { from: toISODate(d), to }
-  }
-  if (period === 'month') {
-    return { from: today.toISOString().slice(0, 7) + '-01', to }
-  }
-  return { from: today.getFullYear() + '-01-01', to }
-}
 
 function Bar({ value, max, color }: { value: number; max: number; color: string }) {
   const pct = max > 0 ? Math.min(100, (value / max) * 100) : 0
@@ -36,20 +21,20 @@ function Bar({ value, max, color }: { value: number; max: number; color: string 
 export function ReportsPage({ userId }: Props) {
   const { platforms } = usePlatforms(userId)
   const { categories } = useCategories(userId)
-  const [period, setPeriod] = useState<Period>('month')
+  const [range, setRange] = useState<DateRange>(() => buildPreset('this_month'))
   const [txs, setTxs] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
     setLoading(true)
-    const { from, to } = periodDates(period)
+    const { from, to } = range
     const data = await db.transactions
       .where('user_id').equals(userId)
       .and(t => t.date >= from && t.date <= to)
       .sortBy('date')
     setTxs(data)
     setLoading(false)
-  }, [userId, period])
+  }, [userId, range])
 
   useEffect(() => { load() }, [load])
 
@@ -78,39 +63,34 @@ export function ReportsPage({ userId }: Props) {
   // Top 5 expenses
   const top5 = [...expenses].sort((a, b) => b.amount - a.amount).slice(0, 5)
 
-  const periodLabel = period === 'week' ? 'Ãšltimos 7 dÃ­as' : period === 'month' ? 'Este mes' : 'Este aÃ±o'
+  const periodLabel = range.label
 
   return (
     <div className="p-4 max-w-lg mx-auto">
       <PageHeader title="Reportes" />
 
-      {/* Period filter */}
-      <div className="flex gap-1 bg-slate-800 rounded-xl p-1 mb-5">
-        {([['week','Semana'],['month','Mes'],['year','AÃ±o']] as [Period,string][]).map(([p,label]) => (
-          <button key={p} onClick={() => setPeriod(p)}
-            className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${period === p ? 'bg-slate-600 text-slate-100' : 'text-slate-500 hover:text-slate-400'}`}>
-            {label}
-          </button>
-        ))}
+      {/* Date range filter */}
+      <div className="mb-5">
+        <DateRangeFilter value={range} onChange={setRange} />
       </div>
 
-      {loading && <p className="text-slate-500 text-sm animate-pulse text-center py-8">Calculandoâ€¦</p>}
+      {loading && <p className="text-slate-500 text-sm animate-pulse text-center py-8">Calculando…</p>}
 
       {!loading && (
         <div className="space-y-5">
           {/* Ganancia neta */}
           <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-5 border border-slate-700">
-            <p className="text-xs text-slate-400 uppercase tracking-wide mb-3">Ganancia neta Â· {periodLabel}</p>
+            <p className="text-xs text-slate-400 uppercase tracking-wide mb-3">Ganancia neta · {periodLabel}</p>
             <p className={`text-3xl font-bold mb-4 ${netProfit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
               {netProfit >= 0 ? '+' : ''}{maskAmount(netProfit, false)}
             </p>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <p className="text-xs text-slate-500 mb-0.5">â†‘ Ingresos</p>
+                <p className="text-xs text-slate-500 mb-0.5">↑ Ingresos</p>
                 <p className="text-emerald-400 font-semibold text-sm">{maskAmount(totalIncome, false)}</p>
               </div>
               <div>
-                <p className="text-xs text-slate-500 mb-0.5">â†“ Gastos</p>
+                <p className="text-xs text-slate-500 mb-0.5">↓ Gastos</p>
                 <p className="text-red-400 font-semibold text-sm">{maskAmount(totalExpense, false)}</p>
               </div>
             </div>
@@ -134,10 +114,10 @@ export function ReportsPage({ userId }: Props) {
             </div>
           )}
 
-          {/* Gastos por categorÃ­a */}
+          {/* Gastos por categoría */}
           {byCategory.length > 0 && (
             <div className="bg-slate-800 rounded-2xl p-4 border border-slate-700">
-              <p className="text-xs text-slate-400 uppercase tracking-wide mb-4">Gastos por categorÃ­a</p>
+              <p className="text-xs text-slate-400 uppercase tracking-wide mb-4">Gastos por categoría</p>
               <div className="space-y-3">
                 {byCategory.map(({ category: c, total }) => {
                   const overLimit = c.monthly_limit && total > c.monthly_limit
@@ -156,7 +136,7 @@ export function ReportsPage({ userId }: Props) {
                       </div>
                       <Bar value={total} max={c.monthly_limit ?? maxCategory} color={overLimit ? 'bg-red-500' : 'bg-orange-500'} />
                       {overLimit && (
-                        <p className="text-xs text-red-400 mt-0.5">âš ï¸ LÃ­mite superado en {maskAmount(total - c.monthly_limit!, false)}</p>
+                        <p className="text-xs text-red-400 mt-0.5">⚠️ Límite superado en {maskAmount(total - c.monthly_limit!, false)}</p>
                       )}
                     </div>
                   )
@@ -168,14 +148,14 @@ export function ReportsPage({ userId }: Props) {
           {/* Top 5 gastos */}
           {top5.length > 0 && (
             <div className="bg-slate-800 rounded-2xl p-4 border border-slate-700">
-              <p className="text-xs text-slate-400 uppercase tracking-wide mb-3">Top gastos del perÃ­odo</p>
+              <p className="text-xs text-slate-400 uppercase tracking-wide mb-3">Top gastos del período</p>
               <div className="space-y-2">
                 {top5.map((tx, i) => {
                   const cat = categories.find(c => c.id === tx.category_id)
                   return (
                     <div key={tx.id} className="flex items-center gap-3">
                       <span className="text-slate-600 text-xs w-4">{i + 1}</span>
-                      <span className="text-base">{cat?.icon ?? 'ðŸ’¸'}</span>
+                      <span className="text-base">{cat?.icon ?? '💸'}</span>
                       <div className="flex-1 min-w-0">
                         <p className="text-slate-300 text-sm truncate">{tx.note ?? cat?.name ?? 'Gasto'}</p>
                         <p className="text-slate-600 text-xs">{tx.date}</p>
@@ -190,7 +170,7 @@ export function ReportsPage({ userId }: Props) {
 
           {byPlatform.length === 0 && byCategory.length === 0 && (
             <div className="text-center py-10">
-              <p className="text-slate-500 text-sm">Sin movimientos en este perÃ­odo</p>
+              <p className="text-slate-500 text-sm">Sin movimientos en este período</p>
               <p className="text-slate-600 text-xs mt-1">Registra ingresos y gastos para ver tus reportes</p>
             </div>
           )}

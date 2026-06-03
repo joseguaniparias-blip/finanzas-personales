@@ -67,7 +67,7 @@ export function useCadenas(userId: string): CadenasHook {
   }
 
   const closeCadena = async (id: string) => {
-    // 'cancelled' = el usuario abandonÃ³ / cerrÃ³ manualmente.
+    // 'cancelled' = el usuario abandonó / cerró manualmente.
     // 'completed' se reserva para cuando todas las rondas naturalmente terminaron
     // (ver recordPayment que setea completed cuando current_round > participants).
     await db.transaction('rw', db.cadenas, db.scheduled_events, async () => {

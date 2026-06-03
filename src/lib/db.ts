@@ -1,7 +1,7 @@
 import Dexie, { type Table } from 'dexie'
 import type {
   UserProfile, Platform, Pocket, Category, Transaction,
-  Debt, Collection, SavingGoal, Cadena, ScheduledEvent
+  Debt, Collection, SavingGoal, Cadena, ScheduledEvent, RecurringPayment
 } from '@/types'
 
 // IndexedDB cannot index booleans — coerce them to 0/1 for indexed boolean fields
@@ -27,6 +27,7 @@ class FinanzasDB extends Dexie {
   saving_goals!: Table<SavingGoal>
   cadenas!: Table<Cadena>
   scheduled_events!: Table<ScheduledEvent>
+  recurring_payments!: Table<RecurringPayment>
 
   constructor() {
     super('FinanzasDB')
@@ -41,6 +42,15 @@ class FinanzasDB extends Dexie {
       saving_goals:  'id, user_id, is_active',
       cadenas:       'id, user_id, status',
       scheduled_events: 'id, user_id, due_date, status, type'
+    })
+
+    // v2: add recurring_payments table + Category.kind field (backfilled to 'expense')
+    this.version(2).stores({
+      recurring_payments: 'id, user_id, is_active'
+    }).upgrade(async tx => {
+      await tx.table('categories').toCollection().modify(c => {
+        if (!('kind' in c)) c.kind = 'expense'
+      })
     })
 
     // Coerce boolean is_active → 0/1 so IndexedDB can index and filter it
@@ -67,6 +77,15 @@ class FinanzasDB extends Dexie {
       Object.assign(obj, coerced)
     })
     this.saving_goals.hook('updating', (mods) => {
+      if ('is_active' in mods && typeof mods.is_active === 'boolean') {
+        return { ...mods, is_active: mods.is_active ? 1 : 0 }
+      }
+    })
+    this.recurring_payments.hook('creating', (_key, obj) => {
+      const coerced = coerceBooleans(obj, ['is_active'])
+      Object.assign(obj, coerced)
+    })
+    this.recurring_payments.hook('updating', (mods) => {
       if ('is_active' in mods && typeof mods.is_active === 'boolean') {
         return { ...mods, is_active: mods.is_active ? 1 : 0 }
       }

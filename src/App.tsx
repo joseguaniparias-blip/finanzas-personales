@@ -21,6 +21,7 @@ import { CollectionsPage } from '@/pages/collections/CollectionsPage'
 import { SavingsPage } from '@/pages/savings/SavingsPage'
 import { CadenaPage } from '@/pages/cadena/CadenaPage'
 import { ConfigPage } from '@/pages/config/ConfigPage'
+import { RecurringPaymentsPage } from '@/pages/recurring/RecurringPaymentsPage'
 
 function AppRoutes() {
   const { user, loading } = useAuth()
@@ -101,6 +102,7 @@ function AppRoutes() {
         <Route path="/cobros"          element={<CollectionsPage userId={user.id} />} />
         <Route path="/ahorros"         element={<SavingsPage userId={user.id} />} />
         <Route path="/cadena"          element={<CadenaPage userId={user.id} />} />
+        <Route path="/recurrentes"     element={<RecurringPaymentsPage userId={user.id} />} />
         <Route path="/configuracion"   element={<ConfigPage userId={user.id} />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

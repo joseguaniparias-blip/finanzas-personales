@@ -7,7 +7,9 @@ export type CollectionFrequency = 'once' | 'daily' | 'weekly' | 'monthly'
 export type ContributionType = 'fixed' | 'percent'
 export type SavingFrequency = 'weekly' | 'monthly' | 'on_payout'
 export type EventStatus = 'pending' | 'confirmed' | 'postponed' | 'partial'
-export type EventType = 'debt' | 'collection' | 'saving' | 'cadena' | 'platform_payout'
+export type EventType = 'debt' | 'collection' | 'saving' | 'cadena' | 'platform_payout' | 'recurring'
+export type RecurringFrequency = 'weekly' | 'monthly' | 'yearly'
+export type CategoryKind = 'income' | 'expense'
 export type DebtStatus = 'active' | 'paid_off' | 'cancelled'
 export type CollectionStatus = 'active' | 'fully_collected' | 'cancelled'
 export type CadenaStatus = 'active' | 'completed' | 'cancelled'
@@ -53,8 +55,27 @@ export interface Category {
   user_id: string
   name: string
   icon: string
+  /** 'income' or 'expense' — default 'expense' for legacy rows */
+  kind: CategoryKind
   monthly_limit: number | null
   is_default: boolean
+  created_at: string
+}
+
+export interface RecurringPayment {
+  id: string
+  user_id: string
+  name: string
+  icon: string
+  /** Amount paid each period. If is_variable, this is just a default suggestion. */
+  amount: number
+  is_variable: boolean
+  frequency: RecurringFrequency
+  /** weekly: 0–6 (Sun–Sat). monthly: 1–28. yearly: month*100 + day (e.g., 304 = Mar 4). */
+  trigger_day: number
+  source_pocket_id: string
+  category_id: string | null
+  is_active: boolean
   created_at: string
 }
 
@@ -71,6 +92,10 @@ export interface Transaction {
   note: string | null
   receipt_url: string | null
   date: string              // YYYY-MM-DD
+  /** When type='transfer', both sides share this group id so they appear as a pair. */
+  transfer_group_id?: string | null
+  /** When type='transfer', the OTHER pocket involved (destination on the out leg, source on the in leg). */
+  transfer_other_pocket_id?: string | null
   created_at: string
 }
 
@@ -192,7 +217,7 @@ export const PLATFORM_DEFAULTS: Record<string, { color: string; icon: string }> 
 
 export const DAYS_OF_WEEK = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 
-export const DEFAULT_CATEGORIES = [
+export const DEFAULT_EXPENSE_CATEGORIES = [
   { name: 'Gasolina',      icon: '⛽' },
   { name: 'Mantenimiento', icon: '🔧' },
   { name: 'Datos móviles', icon: '📱' },
@@ -200,3 +225,13 @@ export const DEFAULT_CATEGORIES = [
   { name: 'Peajes/Multas', icon: '🛣️' },
   { name: 'Comida',        icon: '🍔' },
 ]
+
+export const DEFAULT_INCOME_CATEGORIES = [
+  { name: 'Sueldo',  icon: '💼' },
+  { name: 'Ventas',  icon: '🛒' },
+  { name: 'Renta',   icon: '🏠' },
+  { name: 'Otros',   icon: '💵' },
+]
+
+// Backward-compat alias — older code imports DEFAULT_CATEGORIES expecting expense list
+export const DEFAULT_CATEGORIES = DEFAULT_EXPENSE_CATEGORIES

@@ -1,8 +1,10 @@
 import { useState } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus, ArrowRightLeft } from 'lucide-react'
 import { usePockets } from '@/hooks/usePockets'
+import { useTransactions } from '@/hooks/useTransactions'
 import { PocketCard } from './PocketCard'
 import { PocketForm } from './PocketForm'
+import { TransferSheet } from './TransferSheet'
 import { PrivacyToggle, maskAmount } from '@/components/shared/PrivacyToggle'
 import { PageHeader } from '@/components/shared/PageHeader'
 import type { Pocket } from '@/types'
@@ -10,10 +12,15 @@ import type { Pocket } from '@/types'
 interface Props { userId: string }
 
 export function PocketsPage({ userId }: Props) {
-  const { pockets, totalBalance, loading, addPocket, updatePocket, deletePocket } = usePockets(userId)
+  const { pockets, totalBalance, loading, addPocket, updatePocket, deletePocket, load: reloadPockets } = usePockets(userId)
+  const { transferBetweenPockets } = useTransactions(userId)
   const [hidden, setHidden] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Pocket | null>(null)
+  const [showTransfer, setShowTransfer] = useState(false)
+
+  const nonPlatformPockets = pockets.filter(p => p.type !== 'platform')
+  const canTransfer = nonPlatformPockets.length >= 2
 
   if (loading) return <div className="p-4 text-slate-400 text-sm animate-pulse">Cargando...</div>
 
@@ -43,11 +50,31 @@ export function PocketsPage({ userId }: Props) {
         )}
       </div>
 
+      {/* Transfer button (only when ≥2 non-platform pockets) */}
+      {canTransfer && (
+        <button onClick={() => setShowTransfer(true)}
+          className="w-full flex items-center justify-center gap-2 bg-blue-600/15 border border-blue-600/30 hover:bg-blue-600/25 text-blue-300 py-3 rounded-xl transition-colors text-sm font-medium mb-3">
+          <ArrowRightLeft size={14} /> Transferir entre bolsillos
+        </button>
+      )}
+
       {/* Add button */}
       <button onClick={() => setShowForm(true)}
         className="w-full flex items-center justify-center gap-2 bg-slate-800 border border-dashed border-slate-600 hover:border-slate-500 text-slate-400 hover:text-slate-300 py-4 rounded-xl transition-colors text-sm">
         <Plus size={16} /> Agregar bolsillo
       </button>
+
+      {/* Transfer sheet */}
+      {showTransfer && (
+        <TransferSheet
+          pockets={nonPlatformPockets}
+          onTransfer={async ({ fromPocketId, toPocketId, amount, date, note }) => {
+            await transferBetweenPockets({ userId, fromPocketId, toPocketId, amount, date, note })
+            await reloadPockets()
+          }}
+          onClose={() => setShowTransfer(false)}
+        />
+      )}
 
       {/* Add/Edit form modal */}
       {(showForm || editing) && (

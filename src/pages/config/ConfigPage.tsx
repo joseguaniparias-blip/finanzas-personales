@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { LogOut, ChevronRight, User, Bell, Trash2, Plus } from 'lucide-react'
+import { LogOut, ChevronRight, User, Bell, Trash2, Plus, Tags, Pencil, Check, X } from 'lucide-react'
+import type { Category, CategoryKind } from '@/types'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { usePlatforms } from '@/hooks/usePlatforms'
 import { usePockets } from '@/hooks/usePockets'
@@ -13,7 +14,7 @@ import { AmountInput, parseAmount } from '@/components/shared/AmountInput'
 
 interface Props { userId: string }
 
-type Section = 'main' | 'profile' | 'platforms' | 'categories'
+type Section = 'main' | 'profile' | 'platforms' | 'category_limits' | 'categories'
 
 const PLATFORM_COLORS = ['#fb923c', '#60a5fa', '#4ade80', '#a78bfa', '#f87171', '#fbbf24', '#94a3b8']
 
@@ -27,7 +28,7 @@ export function ConfigPage({ userId }: Props) {
   const [newPlatformBalance, setNewPlatformBalance] = useState('')
   const { submitting: savingPlatform, submit: submitPlatform } = useSubmitLock()
   const { pockets } = usePockets(userId)
-  const { categories, updateCategory } = useCategories(userId)
+  const { categories, updateCategory, addCategory, deleteCategory } = useCategories(userId)
   const { signOut } = useAuth()
   const [section, setSection] = useState<Section>('main')
   const [name, setName] = useState(profile?.name ?? '')
@@ -205,13 +206,14 @@ export function ConfigPage({ userId }: Props) {
     )
   }
 
-  if (section === 'categories') {
+  if (section === 'category_limits') {
+    const expenseCats = categories.filter(c => (c.kind ?? 'expense') === 'expense')
     return (
       <div className="p-4 max-w-lg mx-auto">
         <PageHeader title="Límites por categoría" />
-        <p className="text-slate-500 text-xs mb-4">Define un límite mensual opcional por categoría. Recibirás una alerta en reportes si lo superas.</p>
+        <p className="text-slate-500 text-xs mb-4">Define un límite mensual opcional por categoría de gasto. Recibirás una alerta en reportes si lo superas.</p>
         <div className="space-y-3">
-          {categories.map(c => {
+          {expenseCats.map(c => {
             const draft = editingLimits[c.id] ?? c.monthly_limit?.toString() ?? ''
             return (
               <div key={c.id} className="bg-slate-800 rounded-xl p-3 border border-slate-700 flex items-center gap-3">
@@ -238,6 +240,18 @@ export function ConfigPage({ userId }: Props) {
           })}
         </div>
       </div>
+    )
+  }
+
+  if (section === 'categories') {
+    return (
+      <CategoryManager
+        userId={userId}
+        categories={categories}
+        addCategory={addCategory}
+        updateCategory={updateCategory}
+        deleteCategory={deleteCategory}
+      />
     )
   }
 
@@ -273,6 +287,18 @@ export function ConfigPage({ userId }: Props) {
 
         <button onClick={() => setSection('categories')}
           className="w-full flex items-center gap-3 bg-slate-800 border border-slate-700 rounded-xl p-4 hover:bg-slate-700 transition-colors">
+          <div className="w-9 h-9 rounded-full bg-cyan-600/20 flex items-center justify-center">
+            <Tags size={16} className="text-cyan-400" />
+          </div>
+          <div className="flex-1 text-left">
+            <p className="text-slate-200 text-sm font-medium">Categorías</p>
+            <p className="text-slate-500 text-xs">Editar ingresos y gastos · {categories.length} en total</p>
+          </div>
+          <ChevronRight size={16} className="text-slate-600" />
+        </button>
+
+        <button onClick={() => setSection('category_limits')}
+          className="w-full flex items-center gap-3 bg-slate-800 border border-slate-700 rounded-xl p-4 hover:bg-slate-700 transition-colors">
           <div className="w-9 h-9 rounded-full bg-orange-600/20 flex items-center justify-center">
             <Bell size={16} className="text-orange-400" />
           </div>
@@ -302,6 +328,166 @@ export function ConfigPage({ userId }: Props) {
         className="w-full flex items-center justify-center gap-2 bg-red-600/10 border border-red-600/20 hover:bg-red-600/20 text-red-400 py-3 rounded-xl text-sm font-semibold transition-colors">
         <LogOut size={16} /> Cerrar sesión
       </button>
+    </div>
+  )
+}
+
+// ─── Category manager ────────────────────────────────────────────────────────
+
+const CATEGORY_ICONS = ['📦','⛽','🔧','📱','🛡️','🛣️','🍔','🛒','💼','🏠','💵','💧','💡','📶','🎓','🎬','🍿','🚗','💳','🏥','📰']
+
+interface CategoryManagerProps {
+  userId: string
+  categories: Category[]
+  addCategory: (c: Omit<Category, 'id' | 'created_at'>) => Promise<void>
+  updateCategory: (id: string, updates: Partial<Category>) => Promise<void>
+  deleteCategory: (id: string) => Promise<void>
+}
+
+function CategoryManager({ userId, categories, addCategory, updateCategory, deleteCategory }: CategoryManagerProps) {
+  const [tab, setTab] = useState<CategoryKind>('expense')
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editIcon, setEditIcon] = useState('📦')
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [showAdd, setShowAdd] = useState(false)
+  const [newName, setNewName] = useState('')
+  const [newIcon, setNewIcon] = useState('📦')
+
+  const filtered = categories
+    .filter(c => (c.kind ?? 'expense') === tab)
+    .sort((a, b) => a.name.localeCompare(b.name))
+
+  const startEdit = (c: Category) => {
+    setEditingId(c.id)
+    setEditName(c.name)
+    setEditIcon(c.icon)
+  }
+
+  const saveEdit = async () => {
+    if (!editingId || !editName.trim()) return
+    await updateCategory(editingId, { name: editName.trim(), icon: editIcon })
+    setEditingId(null)
+  }
+
+  const handleAdd = async () => {
+    if (!newName.trim()) return
+    await addCategory({
+      user_id: userId,
+      name: newName.trim(),
+      icon: newIcon,
+      kind: tab,
+      monthly_limit: null,
+      is_default: false,
+    })
+    setNewName(''); setNewIcon('📦'); setShowAdd(false)
+  }
+
+  return (
+    <div className="p-4 max-w-lg mx-auto">
+      <PageHeader title="Categorías" right={
+        <button onClick={() => setShowAdd(s => !s)}
+          className="flex items-center gap-1.5 bg-cyan-600 hover:bg-cyan-500 text-white px-3 py-2 rounded-xl text-xs font-semibold transition-colors">
+          <Plus size={14} /> Nueva
+        </button>
+      } />
+
+      {/* Kind tabs */}
+      <div className="flex gap-1 bg-slate-800 rounded-xl p-1 mb-4">
+        {(['expense', 'income'] as CategoryKind[]).map(k => (
+          <button key={k} onClick={() => setTab(k)}
+            className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-colors ${
+              tab === k
+                ? k === 'expense' ? 'bg-red-600 text-white' : 'bg-emerald-600 text-white'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}>
+            {k === 'expense' ? 'Gastos' : 'Ingresos'}
+          </button>
+        ))}
+      </div>
+
+      {/* Add form */}
+      {showAdd && (
+        <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 mb-4">
+          <p className="text-slate-300 text-sm font-medium mb-3">
+            Nueva categoría de {tab === 'expense' ? 'gasto' : 'ingreso'}
+          </p>
+          <div className="flex gap-2 mb-3">
+            <select value={newIcon} onChange={e => setNewIcon(e.target.value)}
+              className="bg-slate-700 border border-slate-600 rounded-xl px-2 py-2.5 text-slate-100 text-base focus:outline-none focus:border-blue-500">
+              {CATEGORY_ICONS.map(i => <option key={i} value={i}>{i}</option>)}
+            </select>
+            <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Nombre…"
+              className="flex-1 bg-slate-700 border border-slate-600 rounded-xl px-3 py-2.5 text-slate-100 text-sm focus:outline-none focus:border-blue-500" />
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => { setShowAdd(false); setNewName(''); setNewIcon('📦') }}
+              className="flex-1 py-2 rounded-xl bg-slate-700 text-slate-300 text-sm">Cancelar</button>
+            <button onClick={handleAdd} disabled={!newName.trim()}
+              className="flex-1 py-2 rounded-xl bg-cyan-600 disabled:opacity-40 text-white text-sm font-semibold">
+              Agregar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* List */}
+      {filtered.length === 0 ? (
+        <p className="text-slate-500 text-sm text-center py-12">Sin categorías de {tab === 'expense' ? 'gasto' : 'ingreso'}</p>
+      ) : (
+        <div className="space-y-2">
+          {filtered.map(c => (
+            <div key={c.id} className="bg-slate-800 rounded-xl p-3 border border-slate-700">
+              {editingId === c.id ? (
+                <div className="flex items-center gap-2">
+                  <select value={editIcon} onChange={e => setEditIcon(e.target.value)}
+                    className="bg-slate-700 border border-slate-600 rounded-lg px-2 py-2 text-slate-100 text-base focus:outline-none">
+                    {CATEGORY_ICONS.map(i => <option key={i} value={i}>{i}</option>)}
+                  </select>
+                  <input value={editName} onChange={e => setEditName(e.target.value)}
+                    className="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-slate-100 text-sm focus:outline-none focus:border-blue-500" />
+                  <button onClick={saveEdit} className="p-2 rounded-lg bg-emerald-600 text-white">
+                    <Check size={14} />
+                  </button>
+                  <button onClick={() => setEditingId(null)} className="p-2 rounded-lg text-slate-500">
+                    <X size={14} />
+                  </button>
+                </div>
+              ) : confirmDeleteId === c.id ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">{c.icon}</span>
+                  <p className="text-slate-300 text-sm flex-1">¿Eliminar "{c.name}"?</p>
+                  <button onClick={async () => { await deleteCategory(c.id); setConfirmDeleteId(null) }}
+                    className="text-xs bg-red-600 hover:bg-red-500 text-white px-2 py-1.5 rounded-lg">
+                    Sí
+                  </button>
+                  <button onClick={() => setConfirmDeleteId(null)}
+                    className="text-xs text-slate-500 px-2 py-1.5">
+                    No
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <span className="text-xl">{c.icon}</span>
+                  <p className="text-slate-200 text-sm flex-1">{c.name}</p>
+                  <button onClick={() => startEdit(c)}
+                    className="p-1.5 rounded-lg text-slate-500 hover:text-slate-200 hover:bg-slate-700">
+                    <Pencil size={13} />
+                  </button>
+                  <button onClick={() => setConfirmDeleteId(c.id)}
+                    className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-400/10">
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <p className="text-xs text-slate-500 mt-4 text-center">
+        Al eliminar, los movimientos quedan sin categoría (no se borran).
+      </p>
     </div>
   )
 }

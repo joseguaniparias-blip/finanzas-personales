@@ -105,7 +105,7 @@ async function scheduleNextEvent(debt: Debt, overrideDueDate?: string) {
 function nextDueDate(frequency: string, paymentDay: number): string {
   const now = new Date()
   if (frequency === 'once') {
-    // Due today â€” single payment
+    // Due today — single payment
     return toISODate(now)
   }
   if (frequency === 'monthly') {

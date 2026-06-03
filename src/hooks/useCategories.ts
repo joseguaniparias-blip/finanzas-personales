@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { db } from '@/lib/db'
-import type { Category } from '@/types'
-import { DEFAULT_CATEGORIES } from '@/types'
+import type { Category, CategoryKind } from '@/types'
+import { DEFAULT_EXPENSE_CATEGORIES, DEFAULT_INCOME_CATEGORIES } from '@/types'
 
 type NewCategory = Omit<Category, 'id' | 'created_at'>
 
@@ -10,8 +10,10 @@ interface CategoriesHook {
   loading: boolean
   addCategory: (c: NewCategory) => Promise<void>
   updateCategory: (id: string, updates: Partial<Category>) => Promise<void>
+  /** Deletes the category and orphans any transactions referencing it (category_id → null). */
   deleteCategory: (id: string) => Promise<void>
   seedDefaults: () => Promise<void>
+  byKind: (kind: CategoryKind) => Category[]
 }
 
 export function useCategories(userId: string): CategoriesHook {
@@ -34,15 +36,20 @@ export function useCategories(userId: string): CategoriesHook {
     const existing = await db.categories.where('user_id').equals(userId).count()
     if (existing > 0) return
     const now = new Date().toISOString()
-    const defaults = DEFAULT_CATEGORIES.map(c => ({
+    const make = (c: { name: string; icon: string }, kind: CategoryKind): Category => ({
       id: crypto.randomUUID(),
       user_id: userId,
       name: c.name,
       icon: c.icon,
+      kind,
       monthly_limit: null,
       is_default: true,
       created_at: now
-    }))
+    })
+    const defaults: Category[] = [
+      ...DEFAULT_EXPENSE_CATEGORIES.map(c => make(c, 'expense')),
+      ...DEFAULT_INCOME_CATEGORIES.map(c => make(c, 'income')),
+    ]
     await db.categories.bulkAdd(defaults)
     await load()
   }
@@ -58,9 +65,20 @@ export function useCategories(userId: string): CategoriesHook {
   }
 
   const deleteCategory = async (id: string) => {
-    await db.categories.delete(id)
+    // Detach transactions referencing this category (don't lose the txns themselves)
+    await db.transaction('rw', db.categories, db.transactions, async () => {
+      const txs = await db.transactions
+        .where('user_id').equals(userId)
+        .filter(t => t.category_id === id)
+        .toArray()
+      for (const t of txs) await db.transactions.update(t.id, { category_id: null })
+      await db.categories.delete(id)
+    })
     await load()
   }
 
-  return { categories, loading, addCategory, updateCategory, deleteCategory, seedDefaults }
+  const byKind = (kind: CategoryKind) =>
+    categories.filter(c => (c.kind ?? 'expense') === kind)
+
+  return { categories, loading, addCategory, updateCategory, deleteCategory, seedDefaults, byKind }
 }

@@ -16,6 +16,7 @@ const BOOL_FIELDS: Record<string, string[]> = {
   collections:   ['has_total', 'started_before_app'],
   saving_goals:  ['is_active'],
   cadenas:       ['started_before_app'],
+  recurring_payments: ['is_variable', 'is_active'],
 }
 
 function toSupabase(table: string, record: Record<string, unknown>): Record<string, unknown> {
@@ -55,6 +56,7 @@ export function setupSyncHooks() {
     ['saving_goals',     db.saving_goals],
     ['cadenas',          db.cadenas],
     ['scheduled_events', db.scheduled_events],
+    ['recurring_payments', db.recurring_payments],
     ['user_profiles',    db.user_profiles],
   ]
 
@@ -111,6 +113,7 @@ export async function pullFromSupabase(userId: string) {
       { data: saving_goals },
       { data: cadenas },
       { data: scheduled_events },
+      { data: recurring_payments },
       { data: user_profiles },
     ] = await Promise.all([
       supabase.from('platforms').select('*').eq('user_id', userId),
@@ -122,13 +125,14 @@ export async function pullFromSupabase(userId: string) {
       supabase.from('saving_goals').select('*').eq('user_id', userId),
       supabase.from('cadenas').select('*').eq('user_id', userId),
       supabase.from('scheduled_events').select('*').eq('user_id', userId),
+      supabase.from('recurring_payments').select('*').eq('user_id', userId),
       supabase.from('user_profiles').select('*').eq('id', userId),
     ])
 
     await db.transaction('rw', [
       db.platforms, db.pockets, db.categories, db.transactions,
       db.debts, db.collections, db.saving_goals, db.cadenas,
-      db.scheduled_events, db.user_profiles,
+      db.scheduled_events, db.recurring_payments, db.user_profiles,
     ], async () => {
       if (platforms?.length)        await db.platforms.bulkPut(platforms)
       if (pockets?.length)          await db.pockets.bulkPut(pockets)
@@ -139,6 +143,7 @@ export async function pullFromSupabase(userId: string) {
       if (saving_goals?.length)     await db.saving_goals.bulkPut(saving_goals)
       if (cadenas?.length)          await db.cadenas.bulkPut(cadenas)
       if (scheduled_events?.length) await db.scheduled_events.bulkPut(scheduled_events)
+      if (recurring_payments?.length) await db.recurring_payments.bulkPut(recurring_payments)
       if (user_profiles?.length)    await db.user_profiles.bulkPut(user_profiles)
     })
   } catch (e) {

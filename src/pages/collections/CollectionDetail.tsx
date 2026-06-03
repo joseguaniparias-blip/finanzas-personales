@@ -26,7 +26,7 @@ export function CollectionDetail({ collection, pockets, onBack, onDelete, onPaym
   const remaining = collection.has_total && collection.total_amount
     ? Math.max(0, collection.total_amount - collection.collected_amount) : null
 
-  const freqLabel = collection.frequency === 'once' ? 'Ãšnico' : collection.frequency === 'monthly' ? 'Mensual' : collection.frequency === 'weekly' ? 'Semanal' : 'Diario'
+  const freqLabel = collection.frequency === 'once' ? 'Único' : collection.frequency === 'monthly' ? 'Mensual' : collection.frequency === 'weekly' ? 'Semanal' : 'Diario'
   const today = todayISO()
   const isOverdue = pendingEvent && pendingEvent.due_date <= today
   const isFuture = collection.start_date > today
@@ -39,7 +39,7 @@ export function CollectionDetail({ collection, pockets, onBack, onDelete, onPaym
         </button>
         <div className="flex-1">
           <h2 className="text-slate-100 text-lg font-bold">{collection.name}</h2>
-          <p className="text-slate-500 text-xs">ðŸ‘¤ {collection.person_name}</p>
+          <p className="text-slate-500 text-xs">👤 {collection.person_name}</p>
         </div>
         {collection.status === 'fully_collected' && (
           <span className="flex items-center gap-1 text-xs text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded-full">
@@ -47,7 +47,7 @@ export function CollectionDetail({ collection, pockets, onBack, onDelete, onPaym
           </span>
         )}
         {isFuture && (
-          <span className="text-xs text-amber-400 bg-amber-400/10 px-2 py-1 rounded-full">ðŸŸ¡ Futuro</span>
+          <span className="text-xs text-amber-400 bg-amber-400/10 px-2 py-1 rounded-full">🟡 Futuro</span>
         )}
       </div>
 
@@ -82,7 +82,7 @@ export function CollectionDetail({ collection, pockets, onBack, onDelete, onPaym
       {pendingEvent && collection.status === 'active' && !isFuture && (
         <div className={`rounded-xl p-4 mb-5 border ${isOverdue ? 'bg-emerald-600/10 border-emerald-600/30' : 'bg-slate-800 border-slate-700'}`}>
           <p className={`text-xs font-medium mb-3 ${isOverdue ? 'text-emerald-400' : 'text-slate-400'}`}>
-            {isOverdue ? 'ðŸ”” Cobro pendiente' : `ðŸ“… PrÃ³ximo cobro Â· ${pendingEvent.due_date}`}
+            {isOverdue ? '🔔 Cobro pendiente' : `📅 Próximo cobro · ${pendingEvent.due_date}`}
           </p>
           <p className="text-slate-200 font-bold text-lg mb-4">{maskAmount(pendingEvent.amount, false)}</p>
           <div className="grid grid-cols-2 gap-2 mb-2">
@@ -105,8 +105,8 @@ export function CollectionDetail({ collection, pockets, onBack, onDelete, onPaym
       {confirmSheet && pendingEvent && (
         <ConfirmEventSheet
           event={pendingEvent}
-          label={`${collection.name} â€” ${collection.person_name}`}
-          icon="ðŸŸ¢"
+          label={`${collection.name} — ${collection.person_name}`}
+          icon="🟢"
           pockets={pockets.filter(p => p.type !== 'platform')}
           defaultPocketId={collection.dest_pocket_id}
           onConfirm={async pocketId => { await confirmEvent(pendingEvent.id, pocketId); setConfirmSheet(false); onPaymentRecorded() }}
@@ -127,12 +127,12 @@ export function CollectionDetail({ collection, pockets, onBack, onDelete, onPaym
           </button>
         ) : (
           <div className="bg-red-950/40 border border-red-700/40 rounded-xl p-4 text-center">
-            <p className="text-slate-300 text-sm mb-3">Â¿Eliminar <strong>{collection.name}</strong>?</p>
+            <p className="text-slate-300 text-sm mb-3">¿Eliminar <strong>{collection.name}</strong>?</p>
             <div className="flex gap-2">
               <button onClick={() => setConfirmDelete(false)}
                 className="flex-1 py-2 rounded-lg bg-slate-700 text-slate-300 text-sm">No</button>
               <button onClick={onDelete}
-                className="flex-1 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold">SÃ­, eliminar</button>
+                className="flex-1 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold">Sí, eliminar</button>
             </div>
           </div>
         )}

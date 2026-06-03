@@ -52,6 +52,9 @@ export function useOrphanCleanup(userId: string) {
         } else if (ev.type === 'platform_payout') {
           const r = await db.platforms.get(ev.reference_id)
           orphan = !r || !r.is_active
+        } else if (ev.type === 'recurring') {
+          const r = await db.recurring_payments.get(ev.reference_id)
+          orphan = !r || !r.is_active
         }
         if (orphan) toDelete.push(ev.id)
       }

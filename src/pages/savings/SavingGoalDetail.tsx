@@ -73,7 +73,7 @@ export function SavingGoalDetail({ goal, pockets, onBack, onSavingRecorded }: Pr
       {pendingEvent && (
         <div className={`rounded-xl p-4 mb-5 border ${isOverdue ? 'bg-blue-600/10 border-blue-600/30' : 'bg-slate-800 border-slate-700'}`}>
           <p className={`text-xs font-medium mb-3 ${isOverdue ? 'text-blue-400' : 'text-slate-400'}`}>
-            {isOverdue ? 'ðŸ”” Aporte pendiente' : `ðŸ“… PrÃ³ximo aporte Â· ${pendingEvent.due_date}`}
+            {isOverdue ? '🔔 Aporte pendiente' : `📅 Próximo aporte · ${pendingEvent.due_date}`}
           </p>
           <p className="text-slate-200 font-bold text-lg mb-4">{maskAmount(pendingEvent.amount, false)}</p>
           <div className="grid grid-cols-2 gap-2 mb-2">
@@ -97,7 +97,7 @@ export function SavingGoalDetail({ goal, pockets, onBack, onSavingRecorded }: Pr
         <ConfirmEventSheet
           event={pendingEvent}
           label={goal.name}
-          icon="ðŸ’™"
+          icon="💙"
           pockets={pockets.filter(p => p.type !== 'platform')}
           defaultPocketId={goal.source_pocket_id}
           onConfirm={async pocketId => { await confirmEvent(pendingEvent.id, pocketId); setConfirmSheet(false); onSavingRecorded() }}

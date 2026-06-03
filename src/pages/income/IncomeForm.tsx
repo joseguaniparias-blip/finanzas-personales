@@ -7,7 +7,7 @@ import { db } from '@/lib/db'
 import { useSubmitLock } from '@/hooks/useSubmitLock'
 import { todayISO } from '@/lib/date'
 
-const QUICK_ICONS = ['â›½','ðŸ”§','ðŸ“±','ðŸ›¡ï¸','ðŸ›£ï¸','ðŸ”','ðŸ›’','ðŸ’Š','ðŸ“¦','ðŸŽ®','ðŸ‘•','ðŸšŒ','â˜•','ðŸ•','ðŸ’¡']
+const QUICK_ICONS = ['⛽','🔧','📱','🛡️','🛣️','🍔','🛒','💊','📦','🎮','👕','🚌','☕','🍕','💡']
 
 interface Props {
   userId: string
@@ -55,7 +55,7 @@ export function IncomeForm({ userId, platforms, pockets, categories, addCategory
   const doneTimeoutRef = useRef<number | null>(null)
 
   // Cancel the post-success onDone timeout if the user navigates away or
-  // unmounts the form before it fires â€” avoids onDone running on an unmounted
+  // unmounts the form before it fires — avoids onDone running on an unmounted
   // component (no-op warning in dev, potential memory leak).
   useEffect(() => () => {
     if (doneTimeoutRef.current !== null) {
@@ -66,7 +66,7 @@ export function IncomeForm({ userId, platforms, pockets, categories, addCategory
   // Category manager
   const [managingCats, setManagingCats] = useState(false)
   const [newCatName, setNewCatName] = useState('')
-  const [newCatIcon, setNewCatIcon] = useState('ðŸ“¦')
+  const [newCatIcon, setNewCatIcon] = useState('📦')
   const [editingCat, setEditingCat] = useState<Category | null>(null)
   const [editName, setEditName] = useState('')
 
@@ -74,9 +74,9 @@ export function IncomeForm({ userId, platforms, pockets, categories, addCategory
 
   const handleAddCategory = async () => {
     if (!newCatName.trim()) return
-    await addCategory({ user_id: userId, name: newCatName.trim(), icon: newCatIcon, monthly_limit: null, is_default: false })
+    await addCategory({ user_id: userId, name: newCatName.trim(), icon: newCatIcon, kind: 'income', monthly_limit: null, is_default: false })
     setNewCatName('')
-    setNewCatIcon('ðŸ“¦')
+    setNewCatIcon('📦')
   }
 
   const today = todayISO()
@@ -85,7 +85,7 @@ export function IncomeForm({ userId, platforms, pockets, categories, addCategory
   const totalCash = cashSplits.reduce((s, sp) => s + parseAmount(sp.amount), 0)
   const digital = totalNum - totalCash
   const platform = platforms.find(p => p.id === platformId)
-  // Fixed wallet: always look up by platform_id â€” never auto-create
+  // Fixed wallet: always look up by platform_id — never auto-create
   const platformPocket = pockets.find(p => p.platform_id === platformId)
   const nonPlatformPockets = pockets.filter(p => p.type !== 'platform')
 
@@ -107,7 +107,7 @@ export function IncomeForm({ userId, platforms, pockets, categories, addCategory
     if (!canSave) return
     submit(async () => {
       if (incomeType === 'other') {
-        // Simple income â†’ selected pocket.
+        // Simple income → selected pocket.
         // addTransaction (useTransactions) is atomic and already updates the pocket balance.
         await addTransaction({
           user_id: userId,
@@ -124,7 +124,7 @@ export function IncomeForm({ userId, platforms, pockets, categories, addCategory
         })
       } else {
         // Platform income
-        // Cash splits â†’ their pockets. addTransaction handles the pocket update atomically.
+        // Cash splits → their pockets. addTransaction handles the pocket update atomically.
         if (hasCash) {
           for (const split of cashSplits) {
             const amt = parseAmount(split.amount)
@@ -145,7 +145,7 @@ export function IncomeForm({ userId, platforms, pockets, categories, addCategory
           }
         }
 
-        // Digital portion â†’ platform wallet (guaranteed to exist, can be positive or negative).
+        // Digital portion → platform wallet (guaranteed to exist, can be positive or negative).
         // Done atomically because we mix a raw pocket update with a tx insert (not via addTransaction
         // because we want a custom amount sign + reference_type).
         if (platformPocket && digital !== 0) {
@@ -166,7 +166,7 @@ export function IncomeForm({ userId, platforms, pockets, categories, addCategory
               reference_type: digital > 0 ? 'income_digital' : 'income_cash_excess',
               note: digital > 0
                 ? `Digital ${platform?.name ?? ''}`
-                : `Adelanto efectivo ${platform?.name ?? ''} â€” deuda con plataforma`,
+                : `Adelanto efectivo ${platform?.name ?? ''} — deuda con plataforma`,
               receipt_url: null,
               date,
               created_at: new Date().toISOString()
@@ -190,7 +190,7 @@ export function IncomeForm({ userId, platforms, pockets, categories, addCategory
           <Check size={32} className="text-emerald-400" />
         </div>
         <p className="text-emerald-400 font-semibold">Ingreso registrado</p>
-        <p className="text-slate-500 text-sm">{maskAmount(totalNum, false)} Â· {doneLabel}</p>
+        <p className="text-slate-500 text-sm">{maskAmount(totalNum, false)} · {doneLabel}</p>
       </div>
     )
   }
@@ -213,7 +213,7 @@ export function IncomeForm({ userId, platforms, pockets, categories, addCategory
               : 'text-slate-400 hover:text-slate-200 disabled:opacity-30'
           }`}
         >
-          ðŸ“± Plataforma
+          📱 Plataforma
         </button>
         <button
           onClick={() => setIncomeType('other')}
@@ -223,11 +223,11 @@ export function IncomeForm({ userId, platforms, pockets, categories, addCategory
               : 'text-slate-400 hover:text-slate-200'
           }`}
         >
-          ðŸ’µ Otro ingreso
+          💵 Otro ingreso
         </button>
       </div>
 
-      {/* â”€â”€ PLATFORM MODE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── PLATFORM MODE ───────────────────────────────── */}
       {incomeType === 'platform' && (
         <>
           {/* Platform selector */}
@@ -250,8 +250,8 @@ export function IncomeForm({ userId, platforms, pockets, categories, addCategory
             {/* Wallet warning if no pocket found */}
             {platformId && !platformPocket && (
               <div className="mt-3 bg-amber-600/10 border border-amber-600/30 rounded-xl p-3">
-                <p className="text-amber-400 text-xs font-medium">âš ï¸ Esta plataforma no tiene billetera</p>
-                <p className="text-slate-400 text-xs mt-0.5">Ve a ConfiguraciÃ³n â†’ Plataformas y vuelve a crearla.</p>
+                <p className="text-amber-400 text-xs font-medium">⚠️ Esta plataforma no tiene billetera</p>
+                <p className="text-slate-400 text-xs mt-0.5">Ve a Configuración → Plataformas y vuelve a crearla.</p>
               </div>
             )}
           </div>
@@ -291,8 +291,8 @@ export function IncomeForm({ userId, platforms, pockets, categories, addCategory
           <div className="bg-slate-800 rounded-xl p-4 mb-5 border border-slate-700">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-slate-200 text-sm font-medium">Â¿Recibiste efectivo?</p>
-                <p className="text-slate-500 text-xs mt-0.5">Propinas, pagos en mano, adelantosâ€¦</p>
+                <p className="text-slate-200 text-sm font-medium">¿Recibiste efectivo?</p>
+                <p className="text-slate-500 text-xs mt-0.5">Propinas, pagos en mano, adelantos…</p>
               </div>
               <button onClick={() => setHasCash(h => !h)}
                 className={`w-11 h-6 rounded-full transition-colors relative ${hasCash ? 'bg-emerald-600' : 'bg-slate-600'}`}>
@@ -302,7 +302,7 @@ export function IncomeForm({ userId, platforms, pockets, categories, addCategory
 
             {hasCash && (
               <div className="mt-4 space-y-3">
-                <p className="text-xs text-slate-400">Â¿A quÃ© bolsillos llega el efectivo?</p>
+                <p className="text-xs text-slate-400">¿A qué bolsillos llega el efectivo?</p>
                 {cashSplits.map((split, i) => (
                   <div key={i} className="space-y-2">
                     <div className="flex gap-1 flex-wrap">
@@ -332,9 +332,9 @@ export function IncomeForm({ userId, platforms, pockets, categories, addCategory
                 )}
                 {totalNum > 0 && totalCash > totalNum && (
                   <div className="bg-amber-600/10 border border-amber-600/30 rounded-xl p-3">
-                    <p className="text-amber-400 text-xs font-medium">âš ï¸ El efectivo supera lo ganado</p>
+                    <p className="text-amber-400 text-xs font-medium">⚠️ El efectivo supera lo ganado</p>
                     <p className="text-slate-400 text-xs mt-0.5">
-                      La billetera de {platform?.name} quedarÃ¡ con âˆ’{maskAmount(totalCash - totalNum, false)}.
+                      La billetera de {platform?.name} quedará con −{maskAmount(totalCash - totalNum, false)}.
                     </p>
                   </div>
                 )}
@@ -351,21 +351,21 @@ export function IncomeForm({ userId, platforms, pockets, categories, addCategory
                 if (!amt || !pocket) return null
                 return (
                   <div key={i} className="flex justify-between text-sm">
-                    <span className="text-slate-400">Efectivo â†’ {pocket.icon} {pocket.name}</span>
+                    <span className="text-slate-400">Efectivo → {pocket.icon} {pocket.name}</span>
                     <span className="text-emerald-400 font-medium">{maskAmount(amt, false)}</span>
                   </div>
                 )
               })}
               {digital > 0 && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-400">Digital â†’ billetera {platform?.name}</span>
+                  <span className="text-slate-400">Digital → billetera {platform?.name}</span>
                   <span className="text-blue-400 font-medium">{maskAmount(digital, false)}</span>
                 </div>
               )}
               {digital < 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-400">Deuda con {platform?.name}</span>
-                  <span className="text-red-400 font-medium">âˆ’{maskAmount(Math.abs(digital), false)}</span>
+                  <span className="text-red-400 font-medium">−{maskAmount(Math.abs(digital), false)}</span>
                 </div>
               )}
               <div className="border-t border-slate-700 pt-2 flex justify-between text-sm font-semibold">
@@ -377,16 +377,16 @@ export function IncomeForm({ userId, platforms, pockets, categories, addCategory
         </>
       )}
 
-      {/* â”€â”€ OTHER INCOME MODE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── OTHER INCOME MODE ───────────────────────────── */}
       {incomeType === 'other' && (
         <>
           {/* Description */}
           <div className="mb-5">
-            <label className="block text-xs text-slate-400 mb-1">DescripciÃ³n</label>
+            <label className="block text-xs text-slate-400 mb-1">Descripción</label>
             <input
               value={otherNote}
               onChange={e => setOtherNote(e.target.value)}
-              placeholder="Ej: Salario, Freelance, Ventaâ€¦"
+              placeholder="Ej: Salario, Freelance, Venta…"
               className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-emerald-500"
             />
           </div>
@@ -424,7 +424,7 @@ export function IncomeForm({ userId, platforms, pockets, categories, addCategory
 
           {/* Destination pocket */}
           <div className="mb-6">
-            <p className="text-xs text-slate-400 mb-2">Â¿A quÃ© bolsillo entra?</p>
+            <p className="text-xs text-slate-400 mb-2">¿A qué bolsillo entra?</p>
             <div className="space-y-1">
               {nonPlatformPockets.map(p => (
                 <button
@@ -447,13 +447,13 @@ export function IncomeForm({ userId, platforms, pockets, categories, addCategory
 
       <button onClick={handleSave} disabled={!canSave || saving}
         className="w-full bg-emerald-600 disabled:opacity-40 hover:bg-emerald-500 text-white py-4 rounded-xl font-semibold text-sm transition-colors">
-        {saving ? 'Guardandoâ€¦' : 'Guardar ingreso'}
+        {saving ? 'Guardando…' : 'Guardar ingreso'}
       </button>
     </div>
   )
 }
 
-// â”€â”€â”€ Shared category picker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Shared category picker ───────────────────────────────────────────────────
 
 interface CategoryPickerProps {
   categories: Category[]
@@ -485,14 +485,14 @@ function CategoryPicker({
   return (
     <div className="mb-5">
       <div className="flex items-center justify-between mb-2">
-        <p className="text-xs text-slate-400">CategorÃ­a <span className="text-slate-600">(opcional)</span></p>
+        <p className="text-xs text-slate-400">Categoría <span className="text-slate-600">(opcional)</span></p>
         <button onClick={() => { setManagingCats(m => !m); setEditingCat(null) }}
           className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 transition-colors">
           <Pencil size={10} /> {managingCats ? 'Listo' : 'Gestionar'}
         </button>
       </div>
       <div className="flex flex-wrap gap-2 mb-2">
-        {categories.map(c => (
+        {categories.filter(c => (c.kind ?? 'expense') === 'income').map(c => (
           <div key={c.id}>
             {managingCats ? (
               editingCat?.id === c.id ? (
@@ -502,12 +502,12 @@ function CategoryPicker({
                   <button onClick={async () => {
                     if (editName.trim()) {
                       await deleteCategory(c.id)
-                      await addCategory({ user_id: userId, name: editName.trim(), icon: c.icon, monthly_limit: c.monthly_limit, is_default: false })
+                      await addCategory({ user_id: userId, name: editName.trim(), icon: c.icon, kind: c.kind ?? 'income', monthly_limit: c.monthly_limit, is_default: false })
                       if (categoryId === c.id) setCategoryId(null)
                     }
                     setEditingCat(null)
-                  }} className="text-xs text-emerald-400 px-1">âœ“</button>
-                  <button onClick={() => setEditingCat(null)} className="text-xs text-slate-500 px-1">âœ•</button>
+                  }} className="text-xs text-emerald-400 px-1">✓</button>
+                  <button onClick={() => setEditingCat(null)} className="text-xs text-slate-500 px-1">✕</button>
                 </div>
               ) : (
                 <div className="flex items-center gap-1 bg-slate-800 border border-slate-700 rounded-full px-2.5 py-1.5">
@@ -532,7 +532,7 @@ function CategoryPicker({
       </div>
       {managingCats && (
         <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-3">
-          <p className="text-xs text-slate-400 mb-2">Nueva categorÃ­a</p>
+          <p className="text-xs text-slate-400 mb-2">Nueva categoría</p>
           <div className="flex flex-wrap gap-1.5 mb-2">
             {QUICK_ICONS.map(ic => (
               <button key={ic} onClick={() => setNewCatIcon(ic)}
@@ -543,7 +543,7 @@ function CategoryPicker({
           </div>
           <div className="flex gap-2">
             <input value={newCatName} onChange={e => setNewCatName(e.target.value)}
-              placeholder="Nombreâ€¦"
+              placeholder="Nombre…"
               onKeyDown={e => e.key === 'Enter' && handleAddCategory()}
               className="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500" />
             <button onClick={handleAddCategory} disabled={!newCatName.trim()}

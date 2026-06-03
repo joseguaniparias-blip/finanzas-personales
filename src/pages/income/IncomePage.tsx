@@ -9,19 +9,10 @@ import { maskAmount } from '@/components/shared/PrivacyToggle'
 import { PageHeader } from '@/components/shared/PageHeader'
 import type { Platform, Pocket, Transaction } from '@/types'
 import { TrendingUp, Plus, Wallet } from 'lucide-react'
-import { todayISO, toISODate, addDaysISO } from '@/lib/date'
+import { todayISO, addDaysISO } from '@/lib/date'
+import { DateRangeFilter, buildPreset, type DateRange } from '@/components/shared/DateRangeFilter'
 
 interface Props { userId: string }
-
-type Period = 'week' | 'month'
-
-function periodRange(period: Period): { from: string; to: string } {
-  const today = new Date()
-  const to = toISODate(today)
-  if (period === 'month') return { from: today.toISOString().slice(0, 7) + '-01', to }
-  const d = new Date(today); d.setDate(d.getDate() - 6)
-  return { from: toISODate(d), to }
-}
 
 function groupByDate(txs: Transaction[]): { date: string; items: Transaction[]; total: number }[] {
   const map = new Map<string, Transaction[]>()
@@ -50,7 +41,7 @@ export function IncomePage({ userId }: Props) {
   const { transactions, loading: loadingT, addTransaction } = useTransactions(userId)
   const { categories, addCategory, deleteCategory, seedDefaults } = useCategories(userId)
   const [showForm, setShowForm] = useState(false)
-  const [period, setPeriod] = useState<Period>('month')
+  const [range, setRange] = useState<DateRange>(() => buildPreset('this_month'))
   const [platformWallets, setPlatformWallets] = useState<(Pocket & { platformName: string; platformColor: string })[]>([])
 
   // Load platform wallets with their platform info
@@ -69,7 +60,7 @@ export function IncomePage({ userId }: Props) {
     if (!loadingP) loadWallets()
   }, [userId, transactions, platforms, loadingP])
 
-  const { from, to } = periodRange(period)
+  const { from, to } = range
   const allIncome = transactions.filter(t => t.type === 'income' && t.date >= from && t.date <= to)
 
   // Split: platform vs other
@@ -81,7 +72,7 @@ export function IncomePage({ userId }: Props) {
 
   const grouped = groupByDate(allIncome)
 
-  if (loadingP || loadingT) return <div className="p-4 text-slate-400 text-sm animate-pulse">Cargandoâ€¦</div>
+  if (loadingP || loadingT) return <div className="p-4 text-slate-400 text-sm animate-pulse">Cargando…</div>
 
   if (showForm) {
     return (
@@ -106,29 +97,24 @@ export function IncomePage({ userId }: Props) {
         }
       />
 
-      {/* Period tabs */}
-      <div className="flex gap-1 bg-slate-800 rounded-xl p-1 mb-4 border border-slate-700/50">
-        {([['week', 'Esta semana'], ['month', 'Este mes']] as [Period, string][]).map(([p, label]) => (
-          <button key={p} onClick={() => setPeriod(p)}
-            className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-colors ${period === p ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}>
-            {label}
-          </button>
-        ))}
+      {/* Date range filter */}
+      <div className="mb-4">
+        <DateRangeFilter value={range} onChange={setRange} />
       </div>
 
       {/* Summary card */}
       <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-5 mb-4 border border-slate-700">
         <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">
-          {period === 'week' ? 'Ãšltimos 7 dÃ­as' : 'Este mes'}
+          {range.label}
         </p>
         <p className="text-3xl font-bold text-emerald-400 mb-4">{maskAmount(total, false)}</p>
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-slate-700/50 rounded-xl p-3">
-            <p className="text-xs text-slate-400 mb-0.5">ðŸ“± Plataformas</p>
+            <p className="text-xs text-slate-400 mb-0.5">📱 Plataformas</p>
             <p className="text-emerald-400 font-bold text-sm">{maskAmount(platTotal, false)}</p>
           </div>
           <div className="bg-slate-700/50 rounded-xl p-3">
-            <p className="text-xs text-slate-400 mb-0.5">ðŸ’µ Otros</p>
+            <p className="text-xs text-slate-400 mb-0.5">💵 Otros</p>
             <p className="text-emerald-400 font-bold text-sm">{maskAmount(otherTotal, false)}</p>
           </div>
         </div>
@@ -170,7 +156,7 @@ export function IncomePage({ userId }: Props) {
           <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center mx-auto mb-4">
             <TrendingUp size={28} className="text-slate-600" />
           </div>
-          <p className="text-slate-400 text-sm font-medium">Sin ingresos {period === 'week' ? 'esta semana' : 'este mes'}</p>
+          <p className="text-slate-400 text-sm font-medium">Sin ingresos en {range.label.toLowerCase()}</p>
           <p className="text-slate-600 text-xs mt-1">Registra tu primer ingreso</p>
         </div>
       ) : (
@@ -194,7 +180,7 @@ export function IncomePage({ userId }: Props) {
   )
 }
 
-// â”€â”€â”€ Income card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Income card ──────────────────────────────────────────────────────────────
 
 function IncomeCard({ tx, platforms, pockets }: { tx: Transaction; platforms: Platform[]; pockets: Pocket[] }) {
   const platform = platforms.find(p => p.id === tx.platform_id)
@@ -203,7 +189,7 @@ function IncomeCard({ tx, platforms, pockets }: { tx: Transaction; platforms: Pl
   const isOther = tx.reference_type === 'income_other'
   const isDigital = tx.reference_type === 'income_digital'
 
-  const icon = isOther ? 'ðŸ’µ' : isCash ? 'ðŸ’µ' : 'ðŸ“±'
+  const icon = isOther ? '💵' : isCash ? '💵' : '📱'
   const typeLabel = isOther ? 'Otro ingreso' : isCash ? 'Efectivo' : isDigital ? 'Digital' : platform?.name ?? 'Ingreso'
 
   return (
@@ -224,7 +210,7 @@ function IncomeCard({ tx, platforms, pockets }: { tx: Transaction; platforms: Pl
               </span>
             )}
             <span className="text-xs text-slate-600">{typeLabel}</span>
-            {pocket && <span className="text-xs text-slate-600">Â· {pocket.icon} {pocket.name}</span>}
+            {pocket && <span className="text-xs text-slate-600">· {pocket.icon} {pocket.name}</span>}
           </div>
         </div>
         <p className="text-emerald-400 font-bold text-sm flex-shrink-0 mt-0.5">+ {maskAmount(tx.amount, false)}</p>
