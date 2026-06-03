@@ -1,9 +1,10 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { ArrowLeft, Check, SkipForward, Trophy, Calendar, Trash2 } from 'lucide-react'
 import type { Cadena, Pocket } from '@/types'
 import { maskAmount } from '@/components/shared/PrivacyToggle'
 import { ConfirmEventSheet } from '@/components/shared/ConfirmEventSheet'
 import { useScheduledEvents } from '@/hooks/useScheduledEvents'
+import { todayISO } from '@/lib/date'
 
 interface Props {
   cadena: Cadena
@@ -24,7 +25,7 @@ export function CadenaDetail({ cadena, pockets, onBack, onPaymentRecorded, onDel
   const sourcePocket = pockets.find(p => p.id === cadena.source_pocket_id)
   const payoutPocket = pockets.find(p => p.id === cadena.payout_pocket_id)
   const freqLabel = cadena.frequency === 'monthly' ? 'Mensual' : 'Semanal'
-  const today = new Date().toISOString().slice(0, 10)
+  const today = todayISO()
   const isOverdue = pendingEvent && pendingEvent.due_date <= today
   const totalPot = cadena.contribution_amount * cadena.participants
   const isMyTurnNow = cadena.current_round === cadena.my_turn
@@ -44,7 +45,7 @@ export function CadenaDetail({ cadena, pockets, onBack, onPaymentRecorded, onDel
         </button>
         <div className="flex-1">
           <h2 className="text-slate-100 text-lg font-bold">{cadena.name}</h2>
-          <p className="text-slate-500 text-xs">{freqLabel} · {cadena.participants} participantes</p>
+          <p className="text-slate-500 text-xs">{freqLabel} Â· {cadena.participants} participantes</p>
         </div>
         {cadena.status === 'completed' && (
           <span className="flex items-center gap-1 text-xs text-violet-400 bg-violet-400/10 px-2 py-1 rounded-full">
@@ -71,7 +72,7 @@ export function CadenaDetail({ cadena, pockets, onBack, onPaymentRecorded, onDel
         </div>
         {isMyTurnNow && (
           <div className="mt-3 bg-violet-600/20 border border-violet-500/40 rounded-xl p-3 text-center">
-            <p className="text-violet-300 text-sm font-semibold">🎉 ¡Esta ronda te toca cobrar!</p>
+            <p className="text-violet-300 text-sm font-semibold">ðŸŽ‰ Â¡Esta ronda te toca cobrar!</p>
             <p className="text-violet-400 text-xs mt-0.5">{maskAmount(totalPot, false)} van a tu bolsillo</p>
           </div>
         )}
@@ -92,7 +93,7 @@ export function CadenaDetail({ cadena, pockets, onBack, onPaymentRecorded, onDel
         <div className={`rounded-xl p-4 mb-5 border ${isOverdue ? 'bg-violet-600/10 border-violet-600/30' : 'bg-slate-800 border-slate-700'}`}>
           <div className="flex items-center justify-between mb-1">
             <p className={`text-xs font-medium ${isOverdue ? 'text-violet-400' : 'text-slate-400'}`}>
-              {isOverdue ? '🔔 Aporte pendiente' : `📅 Próximo aporte · ${pendingEvent.due_date}`}
+              {isOverdue ? 'ðŸ”” Aporte pendiente' : `ðŸ“… PrÃ³ximo aporte Â· ${pendingEvent.due_date}`}
             </p>
             {/* Cambiar fecha */}
             {!editingDate && (
@@ -123,7 +124,7 @@ export function CadenaDetail({ cadena, pockets, onBack, onPaymentRecorded, onDel
               <button
                 onClick={() => { setEditingDate(false); setNewDate('') }}
                 className="text-slate-500 hover:text-slate-300 px-2 py-2 text-sm transition-colors">
-                ✕
+                âœ•
               </button>
             </div>
           )}
@@ -158,13 +159,13 @@ export function CadenaDetail({ cadena, pockets, onBack, onPaymentRecorded, onDel
       {/* Delete confirmation */}
       {confirmDelete && (
         <div className="bg-red-600/10 border border-red-600/30 rounded-xl p-4">
-          <p className="text-red-400 text-sm font-semibold mb-1">¿Eliminar esta cadena?</p>
-          <p className="text-slate-400 text-xs mb-4">Se eliminará la cadena y los eventos pendientes. Esta acción no se puede deshacer.</p>
+          <p className="text-red-400 text-sm font-semibold mb-1">Â¿Eliminar esta cadena?</p>
+          <p className="text-slate-400 text-xs mb-4">Se eliminarÃ¡ la cadena y los eventos pendientes. Esta acciÃ³n no se puede deshacer.</p>
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={onDelete}
               className="bg-red-600 hover:bg-red-500 text-white py-2.5 rounded-xl text-sm font-semibold transition-colors">
-              Sí, eliminar
+              SÃ­, eliminar
             </button>
             <button
               onClick={() => setConfirmDelete(false)}
@@ -179,7 +180,7 @@ export function CadenaDetail({ cadena, pockets, onBack, onPaymentRecorded, onDel
         <ConfirmEventSheet
           event={pendingEvent}
           label={cadena.name}
-          icon="🟣"
+          icon="ðŸŸ£"
           pockets={pockets.filter(p => p.type !== 'platform')}
           defaultPocketId={cadena.source_pocket_id}
           onConfirm={async pocketId => { await confirmEvent(pendingEvent.id, pocketId); setConfirmSheet(false); onPaymentRecorded() }}

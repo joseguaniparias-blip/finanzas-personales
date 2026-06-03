@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+﻿import { useState, useEffect, useCallback } from 'react'
 import { ArrowUpRight, ArrowDownRight, ArrowLeft, Pencil, Trash2 } from 'lucide-react'
 import { db } from '@/lib/db'
 import { usePockets } from '@/hooks/usePockets'
@@ -7,6 +7,7 @@ import { maskAmount } from '@/components/shared/PrivacyToggle'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { AmountInput, parseAmount } from '@/components/shared/AmountInput'
 import type { Transaction, Pocket, Category } from '@/types'
+import { todayISO, toISODate, addDaysISO } from '@/lib/date'
 
 interface Props { userId: string }
 
@@ -15,11 +16,11 @@ type TypeFilter = 'all' | 'income' | 'expense'
 
 function periodDates(period: Period): { from: string; to: string } {
   const today = new Date()
-  const to = today.toISOString().slice(0, 10)
+  const to = toISODate(today)
   if (period === 'day') return { from: to, to }
   if (period === 'week') {
     const d = new Date(today); d.setDate(d.getDate() - 6)
-    return { from: d.toISOString().slice(0, 10), to }
+    return { from: toISODate(d), to }
   }
   return { from: today.toISOString().slice(0, 7) + '-01', to }
 }
@@ -37,8 +38,8 @@ function groupByDate(txs: Transaction[]): { date: string; items: Transaction[] }
 }
 
 function formatDate(iso: string): string {
-  const today = new Date().toISOString().slice(0, 10)
-  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
+  const today = todayISO()
+  const yesterday = addDaysISO(todayISO(), -1)
   if (iso === today) return 'Hoy'
   if (iso === yesterday) return 'Ayer'
   const [y, m, d] = iso.split('-')
@@ -215,11 +216,11 @@ export function HistoryPage({ userId }: Props) {
         </div>
       </div>
 
-      {loading && <p className="text-slate-500 text-sm animate-pulse text-center py-8">Cargando…</p>}
+      {loading && <p className="text-slate-500 text-sm animate-pulse text-center py-8">Cargandoâ€¦</p>}
 
       {!loading && groups.length === 0 && (
         <div className="text-center py-12">
-          <p className="text-slate-500 text-sm">Sin movimientos en este período</p>
+          <p className="text-slate-500 text-sm">Sin movimientos en este perÃ­odo</p>
         </div>
       )}
 
@@ -247,7 +248,7 @@ export function HistoryPage({ userId }: Props) {
                       )}
                     </div>
                     <p className={`font-bold text-sm flex-shrink-0 ${isIncome ? 'text-emerald-400' : 'text-red-400'}`}>
-                      {isIncome ? '+' : '−'} {maskAmount(tx.amount, false)}
+                      {isIncome ? '+' : 'âˆ’'} {maskAmount(tx.amount, false)}
                     </p>
                   </button>
                 )
@@ -260,7 +261,7 @@ export function HistoryPage({ userId }: Props) {
   )
 }
 
-// ─── Detail view ──────────────────────────────────────────────────────────────
+// â”€â”€â”€ Detail view â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface DetailProps {
   tx: Transaction
@@ -291,7 +292,7 @@ function TransactionDetailView({ tx, pocket, category, onBack, onEdit, onDelete 
       <div className={`rounded-2xl p-5 mb-5 border text-center ${isIncome ? 'bg-emerald-600/10 border-emerald-600/20' : 'bg-red-600/10 border-red-600/20'}`}>
         <p className="text-xs text-slate-400 mb-1">{isIncome ? 'Ingreso' : 'Gasto'}</p>
         <p className={`text-3xl font-bold ${isIncome ? 'text-emerald-400' : 'text-red-400'}`}>
-          {isIncome ? '+' : '−'} {maskAmount(tx.amount, false)}
+          {isIncome ? '+' : 'âˆ’'} {maskAmount(tx.amount, false)}
         </p>
         <p className="text-slate-500 text-sm mt-1">{formatDate(tx.date)}</p>
       </div>
@@ -299,7 +300,7 @@ function TransactionDetailView({ tx, pocket, category, onBack, onEdit, onDelete 
       {/* Info rows */}
       <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 mb-5 space-y-3">
         {pocket && <InfoRow label="Bolsillo" value={`${pocket.icon} ${pocket.name}`} />}
-        {category && <InfoRow label="Categoría" value={`${category.icon} ${category.name}`} />}
+        {category && <InfoRow label="CategorÃ­a" value={`${category.icon} ${category.name}`} />}
         {tx.note && <InfoRow label="Nota" value={tx.note} />}
         {tx.reference_type && (
           <InfoRow label="Tipo" value={tx.reference_type.replace(/_/g, ' ')} />
@@ -315,12 +316,12 @@ function TransactionDetailView({ tx, pocket, category, onBack, onEdit, onDelete 
           </button>
         ) : (
           <div className="bg-red-950/40 border border-red-700/40 rounded-xl p-4 text-center">
-            <p className="text-slate-300 text-sm mb-3">¿Eliminar este registro? El saldo del bolsillo se ajustará.</p>
+            <p className="text-slate-300 text-sm mb-3">Â¿Eliminar este registro? El saldo del bolsillo se ajustarÃ¡.</p>
             <div className="flex gap-2">
               <button onClick={() => setConfirmDelete(false)}
                 className="flex-1 py-2 rounded-lg bg-slate-700 text-slate-300 text-sm">No</button>
               <button onClick={onDelete}
-                className="flex-1 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold">Sí, eliminar</button>
+                className="flex-1 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold">SÃ­, eliminar</button>
             </div>
           </div>
         )}
@@ -338,7 +339,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   )
 }
 
-// ─── Edit form ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Edit form â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface EditProps {
   tx: Transaction
@@ -395,7 +396,7 @@ function TransactionEditForm({ tx, pockets, categories, onSave, onCancel }: Edit
                   ? t === 'income' ? 'bg-emerald-600/20 border-emerald-500 text-emerald-300' : 'bg-red-600/20 border-red-500 text-red-300'
                   : 'border-slate-700 text-slate-400'
               }`}>
-              {t === 'income' ? '↑ Ingreso' : '↓ Gasto'}
+              {t === 'income' ? 'â†‘ Ingreso' : 'â†“ Gasto'}
             </button>
           ))}
         </div>
@@ -429,11 +430,11 @@ function TransactionEditForm({ tx, pockets, categories, onSave, onCancel }: Edit
       {/* Category (only for expenses) */}
       {type === 'expense' && categories.length > 0 && (
         <div className="mb-5">
-          <p className="text-xs text-slate-400 mb-2">Categoría</p>
+          <p className="text-xs text-slate-400 mb-2">CategorÃ­a</p>
           <div className="grid grid-cols-3 gap-2">
             <button onClick={() => setCategoryId('')}
               className={`py-2 rounded-xl text-xs transition-colors border ${!categoryId ? 'bg-slate-600 border-slate-500 text-slate-200' : 'border-slate-700 text-slate-500'}`}>
-              Sin categoría
+              Sin categorÃ­a
             </button>
             {categories.map(c => (
               <button key={c.id} onClick={() => setCategoryId(c.id)}
@@ -450,13 +451,13 @@ function TransactionEditForm({ tx, pockets, categories, onSave, onCancel }: Edit
       <div className="mb-6">
         <label className="block text-xs text-slate-400 mb-1">Nota (opcional)</label>
         <input value={note} onChange={e => setNote(e.target.value)}
-          placeholder="Descripción…"
+          placeholder="DescripciÃ³nâ€¦"
           className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-blue-500 placeholder:text-slate-600" />
       </div>
 
       <button onClick={handleSave} disabled={!canSave || saving}
         className="w-full bg-blue-600 disabled:opacity-40 hover:bg-blue-500 text-white py-4 rounded-xl font-semibold text-sm transition-colors">
-        {saving ? 'Guardando…' : 'Guardar cambios'}
+        {saving ? 'Guardandoâ€¦' : 'Guardar cambios'}
       </button>
     </div>
   )

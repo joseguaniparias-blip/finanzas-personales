@@ -1,6 +1,7 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
+﻿import { useEffect, useState, useCallback, useRef } from 'react'
 import { db } from '@/lib/db'
 import type { Transaction } from '@/types'
+import { toISODate } from '@/lib/date'
 
 interface TransactionsHook {
   transactions: Transaction[]
@@ -20,7 +21,7 @@ export function useTransactions(userId: string): TransactionsHook {
   const load = useCallback(async () => {
     // Load 35 days so "this week" always has data even if Mon is in the prev month
     const d = new Date(); d.setDate(d.getDate() - 35)
-    const windowStart = d.toISOString().slice(0, 10)
+    const windowStart = toISODate(d)
     const data = await db.transactions
       .where('user_id').equals(userId)
       .and(t => t.date >= windowStart)

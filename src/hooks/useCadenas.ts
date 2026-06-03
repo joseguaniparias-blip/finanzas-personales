@@ -1,6 +1,7 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
+﻿import { useEffect, useState, useCallback, useRef } from 'react'
 import { db } from '@/lib/db'
 import type { Cadena } from '@/types'
+import { toISODate } from '@/lib/date'
 
 type NewCadena = Omit<Cadena, 'id' | 'created_at' | 'status' | 'current_round'>
 
@@ -66,7 +67,7 @@ export function useCadenas(userId: string): CadenasHook {
   }
 
   const closeCadena = async (id: string) => {
-    // 'cancelled' = el usuario abandonó / cerró manualmente.
+    // 'cancelled' = el usuario abandonÃ³ / cerrÃ³ manualmente.
     // 'completed' se reserva para cuando todas las rondas naturalmente terminaron
     // (ver recordPayment que setea completed cuando current_round > participants).
     await db.transaction('rw', db.cadenas, db.scheduled_events, async () => {
@@ -116,9 +117,9 @@ function nextDueDate(frequency: string): string {
   const now = new Date()
   if (frequency === 'monthly') {
     const d = new Date(now.getFullYear(), now.getMonth() + 1, 1)
-    return d.toISOString().slice(0, 10)
+    return toISODate(d)
   }
   const d = new Date(now)
   d.setDate(d.getDate() + 7)
-  return d.toISOString().slice(0, 10)
+  return toISODate(d)
 }

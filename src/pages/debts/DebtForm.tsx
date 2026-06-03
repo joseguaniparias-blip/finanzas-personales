@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import type { Pocket, Debt } from '@/types'
 import { AmountInput, parseAmount } from '@/components/shared/AmountInput'
 import { DAYS_OF_WEEK } from '@/types'
 import { useSubmitLock } from '@/hooks/useSubmitLock'
+import { toISODate } from '@/lib/date'
 
 interface Props {
   userId: string
@@ -15,20 +16,20 @@ interface Props {
 /** Compute the next occurrence of a payment date (same logic as useDebts.nextDueDate) */
 function computeFirstDueDate(frequency: string, paymentDay: number): string {
   const now = new Date()
-  if (frequency === 'once') return now.toISOString().slice(0, 10)
+  if (frequency === 'once') return toISODate(now)
   if (frequency === 'monthly') {
     const d = new Date(now.getFullYear(), now.getMonth(), paymentDay)
     if (d <= now) d.setMonth(d.getMonth() + 1)
-    return d.toISOString().slice(0, 10)
+    return toISODate(d)
   }
   if (frequency === 'weekly') {
     const diff = (paymentDay - now.getDay() + 7) % 7 || 7
     const d = new Date(now); d.setDate(d.getDate() + diff)
-    return d.toISOString().slice(0, 10)
+    return toISODate(d)
   }
   // daily
   const d = new Date(now); d.setDate(d.getDate() + 1)
-  return d.toISOString().slice(0, 10)
+  return toISODate(d)
 }
 
 export function DebtForm({ userId, pockets, initial, onSave, onCancel }: Props) {
@@ -86,7 +87,7 @@ export function DebtForm({ userId, pockets, initial, onSave, onCancel }: Props) 
         <input
           value={name}
           onChange={e => setName(e.target.value)}
-          placeholder="Ej: Crédito moto, Préstamo…"
+          placeholder="Ej: CrÃ©dito moto, PrÃ©stamoâ€¦"
           className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-blue-500"
         />
       </div>
@@ -95,7 +96,7 @@ export function DebtForm({ userId, pockets, initial, onSave, onCancel }: Props) 
       <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 mb-5">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-slate-200 text-sm font-medium">¿Tiene monto total?</p>
+            <p className="text-slate-200 text-sm font-medium">Â¿Tiene monto total?</p>
             <p className="text-slate-500 text-xs mt-0.5">La deuda tiene un total definido</p>
           </div>
           <button
@@ -112,7 +113,7 @@ export function DebtForm({ userId, pockets, initial, onSave, onCancel }: Props) 
 
       {/* Installment / amount */}
       <AmountInput
-        label={frequency === 'once' ? 'Monto a pagar' : 'Cuota por período'}
+        label={frequency === 'once' ? 'Monto a pagar' : 'Cuota por perÃ­odo'}
         value={installment}
         onChange={setInstallment}
         className="mb-5"
@@ -123,7 +124,7 @@ export function DebtForm({ userId, pockets, initial, onSave, onCancel }: Props) 
         <p className="text-xs text-slate-400 mb-2">Frecuencia</p>
         <div className="grid grid-cols-2 gap-2">
           {([
-            { value: 'once',    label: 'Pago único' },
+            { value: 'once',    label: 'Pago Ãºnico' },
             { value: 'monthly', label: 'Mensual' },
             { value: 'weekly',  label: 'Semanal' },
             { value: 'daily',   label: 'Diario' },
@@ -143,10 +144,10 @@ export function DebtForm({ userId, pockets, initial, onSave, onCancel }: Props) 
         </div>
       </div>
 
-      {/* Payment day — only for recurring */}
+      {/* Payment day â€” only for recurring */}
       {frequency !== 'daily' && frequency !== 'once' && (
         <div className="mb-5">
-          <p className="text-xs text-slate-400 mb-2">{frequency === 'weekly' ? 'Día de la semana' : 'Día del mes'}</p>
+          <p className="text-xs text-slate-400 mb-2">{frequency === 'weekly' ? 'DÃ­a de la semana' : 'DÃ­a del mes'}</p>
           {frequency === 'weekly' ? (
             <div className="flex gap-1">
               {DAYS_OF_WEEK.map((d, i) => (
@@ -163,7 +164,7 @@ export function DebtForm({ userId, pockets, initial, onSave, onCancel }: Props) 
             </div>
           ) : (
             <div className="flex items-center gap-3">
-              <span className="text-slate-400 text-sm">Día</span>
+              <span className="text-slate-400 text-sm">DÃ­a</span>
               <input
                 type="number"
                 min={1}
@@ -197,7 +198,7 @@ export function DebtForm({ userId, pockets, initial, onSave, onCancel }: Props) 
         </div>
       </div>
 
-      {/* First due date — only for new debts */}
+      {/* First due date â€” only for new debts */}
       {!initial && (
         <div className="mb-5">
           <label className="block text-xs text-slate-400 mb-1">
@@ -212,7 +213,7 @@ export function DebtForm({ userId, pockets, initial, onSave, onCancel }: Props) 
         </div>
       )}
 
-      {/* Edit total paid — only when editing existing debt */}
+      {/* Edit total paid â€” only when editing existing debt */}
       {initial && (
         <div className="mb-5">
           <AmountInput
@@ -224,11 +225,11 @@ export function DebtForm({ userId, pockets, initial, onSave, onCancel }: Props) 
         </div>
       )}
 
-      {/* Before app toggle — only for recurring debts */}
+      {/* Before app toggle â€” only for recurring debts */}
       {frequency !== 'once' && <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 mb-6">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-slate-200 text-sm font-medium">¿Ya tiene pagos hechos?</p>
+            <p className="text-slate-200 text-sm font-medium">Â¿Ya tiene pagos hechos?</p>
             <p className="text-slate-500 text-xs mt-0.5">Para deudas que iniciaron antes de la app</p>
           </div>
           <button
@@ -243,7 +244,7 @@ export function DebtForm({ userId, pockets, initial, onSave, onCancel }: Props) 
             <p className="text-xs text-slate-400 mb-2">Cuotas ya pagadas (antes de la app)</p>
             <div className="flex items-center gap-3">
               <button onClick={() => setStartInstallment(s => Math.max(1, s - 1))}
-                className="w-8 h-8 rounded-full bg-slate-700 text-slate-300 text-lg">−</button>
+                className="w-8 h-8 rounded-full bg-slate-700 text-slate-300 text-lg">âˆ’</button>
               <span className="text-slate-100 font-semibold w-8 text-center">{startInstallment}</span>
               <button onClick={() => setStartInstallment(s => s + 1)}
                 className="w-8 h-8 rounded-full bg-slate-700 text-slate-300 text-lg">+</button>
@@ -258,7 +259,7 @@ export function DebtForm({ userId, pockets, initial, onSave, onCancel }: Props) 
         disabled={!canSave || saving}
         className="w-full bg-blue-600 disabled:opacity-40 hover:bg-blue-500 text-white py-4 rounded-xl font-semibold text-sm transition-colors"
       >
-        {saving ? 'Guardando…' : initial ? 'Guardar cambios' : 'Crear deuda'}
+        {saving ? 'Guardandoâ€¦' : initial ? 'Guardar cambios' : 'Crear deuda'}
       </button>
     </div>
   )

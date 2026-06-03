@@ -1,8 +1,9 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import type { Collection, Pocket } from '@/types'
 import { AmountInput, parseAmount } from '@/components/shared/AmountInput'
 import { DAYS_OF_WEEK } from '@/types'
 import { useSubmitLock } from '@/hooks/useSubmitLock'
+import { todayISO } from '@/lib/date'
 
 interface Props {
   userId: string
@@ -21,7 +22,7 @@ export function CollectionForm({ userId, pockets, initial, onSave, onCancel }: P
   const [frequency, setFrequency] = useState<'once' | 'daily' | 'weekly' | 'monthly'>(initial?.frequency ?? 'monthly')
   const [paymentDay, setPaymentDay] = useState(initial?.payment_day ?? 1)
   const [destPocketId, setDestPocketId] = useState(initial?.dest_pocket_id ?? pockets[0]?.id ?? '')
-  const [startDate, setStartDate] = useState(initial?.start_date ?? new Date().toISOString().slice(0, 10))
+  const [startDate, setStartDate] = useState(initial?.start_date ?? todayISO())
   const [startedBefore, setStartedBefore] = useState(initial?.started_before_app ?? false)
   const [startInstallment, setStartInstallment] = useState(initial?.start_installment ?? 1)
   const [collectedAmount, setCollectedAmount] = useState(initial?.collected_amount?.toString() ?? '')
@@ -61,14 +62,14 @@ export function CollectionForm({ userId, pockets, initial, onSave, onCancel }: P
 
       {/* Name */}
       <div className="mb-4">
-        <label className="block text-xs text-slate-400 mb-1">Descripción</label>
-        <input value={name} onChange={e => setName(e.target.value)} placeholder="Ej: Préstamo a amigo, Cuotas…"
+        <label className="block text-xs text-slate-400 mb-1">DescripciÃ³n</label>
+        <input value={name} onChange={e => setName(e.target.value)} placeholder="Ej: PrÃ©stamo a amigo, Cuotasâ€¦"
           className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-blue-500" />
       </div>
 
       {/* Person */}
       <div className="mb-5">
-        <label className="block text-xs text-slate-400 mb-1">¿Quién te debe?</label>
+        <label className="block text-xs text-slate-400 mb-1">Â¿QuiÃ©n te debe?</label>
         <input value={personName} onChange={e => setPersonName(e.target.value)} placeholder="Nombre de la persona"
           className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-blue-500" />
       </div>
@@ -77,7 +78,7 @@ export function CollectionForm({ userId, pockets, initial, onSave, onCancel }: P
       <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 mb-5">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-slate-200 text-sm font-medium">¿Tiene monto total?</p>
+            <p className="text-slate-200 text-sm font-medium">Â¿Tiene monto total?</p>
             <p className="text-slate-500 text-xs mt-0.5">Hay un total definido a cobrar</p>
           </div>
           <button onClick={() => setHasTotal(h => !h)}
@@ -88,7 +89,7 @@ export function CollectionForm({ userId, pockets, initial, onSave, onCancel }: P
         {hasTotal && <AmountInput label="Monto total a cobrar" value={totalAmount} onChange={setTotalAmount} className="mt-4" />}
       </div>
 
-      <AmountInput label={frequency === 'once' ? 'Monto a cobrar' : 'Cuota por período'} value={installment} onChange={setInstallment} className="mb-5" />
+      <AmountInput label={frequency === 'once' ? 'Monto a cobrar' : 'Cuota por perÃ­odo'} value={installment} onChange={setInstallment} className="mb-5" />
 
       {/* Frequency */}
       <div className="mb-5">
@@ -97,7 +98,7 @@ export function CollectionForm({ userId, pockets, initial, onSave, onCancel }: P
           {(['once', 'weekly', 'monthly', 'daily'] as const).map(f => (
             <button key={f} onClick={() => setFrequency(f)}
               className={`py-2 rounded-xl text-xs font-medium transition-colors border ${frequency === f ? 'bg-emerald-600/20 border-emerald-500 text-emerald-300' : 'border-slate-700 text-slate-400 hover:border-slate-500'}`}>
-              {f === 'once' ? 'Único' : f === 'weekly' ? 'Semanal' : f === 'monthly' ? 'Mensual' : 'Diario'}
+              {f === 'once' ? 'Ãšnico' : f === 'weekly' ? 'Semanal' : f === 'monthly' ? 'Mensual' : 'Diario'}
             </button>
           ))}
         </div>
@@ -106,7 +107,7 @@ export function CollectionForm({ userId, pockets, initial, onSave, onCancel }: P
       {/* Payment day */}
       {frequency === 'weekly' && (
         <div className="mb-5">
-          <p className="text-xs text-slate-400 mb-2">Día de cobro</p>
+          <p className="text-xs text-slate-400 mb-2">DÃ­a de cobro</p>
           <div className="flex gap-1">
             {DAYS_OF_WEEK.map((d, i) => (
               <button key={i} onClick={() => setPaymentDay(i)}
@@ -117,7 +118,7 @@ export function CollectionForm({ userId, pockets, initial, onSave, onCancel }: P
       )}
       {frequency === 'monthly' && (
         <div className="mb-5 flex items-center gap-3">
-          <span className="text-slate-400 text-sm">Día</span>
+          <span className="text-slate-400 text-sm">DÃ­a</span>
           <input type="number" min={1} max={28} value={paymentDay} onChange={e => setPaymentDay(Number(e.target.value))}
             className="w-20 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 text-sm text-center focus:outline-none focus:border-blue-500" />
           <span className="text-slate-500 text-sm">de cada mes</span>
@@ -133,7 +134,7 @@ export function CollectionForm({ userId, pockets, initial, onSave, onCancel }: P
 
       {/* Dest pocket */}
       <div className="mb-5">
-        <p className="text-xs text-slate-400 mb-2">¿A qué bolsillo llega el cobro?</p>
+        <p className="text-xs text-slate-400 mb-2">Â¿A quÃ© bolsillo llega el cobro?</p>
         <div className="space-y-1">
           {pockets.filter(p => p.type !== 'platform').map(p => (
             <button key={p.id} onClick={() => setDestPocketId(p.id)}
@@ -144,7 +145,7 @@ export function CollectionForm({ userId, pockets, initial, onSave, onCancel }: P
         </div>
       </div>
 
-      {/* Edit collected total — only when editing existing collection */}
+      {/* Edit collected total â€” only when editing existing collection */}
       {initial && (
         <div className="mb-5">
           <AmountInput
@@ -161,7 +162,7 @@ export function CollectionForm({ userId, pockets, initial, onSave, onCancel }: P
         <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 mb-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-slate-200 text-sm font-medium">¿Ya tiene cobros hechos?</p>
+              <p className="text-slate-200 text-sm font-medium">Â¿Ya tiene cobros hechos?</p>
               <p className="text-slate-500 text-xs mt-0.5">Para cobros iniciados antes de la app</p>
             </div>
             <button onClick={() => setStartedBefore(s => !s)}
@@ -173,7 +174,7 @@ export function CollectionForm({ userId, pockets, initial, onSave, onCancel }: P
             <div className="mt-4">
               <p className="text-xs text-slate-400 mb-2">Cuotas ya cobradas (antes de la app)</p>
               <div className="flex items-center gap-3">
-                <button onClick={() => setStartInstallment(s => Math.max(1, s - 1))} className="w-8 h-8 rounded-full bg-slate-700 text-slate-300 text-lg">−</button>
+                <button onClick={() => setStartInstallment(s => Math.max(1, s - 1))} className="w-8 h-8 rounded-full bg-slate-700 text-slate-300 text-lg">âˆ’</button>
                 <span className="text-slate-100 font-semibold w-8 text-center">{startInstallment}</span>
                 <button onClick={() => setStartInstallment(s => s + 1)} className="w-8 h-8 rounded-full bg-slate-700 text-slate-300 text-lg">+</button>
               </div>
@@ -184,7 +185,7 @@ export function CollectionForm({ userId, pockets, initial, onSave, onCancel }: P
 
       <button onClick={handleSave} disabled={!canSave || saving}
         className="w-full bg-emerald-600 disabled:opacity-40 hover:bg-emerald-500 text-white py-4 rounded-xl font-semibold text-sm transition-colors">
-        {saving ? 'Guardando…' : initial ? 'Guardar cambios' : 'Crear cobro'}
+        {saving ? 'Guardandoâ€¦' : initial ? 'Guardar cambios' : 'Crear cobro'}
       </button>
     </div>
   )

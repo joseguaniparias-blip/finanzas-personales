@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { Plus, Users } from 'lucide-react'
 import { useCadenas } from '@/hooks/useCadenas'
 import { usePockets } from '@/hooks/usePockets'
@@ -8,6 +8,7 @@ import { CadenaDetail } from './CadenaDetail'
 import { maskAmount } from '@/components/shared/PrivacyToggle'
 import { PageHeader } from '@/components/shared/PageHeader'
 import type { Cadena } from '@/types'
+import { todayISO } from '@/lib/date'
 
 interface Props { userId: string }
 
@@ -19,7 +20,7 @@ export function CadenaPage({ userId }: Props) {
   const [selected, setSelected] = useState<Cadena | null>(null)
   const [editing, setEditing] = useState<Cadena | null>(null)
 
-  if (loading) return <div className="p-4 text-slate-400 text-sm animate-pulse">Cargando…</div>
+  if (loading) return <div className="p-4 text-slate-400 text-sm animate-pulse">Cargandoâ€¦</div>
 
   if (showForm || editing) {
     return (
@@ -48,7 +49,7 @@ export function CadenaPage({ userId }: Props) {
     )
   }
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = todayISO()
 
   return (
     <div className="p-4 max-w-lg mx-auto">
@@ -79,11 +80,11 @@ export function CadenaPage({ userId }: Props) {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-slate-200 font-semibold text-sm">{c.name}</p>
-                      {overdue && <span className="text-xs text-violet-400 bg-violet-400/10 px-1.5 py-0.5 rounded-full">🔔 Pendiente</span>}
-                      {isMyTurn && <span className="text-xs text-amber-400 bg-amber-400/10 px-1.5 py-0.5 rounded-full">🎉 Te toca cobrar</span>}
+                      {overdue && <span className="text-xs text-violet-400 bg-violet-400/10 px-1.5 py-0.5 rounded-full">ðŸ”” Pendiente</span>}
+                      {isMyTurn && <span className="text-xs text-amber-400 bg-amber-400/10 px-1.5 py-0.5 rounded-full">ðŸŽ‰ Te toca cobrar</span>}
                     </div>
                     <p className="text-xs text-slate-500 mt-0.5">
-                      Ronda {c.current_round}/{c.participants} · {c.frequency === 'monthly' ? 'Mensual' : 'Semanal'}
+                      Ronda {c.current_round}/{c.participants} Â· {c.frequency === 'monthly' ? 'Mensual' : 'Semanal'}
                     </p>
                   </div>
                   <div className="text-right ml-2">

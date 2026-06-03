@@ -1,6 +1,7 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
+﻿import { useEffect, useState, useCallback, useRef } from 'react'
 import { db } from '@/lib/db'
 import type { Debt } from '@/types'
+import { toISODate } from '@/lib/date'
 
 type NewDebt = Omit<Debt, 'id' | 'created_at' | 'paid_amount' | 'status'>
 
@@ -104,22 +105,22 @@ async function scheduleNextEvent(debt: Debt, overrideDueDate?: string) {
 function nextDueDate(frequency: string, paymentDay: number): string {
   const now = new Date()
   if (frequency === 'once') {
-    // Due today — single payment
-    return now.toISOString().slice(0, 10)
+    // Due today â€” single payment
+    return toISODate(now)
   }
   if (frequency === 'monthly') {
     const d = new Date(now.getFullYear(), now.getMonth(), paymentDay)
     if (d <= now) d.setMonth(d.getMonth() + 1)
-    return d.toISOString().slice(0, 10)
+    return toISODate(d)
   }
   if (frequency === 'weekly') {
     const diff = (paymentDay - now.getDay() + 7) % 7 || 7
     const d = new Date(now)
     d.setDate(d.getDate() + diff)
-    return d.toISOString().slice(0, 10)
+    return toISODate(d)
   }
   // daily
   const d = new Date(now)
   d.setDate(d.getDate() + 1)
-  return d.toISOString().slice(0, 10)
+  return toISODate(d)
 }

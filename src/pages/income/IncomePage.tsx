@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { db } from '@/lib/db'
 import { usePlatforms } from '@/hooks/usePlatforms'
 import { usePockets } from '@/hooks/usePockets'
@@ -9,6 +9,7 @@ import { maskAmount } from '@/components/shared/PrivacyToggle'
 import { PageHeader } from '@/components/shared/PageHeader'
 import type { Platform, Pocket, Transaction } from '@/types'
 import { TrendingUp, Plus, Wallet } from 'lucide-react'
+import { todayISO, toISODate, addDaysISO } from '@/lib/date'
 
 interface Props { userId: string }
 
@@ -16,10 +17,10 @@ type Period = 'week' | 'month'
 
 function periodRange(period: Period): { from: string; to: string } {
   const today = new Date()
-  const to = today.toISOString().slice(0, 10)
+  const to = toISODate(today)
   if (period === 'month') return { from: today.toISOString().slice(0, 7) + '-01', to }
   const d = new Date(today); d.setDate(d.getDate() - 6)
-  return { from: d.toISOString().slice(0, 10), to }
+  return { from: toISODate(d), to }
 }
 
 function groupByDate(txs: Transaction[]): { date: string; items: Transaction[]; total: number }[] {
@@ -35,8 +36,8 @@ function groupByDate(txs: Transaction[]): { date: string; items: Transaction[]; 
 }
 
 function formatDate(iso: string): string {
-  const today = new Date().toISOString().slice(0, 10)
-  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
+  const today = todayISO()
+  const yesterday = addDaysISO(todayISO(), -1)
   if (iso === today) return 'Hoy'
   if (iso === yesterday) return 'Ayer'
   const d = new Date(iso + 'T12:00:00')
@@ -80,7 +81,7 @@ export function IncomePage({ userId }: Props) {
 
   const grouped = groupByDate(allIncome)
 
-  if (loadingP || loadingT) return <div className="p-4 text-slate-400 text-sm animate-pulse">Cargando…</div>
+  if (loadingP || loadingT) return <div className="p-4 text-slate-400 text-sm animate-pulse">Cargandoâ€¦</div>
 
   if (showForm) {
     return (
@@ -118,16 +119,16 @@ export function IncomePage({ userId }: Props) {
       {/* Summary card */}
       <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-5 mb-4 border border-slate-700">
         <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">
-          {period === 'week' ? 'Últimos 7 días' : 'Este mes'}
+          {period === 'week' ? 'Ãšltimos 7 dÃ­as' : 'Este mes'}
         </p>
         <p className="text-3xl font-bold text-emerald-400 mb-4">{maskAmount(total, false)}</p>
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-slate-700/50 rounded-xl p-3">
-            <p className="text-xs text-slate-400 mb-0.5">📱 Plataformas</p>
+            <p className="text-xs text-slate-400 mb-0.5">ðŸ“± Plataformas</p>
             <p className="text-emerald-400 font-bold text-sm">{maskAmount(platTotal, false)}</p>
           </div>
           <div className="bg-slate-700/50 rounded-xl p-3">
-            <p className="text-xs text-slate-400 mb-0.5">💵 Otros</p>
+            <p className="text-xs text-slate-400 mb-0.5">ðŸ’µ Otros</p>
             <p className="text-emerald-400 font-bold text-sm">{maskAmount(otherTotal, false)}</p>
           </div>
         </div>
@@ -193,7 +194,7 @@ export function IncomePage({ userId }: Props) {
   )
 }
 
-// ─── Income card ──────────────────────────────────────────────────────────────
+// â”€â”€â”€ Income card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function IncomeCard({ tx, platforms, pockets }: { tx: Transaction; platforms: Platform[]; pockets: Pocket[] }) {
   const platform = platforms.find(p => p.id === tx.platform_id)
@@ -202,7 +203,7 @@ function IncomeCard({ tx, platforms, pockets }: { tx: Transaction; platforms: Pl
   const isOther = tx.reference_type === 'income_other'
   const isDigital = tx.reference_type === 'income_digital'
 
-  const icon = isOther ? '💵' : isCash ? '💵' : '📱'
+  const icon = isOther ? 'ðŸ’µ' : isCash ? 'ðŸ’µ' : 'ðŸ“±'
   const typeLabel = isOther ? 'Otro ingreso' : isCash ? 'Efectivo' : isDigital ? 'Digital' : platform?.name ?? 'Ingreso'
 
   return (
@@ -223,7 +224,7 @@ function IncomeCard({ tx, platforms, pockets }: { tx: Transaction; platforms: Pl
               </span>
             )}
             <span className="text-xs text-slate-600">{typeLabel}</span>
-            {pocket && <span className="text-xs text-slate-600">· {pocket.icon} {pocket.name}</span>}
+            {pocket && <span className="text-xs text-slate-600">Â· {pocket.icon} {pocket.name}</span>}
           </div>
         </div>
         <p className="text-emerald-400 font-bold text-sm flex-shrink-0 mt-0.5">+ {maskAmount(tx.amount, false)}</p>

@@ -1,9 +1,10 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { ArrowLeft, Check, SkipForward, Trash2 } from 'lucide-react'
 import type { SavingGoal, Pocket } from '@/types'
 import { maskAmount } from '@/components/shared/PrivacyToggle'
 import { ConfirmEventSheet } from '@/components/shared/ConfirmEventSheet'
 import { useScheduledEvents } from '@/hooks/useScheduledEvents'
+import { todayISO } from '@/lib/date'
 
 interface Props {
   goal: SavingGoal
@@ -22,7 +23,7 @@ export function SavingGoalDetail({ goal, pockets, onBack, onSavingRecorded }: Pr
   const remaining = goal.target_amount ? Math.max(0, goal.target_amount - goal.saved_amount) : null
 
   const freqLabel = goal.frequency === 'monthly' ? 'Mensual' : goal.frequency === 'weekly' ? 'Semanal' : 'Al cobrar plataforma'
-  const today = new Date().toISOString().slice(0, 10)
+  const today = todayISO()
   const isOverdue = pendingEvent && pendingEvent.due_date <= today
 
   return (
@@ -72,7 +73,7 @@ export function SavingGoalDetail({ goal, pockets, onBack, onSavingRecorded }: Pr
       {pendingEvent && (
         <div className={`rounded-xl p-4 mb-5 border ${isOverdue ? 'bg-blue-600/10 border-blue-600/30' : 'bg-slate-800 border-slate-700'}`}>
           <p className={`text-xs font-medium mb-3 ${isOverdue ? 'text-blue-400' : 'text-slate-400'}`}>
-            {isOverdue ? '🔔 Aporte pendiente' : `📅 Próximo aporte · ${pendingEvent.due_date}`}
+            {isOverdue ? 'ðŸ”” Aporte pendiente' : `ðŸ“… PrÃ³ximo aporte Â· ${pendingEvent.due_date}`}
           </p>
           <p className="text-slate-200 font-bold text-lg mb-4">{maskAmount(pendingEvent.amount, false)}</p>
           <div className="grid grid-cols-2 gap-2 mb-2">
@@ -96,7 +97,7 @@ export function SavingGoalDetail({ goal, pockets, onBack, onSavingRecorded }: Pr
         <ConfirmEventSheet
           event={pendingEvent}
           label={goal.name}
-          icon="💙"
+          icon="ðŸ’™"
           pockets={pockets.filter(p => p.type !== 'platform')}
           defaultPocketId={goal.source_pocket_id}
           onConfirm={async pocketId => { await confirmEvent(pendingEvent.id, pocketId); setConfirmSheet(false); onSavingRecorded() }}

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { Plus, TrendingDown, LayoutList, Tags, ChevronRight, X } from 'lucide-react'
 import { usePockets } from '@/hooks/usePockets'
 import { useCategories } from '@/hooks/useCategories'
@@ -8,6 +8,7 @@ import { maskAmount } from '@/components/shared/PrivacyToggle'
 import { AmountInput, parseAmount } from '@/components/shared/AmountInput'
 import { PageHeader } from '@/components/shared/PageHeader'
 import type { Category, Pocket, Transaction } from '@/types'
+import { todayISO, toISODate, addDaysISO } from '@/lib/date'
 
 interface Props { userId: string }
 
@@ -16,11 +17,11 @@ type View = 'list' | 'categories'
 
 function periodRange(period: Period): { from: string; to: string } {
   const today = new Date()
-  const to = today.toISOString().slice(0, 10)
+  const to = toISODate(today)
   if (period === 'month') return { from: today.toISOString().slice(0, 7) + '-01', to }
   // last 7 days
   const d = new Date(today); d.setDate(d.getDate() - 6)
-  return { from: d.toISOString().slice(0, 10), to }
+  return { from: toISODate(d), to }
 }
 
 function groupByDate(txs: Transaction[]): { date: string; items: Transaction[]; total: number }[] {
@@ -36,8 +37,8 @@ function groupByDate(txs: Transaction[]): { date: string; items: Transaction[]; 
 }
 
 function formatDate(iso: string): string {
-  const today = new Date().toISOString().slice(0, 10)
-  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
+  const today = todayISO()
+  const yesterday = addDaysISO(todayISO(), -1)
   if (iso === today) return 'Hoy'
   if (iso === yesterday) return 'Ayer'
   const d = new Date(iso + 'T12:00:00')
@@ -56,7 +57,7 @@ export function ExpensesPage({ userId }: Props) {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
   const [limitDraft, setLimitDraft] = useState('')
   const [newCatName, setNewCatName] = useState('')
-  const [newCatIcon, setNewCatIcon] = useState('📦')
+  const [newCatIcon, setNewCatIcon] = useState('ðŸ“¦')
 
   const { from, to } = periodRange(period)
 
@@ -82,7 +83,7 @@ export function ExpensesPage({ userId }: Props) {
   const pocketMap = Object.fromEntries(pockets.map(p => [p.id, p])) as Record<string, Pocket>
   const grouped = groupByDate(expenses)
 
-  if (loadingT || loadingC) return <div className="p-4 text-slate-400 text-sm animate-pulse">Cargando…</div>
+  if (loadingT || loadingC) return <div className="p-4 text-slate-400 text-sm animate-pulse">Cargandoâ€¦</div>
 
   if (showForm) {
     return (
@@ -121,11 +122,11 @@ export function ExpensesPage({ userId }: Props) {
         <div className="flex items-start justify-between mb-4">
           <div>
             <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">
-              {period === 'week' ? 'Últimos 7 días' : 'Este mes'}
+              {period === 'week' ? 'Ãšltimos 7 dÃ­as' : 'Este mes'}
             </p>
             <p className="text-3xl font-bold text-red-400">{maskAmount(total, false)}</p>
             <p className="text-xs text-slate-500 mt-1">
-              Promedio {maskAmount(avgPerDay, false)} / día
+              Promedio {maskAmount(avgPerDay, false)} / dÃ­a
             </p>
           </div>
           <div className="text-right">
@@ -155,7 +156,7 @@ export function ExpensesPage({ userId }: Props) {
             })}
             {activeCategories.length > 3 && (
               <p className="text-xs text-slate-600 text-center pt-1">
-                +{activeCategories.length - 3} categorías más
+                +{activeCategories.length - 3} categorÃ­as mÃ¡s
               </p>
             )}
           </div>
@@ -171,7 +172,7 @@ export function ExpensesPage({ userId }: Props) {
           </button>
           <button onClick={() => setView('categories')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${view === 'categories' ? 'bg-slate-700 text-slate-100' : 'text-slate-500 hover:text-slate-300'}`}>
-            <Tags size={12} /> Categorías
+            <Tags size={12} /> CategorÃ­as
           </button>
         </div>
         {categoryFilter && (
@@ -182,7 +183,7 @@ export function ExpensesPage({ userId }: Props) {
         )}
       </div>
 
-      {/* ── LIST VIEW ──────────────────────────────────────── */}
+      {/* â”€â”€ LIST VIEW â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {view === 'list' && (
         <>
           {/* Category filter chips */}
@@ -216,7 +217,7 @@ export function ExpensesPage({ userId }: Props) {
                   {/* Day header */}
                   <div className="flex items-center justify-between mb-2.5">
                     <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider">{formatDate(date)}</p>
-                    <p className="text-xs text-red-400 font-bold">− {maskAmount(dayTotal, false)}</p>
+                    <p className="text-xs text-red-400 font-bold">âˆ’ {maskAmount(dayTotal, false)}</p>
                   </div>
                   <div className="space-y-2">
                     {items.map(t => (
@@ -230,11 +231,11 @@ export function ExpensesPage({ userId }: Props) {
         </>
       )}
 
-      {/* ── CATEGORIES VIEW ────────────────────────────────── */}
+      {/* â”€â”€ CATEGORIES VIEW â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {view === 'categories' && (
         <div className="space-y-3">
           {categories.length === 0 ? (
-            <p className="text-slate-500 text-sm text-center py-8">Sin categorías. Agrega una abajo.</p>
+            <p className="text-slate-500 text-sm text-center py-8">Sin categorÃ­as. Agrega una abajo.</p>
           ) : (
             categories.map(c => {
               const spent = spendingByCategory[c.id] ?? 0
@@ -251,7 +252,7 @@ export function ExpensesPage({ userId }: Props) {
                       <div className="flex items-center justify-between mb-0.5">
                         <p className="text-slate-200 text-sm font-semibold">{c.name}</p>
                         <div className="flex items-center gap-2">
-                          {overLimit && <span className="text-xs text-red-400">⚠️ Excedido</span>}
+                          {overLimit && <span className="text-xs text-red-400">âš ï¸ Excedido</span>}
                           <button onClick={() => { setEditingCategory(c); setLimitDraft(c.monthly_limit?.toString() ?? '') }}
                             className="text-slate-600 hover:text-slate-300 p-1 transition-colors">
                             <ChevronRight size={14} />
@@ -273,7 +274,7 @@ export function ExpensesPage({ userId }: Props) {
                         </>
                       ) : (
                         <p className="text-xs text-slate-500">
-                          {spent > 0 ? maskAmount(spent, false) + ' gastado' : 'Sin gastos · Sin límite'}
+                          {spent > 0 ? maskAmount(spent, false) + ' gastado' : 'Sin gastos Â· Sin lÃ­mite'}
                         </p>
                       )}
                     </div>
@@ -285,20 +286,20 @@ export function ExpensesPage({ userId }: Props) {
 
           {/* Add category */}
           <div className="bg-slate-800/50 rounded-2xl p-4 border border-dashed border-slate-600 mt-4">
-            <p className="text-xs text-slate-400 font-semibold mb-3">Nueva categoría</p>
+            <p className="text-xs text-slate-400 font-semibold mb-3">Nueva categorÃ­a</p>
             <div className="flex gap-2 mb-3">
               <input value={newCatIcon} onChange={e => setNewCatIcon(e.target.value)} maxLength={2}
                 className="w-12 h-10 bg-slate-700 rounded-xl text-center text-xl border border-slate-600 focus:outline-none focus:border-blue-500" />
-              <input value={newCatName} onChange={e => setNewCatName(e.target.value)} placeholder="Nombre…"
+              <input value={newCatName} onChange={e => setNewCatName(e.target.value)} placeholder="Nombreâ€¦"
                 className="flex-1 bg-slate-700 border border-slate-600 rounded-xl px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-blue-500" />
             </div>
             <button onClick={async () => {
               if (!newCatName.trim()) return
               await addCategory({ user_id: userId, name: newCatName.trim(), icon: newCatIcon, monthly_limit: null, is_default: false })
-              setNewCatName(''); setNewCatIcon('📦')
+              setNewCatName(''); setNewCatIcon('ðŸ“¦')
             }} disabled={!newCatName.trim()}
               className="w-full py-2.5 bg-slate-700 hover:bg-slate-600 disabled:opacity-40 text-slate-300 rounded-xl text-sm font-medium transition-colors">
-              + Agregar categoría
+              + Agregar categorÃ­a
             </button>
           </div>
         </div>
@@ -314,13 +315,13 @@ export function ExpensesPage({ userId }: Props) {
               </div>
               <div className="flex-1">
                 <p className="text-slate-100 font-semibold">{editingCategory.name}</p>
-                <p className="text-xs text-slate-500">Configurar límite mensual</p>
+                <p className="text-xs text-slate-500">Configurar lÃ­mite mensual</p>
               </div>
               <button onClick={() => setEditingCategory(null)} className="text-slate-500 hover:text-slate-300 p-1">
                 <X size={16} />
               </button>
             </div>
-            <AmountInput label="Límite mensual (dejar en 0 para quitar)" value={limitDraft} onChange={setLimitDraft} className="mb-5" />
+            <AmountInput label="LÃ­mite mensual (dejar en 0 para quitar)" value={limitDraft} onChange={setLimitDraft} className="mb-5" />
             <div className="grid grid-cols-2 gap-3">
               <button onClick={() => {
                 deleteCategory(editingCategory.id)
@@ -343,7 +344,7 @@ export function ExpensesPage({ userId }: Props) {
   )
 }
 
-// ─── Expense card ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ Expense card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function ExpenseCard({ tx, categories, pocket }: { tx: Transaction; categories: Category[]; pocket?: Pocket }) {
   const category = categories.find(c => c.id === tx.category_id)
@@ -351,7 +352,7 @@ function ExpenseCard({ tx, categories, pocket }: { tx: Transaction; categories: 
     <div className="bg-slate-800 rounded-xl border border-slate-700/60 p-3.5">
       <div className="flex items-start gap-3">
         <div className="w-9 h-9 rounded-xl bg-red-500/10 flex items-center justify-center flex-shrink-0">
-          <span className="text-base">{category?.icon ?? '💸'}</span>
+          <span className="text-base">{category?.icon ?? 'ðŸ’¸'}</span>
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-slate-200 text-sm font-medium truncate leading-snug">
@@ -366,7 +367,7 @@ function ExpenseCard({ tx, categories, pocket }: { tx: Transaction; categories: 
             )}
           </div>
         </div>
-        <p className="text-red-400 font-bold text-sm flex-shrink-0 mt-0.5">− {maskAmount(tx.amount, false)}</p>
+        <p className="text-red-400 font-bold text-sm flex-shrink-0 mt-0.5">âˆ’ {maskAmount(tx.amount, false)}</p>
       </div>
     </div>
   )

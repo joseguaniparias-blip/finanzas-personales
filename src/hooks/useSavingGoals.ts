@@ -1,6 +1,7 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
+﻿import { useEffect, useState, useCallback, useRef } from 'react'
 import { db } from '@/lib/db'
 import type { SavingGoal } from '@/types'
+import { toISODate } from '@/lib/date'
 
 type NewSavingGoal = Omit<SavingGoal, 'id' | 'created_at' | 'saved_amount' | 'is_active'>
 
@@ -96,11 +97,11 @@ function nextDueDate(frequency: string, triggerDay: number): string {
   if (frequency === 'monthly') {
     const d = new Date(now.getFullYear(), now.getMonth(), triggerDay)
     if (d <= now) d.setMonth(d.getMonth() + 1)
-    return d.toISOString().slice(0, 10)
+    return toISODate(d)
   }
   // weekly
   const diff = (triggerDay - now.getDay() + 7) % 7 || 7
   const d = new Date(now)
   d.setDate(d.getDate() + diff)
-  return d.toISOString().slice(0, 10)
+  return toISODate(d)
 }

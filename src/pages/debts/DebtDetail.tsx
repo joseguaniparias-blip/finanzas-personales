@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { ArrowLeft, Check, SkipForward, Pencil, Trash2 } from 'lucide-react'
 import type { Debt, Pocket, ScheduledEvent } from '@/types'
 import { maskAmount } from '@/components/shared/PrivacyToggle'
 import { ConfirmEventSheet } from '@/components/shared/ConfirmEventSheet'
 import { db } from '@/lib/db'
 import { DAYS_OF_WEEK } from '@/types'
+import { todayISO } from '@/lib/date'
 
 interface Props {
   debt: Debt
@@ -26,7 +27,7 @@ export function DebtDetail({ debt, pockets, onBack, onEdit, onDelete, onConfirm,
 
   useEffect(() => {
     async function load() {
-      const today = new Date().toISOString().slice(0, 10)
+      const today = todayISO()
       const event = await db.scheduled_events
         .where('reference_id').equals(debt.id)
         .and(e => e.status === 'pending')
@@ -43,7 +44,7 @@ export function DebtDetail({ debt, pockets, onBack, onEdit, onDelete, onConfirm,
   const installmentsTotal = debt.has_total && debt.total_amount ? Math.ceil(debt.total_amount / debt.installment_amount) : null
 
   const frequencyLabel = debt.frequency === 'monthly' ? 'Mensual' : debt.frequency === 'weekly' ? 'Semanal' : 'Diario'
-  const dayLabel = debt.frequency === 'weekly' ? DAYS_OF_WEEK[debt.payment_day] : `Día ${debt.payment_day}`
+  const dayLabel = debt.frequency === 'weekly' ? DAYS_OF_WEEK[debt.payment_day] : `DÃ­a ${debt.payment_day}`
 
   return (
     <div className="p-4 max-w-lg mx-auto">
@@ -92,7 +93,7 @@ export function DebtDetail({ debt, pockets, onBack, onEdit, onDelete, onConfirm,
       {/* Info */}
       <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 mb-5 space-y-3">
         <InfoRow label="Cuota" value={maskAmount(debt.installment_amount, false)} />
-        <InfoRow label="Frecuencia" value={`${frequencyLabel} · ${dayLabel}`} />
+        <InfoRow label="Frecuencia" value={`${frequencyLabel} Â· ${dayLabel}`} />
         {sourcePocket && <InfoRow label="Bolsillo" value={`${sourcePocket.icon} ${sourcePocket.name}`} />}
         {!debt.has_total && (
           <InfoRow label="Total pagado" value={maskAmount(debt.paid_amount, false)} />
@@ -103,7 +104,7 @@ export function DebtDetail({ debt, pockets, onBack, onEdit, onDelete, onConfirm,
       {pendingEvent && debt.status === 'active' && (
         <div className="bg-amber-600/10 border border-amber-600/30 rounded-xl p-4 mb-5">
           <p className="text-xs text-amber-400 font-medium mb-3">
-            {pendingEvent.due_date <= new Date().toISOString().slice(0, 10) ? '⚠️ Cuota pendiente' : `📅 Próxima cuota · ${pendingEvent.due_date}`}
+            {pendingEvent.due_date <= todayISO() ? 'âš ï¸ Cuota pendiente' : `ðŸ“… PrÃ³xima cuota Â· ${pendingEvent.due_date}`}
           </p>
           <p className="text-slate-200 font-bold text-lg mb-4">{maskAmount(pendingEvent.amount, false)}</p>
           <div className="grid grid-cols-2 gap-2 mb-2">
@@ -133,7 +134,7 @@ export function DebtDetail({ debt, pockets, onBack, onEdit, onDelete, onConfirm,
         <ConfirmEventSheet
           event={confirmEvent}
           label={debt.name}
-          icon="💳"
+          icon="ðŸ’³"
           pockets={pockets.filter(p => p.type !== 'platform')}
           defaultPocketId={debt.source_pocket_id}
           onConfirm={(pocketId) => { onConfirm(confirmEvent.id, pocketId); setConfirmEvent(null); setPendingEvent(null) }}
@@ -154,12 +155,12 @@ export function DebtDetail({ debt, pockets, onBack, onEdit, onDelete, onConfirm,
           </button>
         ) : (
           <div className="bg-red-950/40 border border-red-700/40 rounded-xl p-4 text-center">
-            <p className="text-slate-300 text-sm mb-3">¿Eliminar <strong>{debt.name}</strong>?</p>
+            <p className="text-slate-300 text-sm mb-3">Â¿Eliminar <strong>{debt.name}</strong>?</p>
             <div className="flex gap-2">
               <button onClick={() => setConfirmDelete(false)}
                 className="flex-1 py-2 rounded-lg bg-slate-700 text-slate-300 text-sm">No</button>
               <button onClick={onDelete}
-                className="flex-1 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold">Sí, eliminar</button>
+                className="flex-1 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold">SÃ­, eliminar</button>
             </div>
           </div>
         )}

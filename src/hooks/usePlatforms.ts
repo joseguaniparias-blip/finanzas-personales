@@ -1,6 +1,7 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
+﻿import { useEffect, useState, useCallback, useRef } from 'react'
 import { db } from '@/lib/db'
 import type { Platform } from '@/types'
+import { toISODate } from '@/lib/date'
 
 type NewPlatform = Omit<Platform, 'id' | 'created_at'>
 
@@ -53,7 +54,7 @@ export function usePlatforms(userId: string): PlatformsHook {
         let diff = (updates.payout_day - d.getDay() + 7) % 7
         if (diff === 0) diff = 7
         d.setDate(d.getDate() + diff)
-        const newDueDate = d.toISOString().slice(0, 10)
+        const newDueDate = toISODate(d)
 
         const pending = await db.scheduled_events
           .where('user_id').equals(platform.user_id)

@@ -1,5 +1,6 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
+﻿import { useEffect, useState, useCallback, useRef } from 'react'
 import { db } from '@/lib/db'
+import { todayISO, toISODate } from '@/lib/date'
 import type { Collection } from '@/types'
 
 type NewCollection = Omit<Collection, 'id' | 'created_at' | 'collected_amount' | 'status'>
@@ -81,9 +82,9 @@ export function useCollections(userId: string): CollectionsHook {
 
 async function scheduleNextCollectionEvent(col: Collection) {
   if (col.frequency === 'once') {
-    const due = col.start_date > new Date().toISOString().slice(0, 10)
+    const due = col.start_date > todayISO()
       ? col.start_date
-      : new Date().toISOString().slice(0, 10)
+      : todayISO()
     await db.scheduled_events.add({
       id: crypto.randomUUID(),
       user_id: col.user_id,
@@ -101,7 +102,7 @@ async function scheduleNextCollectionEvent(col: Collection) {
     return
   }
 
-  const dueDate = col.start_date > new Date().toISOString().slice(0, 10)
+  const dueDate = col.start_date > todayISO()
     ? col.start_date
     : nextDueDate(col.frequency, col.payment_day ?? 1)
 
@@ -126,15 +127,15 @@ function nextDueDate(frequency: string, paymentDay: number): string {
   if (frequency === 'monthly') {
     const d = new Date(now.getFullYear(), now.getMonth(), paymentDay)
     if (d <= now) d.setMonth(d.getMonth() + 1)
-    return d.toISOString().slice(0, 10)
+    return toISODate(d)
   }
   if (frequency === 'weekly') {
     const diff = (paymentDay - now.getDay() + 7) % 7 || 7
     const d = new Date(now)
     d.setDate(d.getDate() + diff)
-    return d.toISOString().slice(0, 10)
+    return toISODate(d)
   }
   const d = new Date(now)
   d.setDate(d.getDate() + 1)
-  return d.toISOString().slice(0, 10)
+  return toISODate(d)
 }

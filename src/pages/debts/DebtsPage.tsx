@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { Plus, CreditCard, Pencil, Calendar, AlertCircle, CheckCircle2 } from 'lucide-react'
 import { useDebts } from '@/hooks/useDebts'
 import { useScheduledEvents } from '@/hooks/useScheduledEvents'
@@ -8,6 +8,7 @@ import { DebtDetail } from './DebtDetail'
 import { maskAmount } from '@/components/shared/PrivacyToggle'
 import { PageHeader } from '@/components/shared/PageHeader'
 import type { Debt, ScheduledEvent } from '@/types'
+import { todayISO, toISODate } from '@/lib/date'
 
 interface Props { userId: string }
 
@@ -15,7 +16,7 @@ function formatDueDate(iso: string, today: string): { label: string; overdue: bo
   if (iso < today) return { label: `Vencida ${formatShort(iso)}`, overdue: true }
   if (iso === today) return { label: 'Vence hoy', overdue: true }
   const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1)
-  if (iso === tomorrow.toISOString().slice(0, 10)) return { label: 'Mañana', overdue: false }
+  if (iso === toISODate(tomorrow)) return { label: 'MaÃ±ana', overdue: false }
   return { label: formatShort(iso), overdue: false }
 }
 
@@ -33,7 +34,7 @@ export function DebtsPage({ userId }: Props) {
   const [selectedDebt, setSelectedDebt] = useState<Debt | null>(null)
   const [editingDebt, setEditingDebt] = useState<Debt | null>(null)
 
-  if (loading) return <div className="p-4 text-slate-400 text-sm animate-pulse">Cargando…</div>
+  if (loading) return <div className="p-4 text-slate-400 text-sm animate-pulse">Cargandoâ€¦</div>
 
   if (showForm || editingDebt) {
     return (
@@ -69,7 +70,7 @@ export function DebtsPage({ userId }: Props) {
     )
   }
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = todayISO()
   const totalDebt = debts.reduce((s, d) => {
     if (d.has_total && d.total_amount) return s + Math.max(0, d.total_amount - d.paid_amount)
     return s
@@ -123,7 +124,7 @@ export function DebtsPage({ userId }: Props) {
             <CreditCard size={28} className="text-slate-600" />
           </div>
           <p className="text-slate-400 text-sm font-medium">Sin deudas activas</p>
-          <p className="text-slate-600 text-xs mt-1">Registra créditos, préstamos o compromisos</p>
+          <p className="text-slate-600 text-xs mt-1">Registra crÃ©ditos, prÃ©stamos o compromisos</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -146,7 +147,7 @@ export function DebtsPage({ userId }: Props) {
   )
 }
 
-// ─── Debt card ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Debt card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function DebtCard({ debt, pendingEvent, today, onTap, onEdit }: {
   debt: Debt
@@ -175,7 +176,7 @@ function DebtCard({ debt, pendingEvent, today, onTap, onEdit }: {
             <div className="flex items-center gap-2 mb-1">
               <p className="text-slate-200 font-semibold text-sm truncate">{debt.name}</p>
               {isOnce && (
-                <span className="flex-shrink-0 text-xs text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full">Único</span>
+                <span className="flex-shrink-0 text-xs text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full">Ãšnico</span>
               )}
               {!debt.has_total && !isOnce && (
                 <span className="flex-shrink-0 text-xs text-slate-500 bg-slate-700 px-2 py-0.5 rounded-full">Indefinida</span>
@@ -183,7 +184,7 @@ function DebtCard({ debt, pendingEvent, today, onTap, onEdit }: {
             </div>
             <p className="text-xs text-slate-500">
               {maskAmount(debt.installment_amount, false)}
-              {!isOnce && ` / ${debt.frequency === 'monthly' ? 'mes' : debt.frequency === 'weekly' ? 'semana' : 'día'}`}
+              {!isOnce && ` / ${debt.frequency === 'monthly' ? 'mes' : debt.frequency === 'weekly' ? 'semana' : 'dÃ­a'}`}
             </p>
           </div>
 

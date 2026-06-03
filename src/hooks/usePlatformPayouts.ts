@@ -1,18 +1,19 @@
-import { useEffect } from 'react'
+﻿import { useEffect } from 'react'
 import { db } from '@/lib/db'
+import { toISODate } from '@/lib/date'
 
 /**
  * Weekly close logic for platform wallets.
  *
- * Work week is Monday → Sunday. The platform balance accumulates work done
+ * Work week is Monday â†’ Sunday. The platform balance accumulates work done
  * during the week. At end of Sunday it "closes":
  *  - The closing balance is computed from TRANSACTIONS dated Mon-Sun of the
  *    closed week (NOT the current pocket balance, which may already include
  *    income from the new week if the user opens the app late).
- *  - positive closing → snapshot into a payout scheduled_event due on the
+ *  - positive closing â†’ snapshot into a payout scheduled_event due on the
  *    configured payout_day; pocket balance reduced by that amount (not zeroed,
  *    so any newer-week earnings are preserved).
- *  - non-positive    → no payout event; pocket untouched.
+ *  - non-positive    â†’ no payout event; pocket untouched.
  *
  * Runs on app load; re-evaluates if a Sunday has passed since the last close.
  */
@@ -33,7 +34,7 @@ export function usePlatformPayouts(userId: string) {
       for (const platform of platforms) {
         if (platform.payout_day === null) continue
 
-        // ── First install / new platform: set the baseline, don't close retroactively ──
+        // â”€â”€ First install / new platform: set the baseline, don't close retroactively â”€â”€
         // The current pocket balance is treated as "this week's accumulation"
         // and will be closed at the END of the current week.
         if (!platform.last_closed_sunday) {
@@ -41,10 +42,10 @@ export function usePlatformPayouts(userId: string) {
           continue
         }
 
-        // ── Stale marker check ──
+        // â”€â”€ Stale marker check â”€â”€
         // If last_closed_sunday is more than 7 days behind the most recent Sunday,
         // the marker is stale (data restored, long absence, version upgrade).
-        // Don't retroactively close — just refresh the baseline.
+        // Don't retroactively close â€” just refresh the baseline.
         const lastCloseDate = new Date(platform.last_closed_sunday + 'T00:00:00')
         const daysGap = Math.round((lastSunday.getTime() - lastCloseDate.getTime()) / 86400000)
         if (daysGap > 7) {
@@ -52,8 +53,8 @@ export function usePlatformPayouts(userId: string) {
           continue
         }
 
-        // ── Step 1: Clean up pending events (merge duplicates, delete invalid) ──
-        // Don't touch the due_date — let the user delete stale ones manually with
+        // â”€â”€ Step 1: Clean up pending events (merge duplicates, delete invalid) â”€â”€
+        // Don't touch the due_date â€” let the user delete stale ones manually with
         // the "Eliminar este pendiente" button.
         const allPending = await db.scheduled_events
           .where('user_id').equals(userId)
@@ -73,7 +74,7 @@ export function usePlatformPayouts(userId: string) {
           }
         }
 
-        // ── Step 2: Close this week if not already done ────────────────────────
+        // â”€â”€ Step 2: Close this week if not already done â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         if (platform.last_closed_sunday === lastSundayStr) continue
 
         const platformPockets = await db.pockets
@@ -86,8 +87,8 @@ export function usePlatformPayouts(userId: string) {
           continue
         }
 
-        // ── Compute closing balance from TRANSACTIONS in the closed week ──
-        // (Mon → Sun, inclusive). This is the correct closing snapshot even if
+        // â”€â”€ Compute closing balance from TRANSACTIONS in the closed week â”€â”€
+        // (Mon â†’ Sun, inclusive). This is the correct closing snapshot even if
         // the user opens the app days later, by which point the pocket balance
         // already includes new-week earnings.
         const closeWeekStart = isoDate(addDays(lastSunday, -6))  // Monday
@@ -102,7 +103,7 @@ export function usePlatformPayouts(userId: string) {
         )
 
         // Date of the upcoming payout: next occurrence of payout_day AFTER the
-        // closed Sunday — and ALWAYS in the future. If the natural next
+        // closed Sunday â€” and ALWAYS in the future. If the natural next
         // occurrence is in the past (close ran late), advance by weeks.
         const payoutDate = nextOccurrenceAfter(lastSunday, platform.payout_day)
         while (payoutDate < todayDateOnly) {
@@ -111,7 +112,7 @@ export function usePlatformPayouts(userId: string) {
         const correctDueDate = isoDate(payoutDate)
 
         if (closingBalance > 0) {
-          // Re-query after dedup — at most one pending event remains
+          // Re-query after dedup â€” at most one pending event remains
           const existing = await db.scheduled_events
             .where('user_id').equals(userId)
             .filter(e => e.type === 'platform_payout' && e.reference_id === platform.id && e.status === 'pending')
@@ -178,7 +179,7 @@ function nextOccurrenceAfter(fromDate: Date, dayOfWeek: number): Date {
 }
 
 function isoDate(d: Date): string {
-  return d.toISOString().slice(0, 10)
+  return toISODate(d)
 }
 
 function addDays(d: Date, days: number): Date {

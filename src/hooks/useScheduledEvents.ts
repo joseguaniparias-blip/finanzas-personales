@@ -1,6 +1,7 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
+﻿import { useEffect, useState, useCallback, useRef } from 'react'
 import { db } from '@/lib/db'
 import type { ScheduledEvent, EventType } from '@/types'
+import { todayISO, toISODate } from '@/lib/date'
 
 interface ScheduledEventsHook {
   events: ScheduledEvent[]
@@ -36,13 +37,13 @@ export function useScheduledEvents(userId: string): ScheduledEventsHook {
 
   useEffect(() => { load() }, [load])
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = todayISO()
   const todayEvents = events.filter(e => e.due_date <= today)
 
   const confirmEvent = async (id: string, pocketId: string) => {
     // Wrap everything in a single Dexie transaction so the status check + side
     // effects are truly atomic. Without this, two parallel taps both see status
-    // === 'pending', both pass the guard, and both run side-effects → doubled
+    // === 'pending', both pass the guard, and both run side-effects â†’ doubled
     // balance, doubled transactions, doubled scheduleNext.
     await db.transaction('rw', [
       db.scheduled_events, db.pockets, db.transactions,
@@ -119,7 +120,7 @@ export function useScheduledEvents(userId: string): ScheduledEventsHook {
         const isIncome = event.type === 'collection'
         await adjustPocket(pocketId, isIncome ? +paidAmount : -paidAmount)
         await addTx(userId, isIncome ? 'income' : 'expense', paidAmount, pocketId, event, today,
-          `Abono parcial — quedan $${remaining.toLocaleString('es-CO')}`)
+          `Abono parcial â€” quedan $${remaining.toLocaleString('es-CO')}`)
 
         if (event.type === 'debt') {
           const debt = await db.debts.get(event.reference_id)
@@ -138,14 +139,14 @@ export function useScheduledEvents(userId: string): ScheduledEventsHook {
   }
 
   const postponeEvent = async (id: string) => {
-    // Posponer = correr 1 día desde la fecha ACTUAL del evento, no regresar
-    // a "mañana". Si el evento estaba para dentro de 30 días, posponer un día
-    // lo mueve al día 31 — antes lo regresaba a mañana, una regresión brutal.
+    // Posponer = correr 1 dÃ­a desde la fecha ACTUAL del evento, no regresar
+    // a "maÃ±ana". Si el evento estaba para dentro de 30 dÃ­as, posponer un dÃ­a
+    // lo mueve al dÃ­a 31 â€” antes lo regresaba a maÃ±ana, una regresiÃ³n brutal.
     const ev = await db.scheduled_events.get(id)
     if (!ev) return
-    const d = new Date(ev.due_date + 'T12:00:00')  // noon → no DST/timezone surprises
+    const d = new Date(ev.due_date + 'T12:00:00')  // noon â†’ no DST/timezone surprises
     d.setDate(d.getDate() + 1)
-    await db.scheduled_events.update(id, { due_date: d.toISOString().slice(0, 10) })
+    await db.scheduled_events.update(id, { due_date: toISODate(d) })
     await load()
   }
 
@@ -165,7 +166,7 @@ export function useScheduledEvents(userId: string): ScheduledEventsHook {
   return { events, todayEvents, loading, confirmEvent, partialEvent, postponeEvent, rescheduleEvent, deleteEvent, getPendingByType, getPendingByRef }
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async function adjustPocket(pocketId: string, delta: number) {
   const pocket = await db.pockets.get(pocketId)
@@ -177,7 +178,7 @@ async function addTx(
   pocketId: string, event: ScheduledEvent, date: string, note?: string
 ) {
   // For platform_payout events the reference_id IS the platform id, so we
-  // tag the transaction with platform_id too — Reports / dashboards filter
+  // tag the transaction with platform_id too â€” Reports / dashboards filter
   // ingresos by plataforma and these payouts must show up there.
   const platformId = event.type === 'platform_payout' ? event.reference_id : null
   await db.transactions.add({
@@ -195,7 +196,7 @@ async function handleDebtConfirm(event: ScheduledEvent) {
   const newPaid = debt.paid_amount + event.amount
   const updates: Record<string, unknown> = { paid_amount: newPaid }
   if (debt.frequency === 'once') {
-    // Single payment — always mark as paid_off after confirming
+    // Single payment â€” always mark as paid_off after confirming
     updates.status = 'paid_off'
   } else if (debt.has_total && debt.total_amount && newPaid >= debt.total_amount) {
     updates.status = 'paid_off'
@@ -251,7 +252,7 @@ async function handlePlatformPayoutConfirm(event: ScheduledEvent, destPocketId: 
   if (event.amount > 0) {
     // The weekly close (usePlatformPayouts) already subtracted closingBalance
     // from the platform pocket and recorded it as this event's amount. At
-    // collect time we ONLY move event.amount into the destination — we do
+    // collect time we ONLY move event.amount into the destination â€” we do
     // NOT touch the platform pocket again. Any positive remainder there is
     // current-week earnings that must be preserved.
     //
@@ -260,11 +261,11 @@ async function handlePlatformPayoutConfirm(event: ScheduledEvent, destPocketId: 
     // button in the agenda sheet.
     await adjustPocket(targetPocketId, event.amount)
     await addTx(userId, 'income', event.amount, targetPocketId, event, today,
-      `Pago ${platform.name} — período cerrado`)
+      `Pago ${platform.name} â€” perÃ­odo cerrado`)
   }
 
   // The next payout event is created automatically by usePlatformPayouts when
-  // the next Sunday closes — no scheduling here.
+  // the next Sunday closes â€” no scheduling here.
 }
 
 async function scheduleNext(prev: ScheduledEvent, frequency: string, amount: number) {
@@ -287,7 +288,7 @@ async function scheduleNext(prev: ScheduledEvent, frequency: string, amount: num
     reference_id: prev.reference_id,
     reference_type: prev.reference_type,
     amount,
-    due_date: d.toISOString().slice(0, 10),
+    due_date: toISODate(d),
     status: 'pending',
     actual_pocket_id: null,
     partial_amount: null,

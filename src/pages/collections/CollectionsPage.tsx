@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { Plus, HandCoins, Calendar, AlertCircle, User } from 'lucide-react'
 import { useCollections } from '@/hooks/useCollections'
 import { usePockets } from '@/hooks/usePockets'
@@ -8,6 +8,7 @@ import { CollectionDetail } from './CollectionDetail'
 import { maskAmount } from '@/components/shared/PrivacyToggle'
 import { PageHeader } from '@/components/shared/PageHeader'
 import type { Collection, ScheduledEvent } from '@/types'
+import { todayISO, toISODate } from '@/lib/date'
 
 interface Props { userId: string }
 
@@ -21,7 +22,7 @@ function formatDue(iso: string, today: string): { label: string; urgent: boolean
   if (iso < today) return { label: `Vencido ${formatShort(iso)}`, urgent: true }
   if (iso === today) return { label: 'Vence hoy', urgent: true }
   const tom = new Date(); tom.setDate(tom.getDate() + 1)
-  if (iso === tom.toISOString().slice(0, 10)) return { label: 'Mañana', urgent: false }
+  if (iso === toISODate(tom)) return { label: 'MaÃ±ana', urgent: false }
   return { label: formatShort(iso), urgent: false }
 }
 
@@ -33,7 +34,7 @@ export function CollectionsPage({ userId }: Props) {
   const [selected, setSelected] = useState<Collection | null>(null)
   const [editing, setEditing] = useState<Collection | null>(null)
 
-  if (loading) return <div className="p-4 text-slate-400 text-sm animate-pulse">Cargando…</div>
+  if (loading) return <div className="p-4 text-slate-400 text-sm animate-pulse">Cargandoâ€¦</div>
 
   if (showForm || editing) {
     return (
@@ -59,7 +60,7 @@ export function CollectionsPage({ userId }: Props) {
     )
   }
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = todayISO()
   const totalPending = collections.reduce((s, c) => {
     if (c.has_total && c.total_amount) return s + Math.max(0, c.total_amount - c.collected_amount)
     return s
@@ -130,7 +131,7 @@ export function CollectionsPage({ userId }: Props) {
   )
 }
 
-// ─── Collection card ──────────────────────────────────────────────────────────
+// â”€â”€â”€ Collection card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function CollectionCard({ collection: c, pendingEvent, today, onTap }: {
   collection: Collection
@@ -161,10 +162,10 @@ function CollectionCard({ collection: c, pendingEvent, today, onTap }: {
             <div className="flex items-center gap-1.5">
               <User size={10} className="text-slate-600" />
               <p className="text-xs text-slate-500">{c.person_name}</p>
-              <span className="text-slate-700">·</span>
+              <span className="text-slate-700">Â·</span>
               <p className="text-xs text-slate-500">
                 {maskAmount(c.installment_amount, false)}
-                {c.frequency !== 'once' && `/${c.frequency === 'monthly' ? 'mes' : c.frequency === 'weekly' ? 'sem' : 'día'}`}
+                {c.frequency !== 'once' && `/${c.frequency === 'monthly' ? 'mes' : c.frequency === 'weekly' ? 'sem' : 'dÃ­a'}`}
               </p>
             </div>
           </div>
