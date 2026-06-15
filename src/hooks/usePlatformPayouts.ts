@@ -158,12 +158,18 @@ export function usePlatformPayouts(userId: string) {
 /**
  * Returns the most recent Sunday whose week has fully ended.
  *  - If today is Sunday, the week is still in progress; last *closed* Sunday is 7 days ago.
+ *  - If today is Monday before MONDAY_GRACE_HOUR, keep yesterday's Sunday OPEN
+ *    so platform earnings registered after midnight (with Sunday date) still
+ *    fall inside the closing window.
  *  - If today is Mon-Sat, last closed Sunday is the most recent past Sunday.
  */
+const MONDAY_GRACE_HOUR = 6  // close runs at/after Monday 06:00 local
+
 function mostRecentSunday(today: Date): Date {
   const d = new Date(today.getFullYear(), today.getMonth(), today.getDate())
   const dow = d.getDay() // 0=Sun
-  const daysBack = dow === 0 ? 7 : dow
+  const isMondayGrace = dow === 1 && today.getHours() < MONDAY_GRACE_HOUR
+  const daysBack = (dow === 0 || isMondayGrace) ? 7 : dow
   d.setDate(d.getDate() - daysBack)
   return d
 }

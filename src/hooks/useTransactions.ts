@@ -1,7 +1,7 @@
 ﻿import { useEffect, useState, useCallback, useRef } from 'react'
 import { db } from '@/lib/db'
 import type { Transaction } from '@/types'
-import { toISODate } from '@/lib/date'
+import { toISODate, addDaysISO } from '@/lib/date'
 
 interface TransactionsHook {
   transactions: Transaction[]
@@ -45,16 +45,52 @@ export function useTransactions(userId: string): TransactionsHook {
 
   const addTransaction = async (t: Omit<Transaction, 'id' | 'created_at'>): Promise<Transaction> => {
     const tx: Transaction = { ...t, id: crypto.randomUUID(), created_at: new Date().toISOString() }
-    // Atomic: tx insert + pocket balance update in one Dexie transaction so
-    // parallel calls cannot lose updates against the same pocket balance.
-    await db.transaction('rw', db.transactions, db.pockets, async () => {
-      await db.transactions.add(tx)
-      const pocket = await db.pockets.get(t.pocket_id)
-      if (pocket) {
+    // Atomic: tx insert + pocket update + retroactive payout reconciliation
+    // in one Dexie transaction so parallel calls don't race on balances.
+    await db.transaction('rw',
+      [db.transactions, db.pockets, db.platforms, db.scheduled_events],
+      async () => {
+        await db.transactions.add(tx)
+        const pocket = await db.pockets.get(t.pocket_id)
+        if (!pocket) return
+
         const delta = t.type === 'expense' ? -t.amount : t.amount
         await db.pockets.update(t.pocket_id, { balance: pocket.balance + delta })
+
+        // ── Retroactive reconciliation for late Sunday entries ──────────────
+        // If this is a platform-wallet income dated INSIDE the most recently
+        // closed week AND a pending payout event still exists for that
+        // platform, push the amount into the event and reverse the pocket
+        // bump. Without this, late-Sunday earnings get stranded in the new
+        // week's bucket and the user has to chase them manually.
+        if (pocket.type === 'platform' && t.type === 'income' && pocket.platform_id) {
+          const platform = await db.platforms.get(pocket.platform_id)
+          if (platform?.last_closed_sunday) {
+            const weekStart = addDaysISO(platform.last_closed_sunday, -6) // Monday
+            const inClosedWeek = t.date >= weekStart && t.date <= platform.last_closed_sunday
+            if (inClosedWeek) {
+              const pendingEvent = await db.scheduled_events
+                .where('user_id').equals(t.user_id)
+                .filter(e => e.type === 'platform_payout'
+                          && e.reference_id === platform.id
+                          && e.status === 'pending')
+                .first()
+              if (pendingEvent) {
+                await db.scheduled_events.update(pendingEvent.id, {
+                  amount: pendingEvent.amount + t.amount
+                })
+                const pocketAfter = await db.pockets.get(t.pocket_id)
+                if (pocketAfter) {
+                  await db.pockets.update(t.pocket_id, {
+                    balance: pocketAfter.balance - t.amount
+                  })
+                }
+              }
+            }
+          }
+        }
       }
-    })
+    )
     await load()
     return tx
   }

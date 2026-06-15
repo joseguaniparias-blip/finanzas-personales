@@ -47,7 +47,7 @@ export function useScheduledEvents(userId: string): ScheduledEventsHook {
     // balance, doubled transactions, doubled scheduleNext.
     await db.transaction('rw', [
       db.scheduled_events, db.pockets, db.transactions,
-      db.debts, db.collections, db.saving_goals, db.cadenas, db.platforms,
+      db.debts, db.collections, db.saving_goals, db.cadenas, db.platforms, db.recurring_payments,
     ], async () => {
         const event = await db.scheduled_events.get(id)
         if (!event || event.status !== 'pending') return
@@ -92,7 +92,7 @@ export function useScheduledEvents(userId: string): ScheduledEventsHook {
     // Same atomicity strategy as confirmEvent.
     await db.transaction('rw', [
       db.scheduled_events, db.pockets, db.transactions,
-      db.debts, db.collections, db.saving_goals, db.cadenas, db.platforms,
+      db.debts, db.collections, db.saving_goals, db.cadenas, db.platforms, db.recurring_payments,
     ], async () => {
         const event = await db.scheduled_events.get(id)
         if (!event || event.status !== 'pending') return
