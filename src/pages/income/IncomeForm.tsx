@@ -5,7 +5,7 @@ import { AmountInput, parseAmount } from '@/components/shared/AmountInput'
 import { maskAmount } from '@/components/shared/PrivacyToggle'
 import { db } from '@/lib/db'
 import { useSubmitLock } from '@/hooks/useSubmitLock'
-import { todayISO } from '@/lib/date'
+import { todayISO, addDaysISO } from '@/lib/date'
 
 const QUICK_ICONS = ['⛽','🔧','📱','🛡️','🛣️','🍔','🛒','💊','📦','🎮','👕','🚌','☕','🍕','💡']
 
@@ -150,28 +150,61 @@ export function IncomeForm({ userId, platforms, pockets, categories, addCategory
         // because we want a custom amount sign + reference_type).
         if (platformPocket && digital !== 0) {
           const platformPocketId = platformPocket.id
-          await db.transaction('rw', db.pockets, db.transactions, async () => {
-            const fresh = await db.pockets.get(platformPocketId)
-            if (!fresh) return
-            await db.pockets.update(platformPocketId, { balance: fresh.balance + digital })
-            await db.transactions.add({
-              id: crypto.randomUUID(),
-              user_id: userId,
-              type: digital > 0 ? 'income' : 'expense',
-              amount: Math.abs(digital),
-              pocket_id: platformPocketId,
-              category_id: null,
-              platform_id: platformId,
-              reference_id: null,
-              reference_type: digital > 0 ? 'income_digital' : 'income_cash_excess',
-              note: digital > 0
-                ? `Digital ${platform?.name ?? ''}`
-                : `Adelanto efectivo ${platform?.name ?? ''} — deuda con plataforma`,
-              receipt_url: null,
-              date,
-              created_at: new Date().toISOString()
+          await db.transaction('rw',
+            [db.pockets, db.transactions, db.platforms, db.scheduled_events],
+            async () => {
+              const fresh = await db.pockets.get(platformPocketId)
+              if (!fresh) return
+              await db.pockets.update(platformPocketId, { balance: fresh.balance + digital })
+              await db.transactions.add({
+                id: crypto.randomUUID(),
+                user_id: userId,
+                type: digital > 0 ? 'income' : 'expense',
+                amount: Math.abs(digital),
+                pocket_id: platformPocketId,
+                category_id: null,
+                platform_id: platformId,
+                reference_id: null,
+                reference_type: digital > 0 ? 'income_digital' : 'income_cash_excess',
+                note: digital > 0
+                  ? `Digital ${platform?.name ?? ''}`
+                  : `Adelanto efectivo ${platform?.name ?? ''} — deuda con plataforma`,
+                receipt_url: null,
+                date,
+                created_at: new Date().toISOString()
+              })
+
+              // Retroactive reconciliation: if this income is dated within the
+              // already-closed week and a pending payout event exists, push the
+              // digital amount into that event and revert the pocket bump.
+              // Only applies to positive (income) flows — negative (debt) stays
+              // in the new week as before.
+              if (digital > 0) {
+                const platformRow = await db.platforms.get(platformId)
+                if (platformRow?.last_closed_sunday) {
+                  const weekStart = addDaysISO(platformRow.last_closed_sunday, -6)
+                  if (date >= weekStart && date <= platformRow.last_closed_sunday) {
+                    const pending = await db.scheduled_events
+                      .where('user_id').equals(userId)
+                      .filter(e => e.type === 'platform_payout'
+                                && e.reference_id === platformId
+                                && e.status === 'pending')
+                      .first()
+                    if (pending) {
+                      await db.scheduled_events.update(pending.id, {
+                        amount: pending.amount + digital
+                      })
+                      const after = await db.pockets.get(platformPocketId)
+                      if (after) {
+                        await db.pockets.update(platformPocketId, {
+                          balance: after.balance - digital
+                        })
+                      }
+                    }
+                  }
+                }
+              }
             })
-          })
         }
       }
 
