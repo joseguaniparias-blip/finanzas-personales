@@ -184,7 +184,16 @@ function mostRecentSunday(today: Date): Date {
   const d = new Date(today.getFullYear(), today.getMonth(), today.getDate())
   const dow = d.getDay() // 0=Sun
   const isMondayGrace = dow === 1 && today.getHours() < MONDAY_GRACE_HOUR
-  const daysBack = (dow === 0 || isMondayGrace) ? 7 : dow
+  // Canonical "most recent closed Sunday" count:
+  //   Sun → 7 (this Sunday's week is still in progress)
+  //   Mon → 1 (yesterday was Sunday)
+  //   Tue → 2, …, Sat → 6
+  let daysBack = dow === 0 ? 7 : dow
+  // Grace: on Monday before MONDAY_GRACE_HOUR, treat yesterday's Sunday as
+  // still-in-progress and roll back to the PREVIOUS Sunday (8 days total,
+  // not 7 — that would land on a Monday, not a Sunday, which corrupted
+  // last_closed_sunday and caused a double-close for the next week).
+  if (isMondayGrace) daysBack = 8
   d.setDate(d.getDate() - daysBack)
   return d
 }
