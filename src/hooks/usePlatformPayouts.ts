@@ -65,12 +65,22 @@ export function usePlatformPayouts(userId: string) {
           await db.scheduled_events.delete(ev.id)
         }
         const validPending = allPending.filter(e => e.amount > 0)
-        if (validPending.length > 1) {
-          // Merge: sum amounts into the first event (keep its due_date), delete the rest
-          const totalAmount = validPending.reduce((s, e) => s + e.amount, 0)
-          await db.scheduled_events.update(validPending[0].id, { amount: totalAmount })
-          for (let i = 1; i < validPending.length; i++) {
-            await db.scheduled_events.delete(validPending[i].id)
+        // Merge ONLY within the same due_date (true duplicates from race
+        // conditions). Different due_dates = separate closes; keep them apart
+        // so the user sees each week's cobro independently.
+        const byDate = new Map<string, typeof validPending>()
+        for (const ev of validPending) {
+          const list = byDate.get(ev.due_date) ?? []
+          list.push(ev)
+          byDate.set(ev.due_date, list)
+        }
+        for (const list of byDate.values()) {
+          if (list.length > 1) {
+            const totalAmount = list.reduce((s, e) => s + e.amount, 0)
+            await db.scheduled_events.update(list[0].id, { amount: totalAmount })
+            for (let i = 1; i < list.length; i++) {
+              await db.scheduled_events.delete(list[i].id)
+            }
           }
         }
 
@@ -118,7 +128,12 @@ export function usePlatformPayouts(userId: string) {
             .filter(e => e.type === 'platform_payout' && e.reference_id === platform.id && e.status === 'pending')
             .first()
 
-          if (existing) {
+          // Only merge into the existing event if it belongs to THIS close's
+          // due date. If it's from an earlier uncollected close, keep it
+          // separate — the user has two independent payouts to collect and
+          // merging them into one number is confusing (and hides which week
+          // the money came from).
+          if (existing && existing.due_date === correctDueDate) {
             await db.scheduled_events.update(existing.id, {
               amount: existing.amount + closingBalance,
               due_date: correctDueDate,

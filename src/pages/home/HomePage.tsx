@@ -599,6 +599,21 @@ export function HomePage({ userId }: Props) {
           onConfirm={async pocketId => { await confirmEvent(confirmingPayout.id, pocketId); setConfirmingPayout(null) }}
           onPostpone={() => { postponeEvent(confirmingPayout.id); setConfirmingPayout(null) }}
           onDelete={async () => { await deleteEvent(confirmingPayout.id); setConfirmingPayout(null) }}
+          onEditAmount={async newAmount => {
+            // Reconciliation: any delta between old event.amount and newAmount
+            // moves in/out of the platform wallet so total money is preserved.
+            const oldAmount = confirmingPayout.amount
+            const delta = newAmount - oldAmount   // positive → event grows, pocket shrinks
+            const wallet = pockets.find(p => p.platform_id === confirmingPayout.reference_id)
+            await db.transaction('rw', db.scheduled_events, db.pockets, async () => {
+              await db.scheduled_events.update(confirmingPayout.id, { amount: newAmount })
+              if (wallet) {
+                const fresh = await db.pockets.get(wallet.id)
+                if (fresh) await db.pockets.update(wallet.id, { balance: fresh.balance - delta })
+              }
+            })
+            setConfirmingPayout(null)
+          }}
           onClose={() => setConfirmingPayout(null)}
         />
       )}
@@ -632,11 +647,13 @@ interface PayoutSheetProps {
   onConfirm: (pocketId: string) => void
   onPostpone: () => void
   onDelete: () => void
+  onEditAmount: (newAmount: number) => Promise<void>
   onClose: () => void
 }
 
-function PlatformPayoutSheet({ event, platforms, pockets, onConfirm, onPostpone, onDelete, onClose }: PayoutSheetProps) {
+function PlatformPayoutSheet({ event, platforms, pockets, onConfirm, onPostpone, onDelete, onEditAmount, onClose }: PayoutSheetProps) {
   const platform = platforms.find(p => p.id === event.reference_id)
+  const walletPocket = pockets.find(p => p.platform_id === event.reference_id)
   const payoutPocket = pockets.find(p => p.id === platform?.payout_pocket_id)
   const fallbackPocket = pockets.find(p => p.type !== 'platform')
 
@@ -647,7 +664,23 @@ function PlatformPayoutSheet({ event, platforms, pockets, onConfirm, onPostpone,
   const willTransfer = amount > 0
   const targetPocket = payoutPocket ?? fallbackPocket
 
+  const [editingAmount, setEditingAmount] = useState(false)
+  const [editValue, setEditValue] = useState(amount.toString())
+  const [savingEdit, setSavingEdit] = useState(false)
+
   const handleConfirm = () => onConfirm(targetPocket?.id ?? '')
+
+  const saveEdit = async () => {
+    const newAmount = Number(editValue.replace(/[^0-9.-]/g, ''))
+    if (isNaN(newAmount) || newAmount < 0) return
+    setSavingEdit(true)
+    try {
+      await onEditAmount(newAmount)
+    } finally {
+      setSavingEdit(false)
+      setEditingAmount(false)
+    }
+  }
 
   return (
     <div className="fixed inset-0 bg-black/70 z-[60] flex items-end justify-center" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
@@ -671,21 +704,61 @@ function PlatformPayoutSheet({ event, platforms, pockets, onConfirm, onPostpone,
 
         {/* Balance summary */}
         <div className={`rounded-2xl p-4 mb-5 border ${willTransfer ? 'bg-orange-500/8 border-orange-500/25' : 'bg-slate-800 border-slate-700'}`}>
-          <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">Saldo en billetera {platform?.name}</p>
-          <p className={`text-2xl font-bold mb-1 ${willTransfer ? 'text-orange-400' : 'text-red-400'}`}>
-            {maskAmount(amount, false)}
-          </p>
-          {willTransfer ? (
-            <div className="flex items-center gap-1.5 mt-3 text-sm text-slate-300">
-              <span className="text-slate-500 text-xs">Se transferirá</span>
-              <span className="text-orange-300 font-semibold">{maskAmount(amount, false)}</span>
-              <ArrowRight size={12} className="text-slate-500" />
-              <span className="text-xs">{targetPocket?.icon} {targetPocket?.name ?? '–'}</span>
+          <div className="flex items-start justify-between mb-1">
+            <p className="text-xs text-slate-400 uppercase tracking-wider">Saldo en billetera {platform?.name}</p>
+            {!editingAmount && (
+              <button onClick={() => { setEditValue(amount.toString()); setEditingAmount(true) }}
+                className="text-[10px] text-slate-500 hover:text-orange-300 underline">
+                Editar monto
+              </button>
+            )}
+          </div>
+          {editingAmount ? (
+            <div className="mt-2">
+              <input
+                type="number"
+                value={editValue}
+                onChange={e => setEditValue(e.target.value)}
+                autoFocus
+                className="w-full bg-slate-800 border border-orange-500 rounded-lg px-3 py-2 text-slate-100 text-lg font-bold focus:outline-none focus:border-orange-400 mb-2"
+              />
+              <p className="text-[10px] text-slate-500 mb-2">
+                La diferencia con {maskAmount(amount, false)} se ajustará en la billetera {platform?.name} para que no se pierda plata.
+              </p>
+              <div className="flex gap-2">
+                <button onClick={() => setEditingAmount(false)}
+                  className="flex-1 py-2 rounded-lg bg-slate-700 text-slate-300 text-xs">
+                  Cancelar
+                </button>
+                <button onClick={saveEdit} disabled={savingEdit || !editValue}
+                  className="flex-1 py-2 rounded-lg bg-orange-500 disabled:opacity-40 text-white text-xs font-semibold">
+                  {savingEdit ? 'Guardando…' : 'Guardar'}
+                </button>
+              </div>
             </div>
           ) : (
-            <p className="text-xs text-slate-400 mt-2">
-              Saldo negativo — se arrastra a la siguiente semana y se descuenta de tus próximos ingresos.
-            </p>
+            <>
+              <p className={`text-2xl font-bold mb-1 ${willTransfer ? 'text-orange-400' : 'text-red-400'}`}>
+                {maskAmount(amount, false)}
+              </p>
+              {willTransfer ? (
+                <div className="flex items-center gap-1.5 mt-3 text-sm text-slate-300">
+                  <span className="text-slate-500 text-xs">Se transferirá</span>
+                  <span className="text-orange-300 font-semibold">{maskAmount(amount, false)}</span>
+                  <ArrowRight size={12} className="text-slate-500" />
+                  <span className="text-xs">{targetPocket?.icon} {targetPocket?.name ?? '–'}</span>
+                </div>
+              ) : (
+                <p className="text-xs text-slate-400 mt-2">
+                  Saldo negativo — se arrastra a la siguiente semana y se descuenta de tus próximos ingresos.
+                </p>
+              )}
+              {walletPocket && (
+                <p className="text-[10px] text-slate-500 mt-3">
+                  Billetera {platform?.name} esta semana: <span className={walletPocket.balance < 0 ? 'text-red-400' : 'text-slate-400'}>{maskAmount(walletPocket.balance, false)}</span>
+                </p>
+              )}
+            </>
           )}
         </div>
 
