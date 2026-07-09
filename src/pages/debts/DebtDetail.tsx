@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect } from 'react'
-import { ArrowLeft, Check, SkipForward, Pencil, Trash2 } from 'lucide-react'
+import { ArrowLeft, Check, SkipForward, Pencil, Trash2, CreditCard } from 'lucide-react'
 import type { Debt, Pocket, ScheduledEvent } from '@/types'
 import { maskAmount } from '@/components/shared/PrivacyToggle'
 import { ConfirmEventSheet } from '@/components/shared/ConfirmEventSheet'
@@ -83,7 +83,7 @@ export function DebtDetail({ debt, pockets, onBack, onEdit, onDelete, onConfirm,
               style={{ width: `${(progress! * 100).toFixed(1)}%` }}
             />
           </div>
-          <div className="flex justify-between text-xs text-slate-500">
+          <div className="flex justify-between text-xs text-slate-400">
             <span>{installmentsDone} cuota{installmentsDone !== 1 ? 's' : ''} pagadas</span>
             {installmentsTotal && <span>{installmentsTotal - installmentsDone} restantes</span>}
           </div>
@@ -134,7 +134,7 @@ export function DebtDetail({ debt, pockets, onBack, onEdit, onDelete, onConfirm,
         <ConfirmEventSheet
           event={confirmEvent}
           label={debt.name}
-          icon="💳"
+          icon={CreditCard}
           pockets={pockets.filter(p => p.type !== 'platform')}
           defaultPocketId={debt.source_pocket_id}
           onConfirm={(pocketId) => { onConfirm(confirmEvent.id, pocketId); setConfirmEvent(null); setPendingEvent(null) }}

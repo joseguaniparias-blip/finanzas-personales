@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { LogOut, ChevronRight, User, Bell, Trash2, Plus, Tags, Pencil, Check, X } from 'lucide-react'
+import { LogOut, ChevronRight, User, Bell, Trash2, Plus, Tags, Pencil, Check, X, Eye, Bike, ShieldCheck, CheckCircle } from 'lucide-react'
 import type { Category, CategoryKind } from '@/types'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { usePlatforms } from '@/hooks/usePlatforms'
@@ -165,13 +165,13 @@ export function ConfigPage({ userId }: Props) {
                       Sí, eliminar
                     </button>
                     <button onClick={() => setConfirmDeletePlatform(null)}
-                      className="text-xs text-slate-500 hover:text-slate-300 transition-colors">
+                      className="text-xs text-slate-400 hover:text-slate-300 transition-colors">
                       Cancelar
                     </button>
                   </div>
                 ) : (
                   <button onClick={() => setConfirmDeletePlatform(p.id)}
-                    className="p-1.5 rounded-lg text-slate-600 hover:text-red-400 hover:bg-red-400/10 transition-colors">
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-400/10 transition-colors">
                     <Trash2 size={14} />
                   </button>
                 )}
@@ -203,7 +203,7 @@ export function ConfigPage({ userId }: Props) {
             </div>
           ))}
           {platforms.length === 0 && (
-            <p className="text-slate-500 text-sm text-center py-8">Sin plataformas configuradas</p>
+            <p className="text-slate-400 text-sm text-center py-8">Sin plataformas configuradas</p>
           )}
         </div>
       </div>
@@ -215,7 +215,7 @@ export function ConfigPage({ userId }: Props) {
     return (
       <div className="p-4 max-w-lg mx-auto">
         <PageHeader title="Límites por categoría" />
-        <p className="text-slate-500 text-xs mb-4">Define un límite mensual opcional por categoría de gasto. Recibirás una alerta en reportes si lo superas.</p>
+        <p className="text-slate-400 text-xs mb-4">Define un límite mensual opcional por categoría de gasto. Recibirás una alerta en reportes si lo superas.</p>
         <div className="space-y-3">
           {expenseCats.map(c => {
             const draft = editingLimits[c.id] ?? c.monthly_limit?.toString() ?? ''
@@ -277,7 +277,7 @@ export function ConfigPage({ userId }: Props) {
     return (
       <div className="p-4 max-w-lg mx-auto">
         <PageHeader title="Integridad de datos" />
-        <p className="text-slate-500 text-xs mb-4">
+        <p className="text-slate-400 text-xs mb-4">
           Recalcula el saldo real de cada bolsillo desde tu historial de movimientos y lo compara con el saldo guardado. Si algo no cuadra, aquí lo ves y lo corriges.
         </p>
 
@@ -288,9 +288,9 @@ export function ConfigPage({ userId }: Props) {
 
         {driftReport !== null && driftReport.length === 0 && (
           <div className="bg-emerald-600/10 border border-emerald-600/25 rounded-2xl p-5 text-center">
-            <p className="text-2xl mb-1">✅</p>
+            <CheckCircle size={28} className="text-emerald-400 mx-auto mb-2" />
             <p className="text-emerald-300 text-sm font-medium">Todo cuadra</p>
-            <p className="text-slate-500 text-xs mt-1">Cada bolsillo coincide con su historial.</p>
+            <p className="text-slate-400 text-xs mt-1">Cada bolsillo coincide con su historial.</p>
           </div>
         )}
 
@@ -310,11 +310,11 @@ export function ConfigPage({ userId }: Props) {
                 <p className="text-slate-200 text-sm font-medium mb-2">{d.pocketName}</p>
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div>
-                    <p className="text-slate-500">Guardado</p>
+                    <p className="text-slate-400">Guardado</p>
                     <p className="text-slate-300 font-semibold">{fmt(d.stored)}</p>
                   </div>
                   <div>
-                    <p className="text-slate-500">Real (historial)</p>
+                    <p className="text-slate-400">Real (historial)</p>
                     <p className="text-emerald-300 font-semibold">{fmt(d.computed)}</p>
                   </div>
                 </div>
@@ -328,7 +328,7 @@ export function ConfigPage({ userId }: Props) {
               className="w-full bg-emerald-600 disabled:opacity-40 hover:bg-emerald-500 text-white py-3 rounded-xl font-semibold text-sm transition-colors">
               {healing ? 'Corrigiendo…' : 'Corregir saldos al valor real'}
             </button>
-            <p className="text-slate-600 text-[11px] text-center">
+            <p className="text-slate-400 text-[11px] text-center">
               Ajusta cada saldo guardado al valor calculado desde tu historial. No borra movimientos.
             </p>
           </div>
@@ -350,21 +350,21 @@ export function ConfigPage({ userId }: Props) {
           </div>
           <div className="flex-1 text-left">
             <p className="text-slate-200 text-sm font-medium">Perfil</p>
-            <p className="text-slate-500 text-xs">{profile?.name ?? '…'}</p>
+            <p className="text-slate-400 text-xs">{profile?.name ?? '…'}</p>
           </div>
-          <ChevronRight size={16} className="text-slate-600" />
+          <ChevronRight size={16} className="text-slate-400" />
         </button>
 
         <button onClick={() => setSection('platforms')}
           className="w-full flex items-center gap-3 bg-slate-800 border border-slate-700 rounded-xl p-4 hover:bg-slate-700 transition-colors">
           <div className="w-9 h-9 rounded-full bg-emerald-600/20 flex items-center justify-center">
-            <span className="text-base">🛵</span>
+            <Bike size={16} className="text-emerald-400" />
           </div>
           <div className="flex-1 text-left">
             <p className="text-slate-200 text-sm font-medium">Plataformas</p>
-            <p className="text-slate-500 text-xs">{platforms.length} activas · días de pago</p>
+            <p className="text-slate-400 text-xs">{platforms.length} activas · días de pago</p>
           </div>
-          <ChevronRight size={16} className="text-slate-600" />
+          <ChevronRight size={16} className="text-slate-400" />
         </button>
 
         <button onClick={() => setSection('categories')}
@@ -374,9 +374,9 @@ export function ConfigPage({ userId }: Props) {
           </div>
           <div className="flex-1 text-left">
             <p className="text-slate-200 text-sm font-medium">Categorías</p>
-            <p className="text-slate-500 text-xs">Editar ingresos y gastos · {categories.length} en total</p>
+            <p className="text-slate-400 text-xs">Editar ingresos y gastos · {categories.length} en total</p>
           </div>
-          <ChevronRight size={16} className="text-slate-600" />
+          <ChevronRight size={16} className="text-slate-400" />
         </button>
 
         <button onClick={() => setSection('category_limits')}
@@ -386,30 +386,30 @@ export function ConfigPage({ userId }: Props) {
           </div>
           <div className="flex-1 text-left">
             <p className="text-slate-200 text-sm font-medium">Límites de gasto</p>
-            <p className="text-slate-500 text-xs">Alertas por categoría mensual</p>
+            <p className="text-slate-400 text-xs">Alertas por categoría mensual</p>
           </div>
-          <ChevronRight size={16} className="text-slate-600" />
+          <ChevronRight size={16} className="text-slate-400" />
         </button>
 
         <button onClick={() => { setSection('integrity'); setDriftReport(null) }}
           className="w-full flex items-center gap-3 bg-slate-800 border border-slate-700 rounded-xl p-4 hover:bg-slate-700 transition-colors">
           <div className="w-9 h-9 rounded-full bg-emerald-600/20 flex items-center justify-center">
-            <span className="text-base">🛡️</span>
+            <ShieldCheck size={16} className="text-emerald-400" />
           </div>
           <div className="flex-1 text-left">
             <p className="text-slate-200 text-sm font-medium">Integridad de datos</p>
-            <p className="text-slate-500 text-xs">Verifica que tus saldos cuadren con el historial</p>
+            <p className="text-slate-400 text-xs">Verifica que tus saldos cuadren con el historial</p>
           </div>
-          <ChevronRight size={16} className="text-slate-600" />
+          <ChevronRight size={16} className="text-slate-400" />
         </button>
 
         <div className="flex items-center gap-3 bg-slate-800 border border-slate-700 rounded-xl p-4">
           <div className="w-9 h-9 rounded-full bg-slate-700 flex items-center justify-center">
-            <span className="text-base">👁️</span>
+            <Eye size={16} className="text-slate-300" />
           </div>
           <div className="flex-1">
             <p className="text-slate-200 text-sm font-medium">Ocultar saldos</p>
-            <p className="text-slate-500 text-xs">Modo privacidad en inicio</p>
+            <p className="text-slate-400 text-xs">Modo privacidad en inicio</p>
           </div>
           <button onClick={() => setHidden(!profile?.balance_hidden)}
             className={`w-11 h-6 rounded-full transition-colors relative ${profile?.balance_hidden ? 'bg-blue-600' : 'bg-slate-600'}`}>
@@ -527,7 +527,7 @@ function CategoryManager({ userId, categories, addCategory, updateCategory, dele
 
       {/* List */}
       {filtered.length === 0 ? (
-        <p className="text-slate-500 text-sm text-center py-12">Sin categorías de {tab === 'expense' ? 'gasto' : 'ingreso'}</p>
+        <p className="text-slate-400 text-sm text-center py-12">Sin categorías de {tab === 'expense' ? 'gasto' : 'ingreso'}</p>
       ) : (
         <div className="space-y-2">
           {filtered.map(c => (
@@ -543,7 +543,7 @@ function CategoryManager({ userId, categories, addCategory, updateCategory, dele
                   <button onClick={saveEdit} className="p-2 rounded-lg bg-emerald-600 text-white">
                     <Check size={14} />
                   </button>
-                  <button onClick={() => setEditingId(null)} className="p-2 rounded-lg text-slate-500">
+                  <button onClick={() => setEditingId(null)} className="p-2 rounded-lg text-slate-400">
                     <X size={14} />
                   </button>
                 </div>
@@ -556,7 +556,7 @@ function CategoryManager({ userId, categories, addCategory, updateCategory, dele
                     Sí
                   </button>
                   <button onClick={() => setConfirmDeleteId(null)}
-                    className="text-xs text-slate-500 px-2 py-1.5">
+                    className="text-xs text-slate-400 px-2 py-1.5">
                     No
                   </button>
                 </div>
@@ -565,11 +565,11 @@ function CategoryManager({ userId, categories, addCategory, updateCategory, dele
                   <span className="text-xl">{c.icon}</span>
                   <p className="text-slate-200 text-sm flex-1">{c.name}</p>
                   <button onClick={() => startEdit(c)}
-                    className="p-1.5 rounded-lg text-slate-500 hover:text-slate-200 hover:bg-slate-700">
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-700">
                     <Pencil size={13} />
                   </button>
                   <button onClick={() => setConfirmDeleteId(c.id)}
-                    className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-400/10">
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-400/10">
                     <Trash2 size={13} />
                   </button>
                 </div>
@@ -579,7 +579,7 @@ function CategoryManager({ userId, categories, addCategory, updateCategory, dele
         </div>
       )}
 
-      <p className="text-xs text-slate-500 mt-4 text-center">
+      <p className="text-xs text-slate-400 mt-4 text-center">
         Al eliminar, los movimientos quedan sin categoría (no se borran).
       </p>
     </div>

@@ -50,9 +50,9 @@ export function TransferSheet({ pockets, defaultFromId, onTransfer, onClose }: P
         <div className="flex items-center justify-between mb-5">
           <div>
             <p className="text-slate-100 font-semibold text-sm">Transferir entre bolsillos</p>
-            <p className="text-xs text-slate-500">Sin afectar ingresos ni gastos</p>
+            <p className="text-xs text-slate-400">Sin afectar ingresos ni gastos</p>
           </div>
-          <button onClick={onClose} className="text-slate-500 hover:text-slate-300 p-1">
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-300 p-1">
             <X size={16} />
           </button>
         </div>
@@ -65,13 +65,13 @@ export function TransferSheet({ pockets, defaultFromId, onTransfer, onClose }: P
               className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition-colors border ${fromId === p.id ? 'bg-blue-600/20 border-blue-500 text-slate-200' : 'bg-slate-800 border-slate-700 text-slate-400'}`}>
               <span>{p.icon}</span>
               <span className="flex-1 text-left">{p.name}</span>
-              <span className="text-xs text-slate-500">{maskAmount(p.balance, false)}</span>
+              <span className="text-xs text-slate-400">{maskAmount(p.balance, false)}</span>
             </button>
           ))}
         </div>
 
         {/* Arrow */}
-        <div className="flex justify-center mb-3 text-slate-600">
+        <div className="flex justify-center mb-3 text-slate-400">
           <ArrowRight size={18} />
         </div>
 
@@ -83,7 +83,7 @@ export function TransferSheet({ pockets, defaultFromId, onTransfer, onClose }: P
               className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition-colors border ${toId === p.id ? 'bg-emerald-600/20 border-emerald-500 text-slate-200' : 'bg-slate-800 border-slate-700 text-slate-400'}`}>
               <span>{p.icon}</span>
               <span className="flex-1 text-left">{p.name}</span>
-              <span className="text-xs text-slate-500">{maskAmount(p.balance, false)}</span>
+              <span className="text-xs text-slate-400">{maskAmount(p.balance, false)}</span>
             </button>
           ))}
         </div>
@@ -102,7 +102,7 @@ export function TransferSheet({ pockets, defaultFromId, onTransfer, onClose }: P
         <div className="mb-5">
           <label className="block text-xs text-slate-400 mb-1">Nota (opcional)</label>
           <input value={note} onChange={e => setNote(e.target.value)} placeholder="Ej: para el arriendo"
-            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-blue-500 placeholder:text-slate-600" />
+            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-blue-500 placeholder:text-slate-400" />
         </div>
 
         {fromPocket && toPocket && amountNum > 0 && !exceedsBalance && (

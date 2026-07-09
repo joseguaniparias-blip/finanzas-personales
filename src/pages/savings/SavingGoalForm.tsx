@@ -46,7 +46,7 @@ export function SavingGoalForm({ userId, pockets, initial, onSave, onCancel }: P
     <div className="p-4 max-w-lg mx-auto">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-slate-100 text-lg font-bold">{initial ? 'Editar meta' : 'Nueva meta de ahorro'}</h2>
-        <button onClick={onCancel} className="text-slate-500 text-sm">Cancelar</button>
+        <button onClick={onCancel} className="text-slate-400 text-sm">Cancelar</button>
       </div>
 
       <div className="mb-4">
@@ -59,7 +59,7 @@ export function SavingGoalForm({ userId, pockets, initial, onSave, onCancel }: P
         <div className="flex items-center justify-between">
           <div>
             <p className="text-slate-200 text-sm font-medium">¿Tiene meta de monto?</p>
-            <p className="text-slate-500 text-xs mt-0.5">Un total definido a alcanzar</p>
+            <p className="text-slate-400 text-xs mt-0.5">Un total definido a alcanzar</p>
           </div>
           <button onClick={() => setHasTarget(h => !h)}
             className={`w-11 h-6 rounded-full transition-colors relative ${hasTarget ? 'bg-blue-600' : 'bg-slate-600'}`}>
@@ -99,7 +99,7 @@ export function SavingGoalForm({ userId, pockets, initial, onSave, onCancel }: P
           <span className="text-slate-400 text-sm">Día</span>
           <input type="number" min={1} max={28} value={triggerDay} onChange={e => setTriggerDay(Number(e.target.value))}
             className="w-20 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 text-sm text-center focus:outline-none focus:border-blue-500" />
-          <span className="text-slate-500 text-sm">de cada mes</span>
+          <span className="text-slate-400 text-sm">de cada mes</span>
         </div>
       )}
 

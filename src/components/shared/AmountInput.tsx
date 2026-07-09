@@ -30,7 +30,7 @@ export function AmountInput({ value, onChange, placeholder = '0', label, classNa
     <div className={className}>
       {label && <label className="block text-xs text-slate-400 mb-1">{label}</label>}
       <div className="relative flex items-center bg-slate-800 rounded-xl border border-slate-700 focus-within:border-blue-500 transition-colors">
-        <span className="pl-3 text-slate-500 text-sm font-medium">$</span>
+        <span className="pl-3 text-slate-400 text-sm font-medium">$</span>
         <input
           type="text"
           inputMode="decimal"
@@ -39,7 +39,7 @@ export function AmountInput({ value, onChange, placeholder = '0', label, classNa
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           placeholder={placeholder}
-          className="flex-1 bg-transparent py-3 px-2 text-slate-100 text-base font-semibold focus:outline-none placeholder:text-slate-600"
+          className="flex-1 bg-transparent py-3 px-2 text-slate-100 text-base font-semibold focus:outline-none placeholder:text-slate-400"
         />
       </div>
     </div>

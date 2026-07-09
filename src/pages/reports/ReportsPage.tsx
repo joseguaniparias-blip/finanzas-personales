@@ -74,7 +74,7 @@ export function ReportsPage({ userId }: Props) {
         <DateRangeFilter value={range} onChange={setRange} />
       </div>
 
-      {loading && <p className="text-slate-500 text-sm animate-pulse text-center py-8">Calculando…</p>}
+      {loading && <p className="text-slate-400 text-sm animate-pulse text-center py-8">Calculando…</p>}
 
       {!loading && (
         <div className="space-y-5">
@@ -86,11 +86,11 @@ export function ReportsPage({ userId }: Props) {
             </p>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <p className="text-xs text-slate-500 mb-0.5">↑ Ingresos</p>
+                <p className="text-xs text-slate-400 mb-0.5">↑ Ingresos</p>
                 <p className="text-emerald-400 font-semibold text-sm">{maskAmount(totalIncome, false)}</p>
               </div>
               <div>
-                <p className="text-xs text-slate-500 mb-0.5">↓ Gastos</p>
+                <p className="text-xs text-slate-400 mb-0.5">↓ Gastos</p>
                 <p className="text-red-400 font-semibold text-sm">{maskAmount(totalExpense, false)}</p>
               </div>
             </div>
@@ -130,7 +130,7 @@ export function ReportsPage({ userId }: Props) {
                             {maskAmount(total, false)}
                           </span>
                           {c.monthly_limit && (
-                            <span className="text-xs text-slate-500 ml-1">/ {maskAmount(c.monthly_limit, false)}</span>
+                            <span className="text-xs text-slate-400 ml-1">/ {maskAmount(c.monthly_limit, false)}</span>
                           )}
                         </div>
                       </div>
@@ -154,11 +154,11 @@ export function ReportsPage({ userId }: Props) {
                   const cat = categories.find(c => c.id === tx.category_id)
                   return (
                     <div key={tx.id} className="flex items-center gap-3">
-                      <span className="text-slate-600 text-xs w-4">{i + 1}</span>
+                      <span className="text-slate-400 text-xs w-4">{i + 1}</span>
                       <span className="text-base">{cat?.icon ?? '💸'}</span>
                       <div className="flex-1 min-w-0">
                         <p className="text-slate-300 text-sm truncate">{tx.note ?? cat?.name ?? 'Gasto'}</p>
-                        <p className="text-slate-600 text-xs">{tx.date}</p>
+                        <p className="text-slate-400 text-xs">{tx.date}</p>
                       </div>
                       <p className="text-red-400 font-semibold text-sm">{maskAmount(tx.amount, false)}</p>
                     </div>
@@ -170,8 +170,8 @@ export function ReportsPage({ userId }: Props) {
 
           {byPlatform.length === 0 && byCategory.length === 0 && (
             <div className="text-center py-10">
-              <p className="text-slate-500 text-sm">Sin movimientos en este período</p>
-              <p className="text-slate-600 text-xs mt-1">Registra ingresos y gastos para ver tus reportes</p>
+              <p className="text-slate-400 text-sm">Sin movimientos en este período</p>
+              <p className="text-slate-400 text-xs mt-1">Registra ingresos y gastos para ver tus reportes</p>
             </div>
           )}
         </div>

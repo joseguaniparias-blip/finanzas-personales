@@ -52,7 +52,7 @@ export function CadenaForm({ userId, pockets, initial, onSave, onCancel }: Props
     <div className="p-4 max-w-lg mx-auto">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-slate-100 text-lg font-bold">{initial ? 'Editar cadena' : 'Nueva cadena / cooperativa'}</h2>
-        <button onClick={onCancel} className="text-slate-500 text-sm">Cancelar</button>
+        <button onClick={onCancel} className="text-slate-400 text-sm">Cancelar</button>
       </div>
 
       <div className="mb-4">
@@ -129,7 +129,7 @@ export function CadenaForm({ userId, pockets, initial, onSave, onCancel }: Props
         <div className="flex items-center justify-between">
           <div>
             <p className="text-slate-200 text-sm font-medium">¿Ya tiene rondas pagadas?</p>
-            <p className="text-slate-500 text-xs mt-0.5">Cadena iniciada antes de la app</p>
+            <p className="text-slate-400 text-xs mt-0.5">Cadena iniciada antes de la app</p>
           </div>
           <button onClick={() => setStartedBefore(s => !s)}
             className={`w-11 h-6 rounded-full transition-colors relative ${startedBefore ? 'bg-amber-600' : 'bg-slate-600'}`}>

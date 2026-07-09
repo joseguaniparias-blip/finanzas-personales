@@ -84,11 +84,11 @@ export function SavingsPage({ userId }: Props) {
               <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">Total ahorrado</p>
               <p className="text-3xl font-bold text-blue-400">{maskAmount(totalSaved, false)}</p>
               {totalTarget > 0 && (
-                <p className="text-xs text-slate-500 mt-1">de {maskAmount(totalTarget, false)} en metas</p>
+                <p className="text-xs text-slate-400 mt-1">de {maskAmount(totalTarget, false)} en metas</p>
               )}
             </div>
             <div className="text-right">
-              <p className="text-xs text-slate-500">Metas activas</p>
+              <p className="text-xs text-slate-400">Metas activas</p>
               <p className="text-lg font-bold text-slate-300">{goals.length}</p>
             </div>
           </div>
@@ -112,10 +112,10 @@ export function SavingsPage({ userId }: Props) {
       {goals.length === 0 ? (
         <div className="text-center py-16">
           <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center mx-auto mb-4">
-            <PiggyBank size={28} className="text-slate-600" />
+            <PiggyBank size={28} className="text-slate-400" />
           </div>
           <p className="text-slate-400 text-sm font-medium">Sin metas de ahorro</p>
-          <p className="text-slate-600 text-xs mt-1">Crea tu primer fondo de ahorro</p>
+          <p className="text-slate-400 text-xs mt-1">Crea tu primer fondo de ahorro</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -167,21 +167,21 @@ function SavingGoalCard({ goal: g, pendingEvent, today, onTap }: {
                 <span className="flex-shrink-0 text-xs text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full">✓ Meta</span>
               )}
               {!g.target_amount && (
-                <span className="flex-shrink-0 text-xs text-slate-500 bg-slate-700 px-2 py-0.5 rounded-full">Sin meta</span>
+                <span className="flex-shrink-0 text-xs text-slate-400 bg-slate-700 px-2 py-0.5 rounded-full">Sin meta</span>
               )}
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="text-xs text-slate-500">{freqLabel}</span>
+              <span className="text-xs text-slate-400">{freqLabel}</span>
               <span className="text-slate-700">·</span>
-              <span className="text-xs text-slate-500">{maskAmount(g.contribution_amount, false)} / aporte</span>
+              <span className="text-xs text-slate-400">{maskAmount(g.contribution_amount, false)} / aporte</span>
             </div>
           </div>
           <div className="text-right flex-shrink-0">
             <p className="text-blue-400 font-bold text-base">{maskAmount(g.saved_amount, false)}</p>
             {g.target_amount ? (
-              <p className="text-xs text-slate-500">de {maskAmount(g.target_amount, false)}</p>
+              <p className="text-xs text-slate-400">de {maskAmount(g.target_amount, false)}</p>
             ) : (
-              <p className="text-xs text-slate-500">ahorrado</p>
+              <p className="text-xs text-slate-400">ahorrado</p>
             )}
           </div>
         </div>
@@ -191,11 +191,11 @@ function SavingGoalCard({ goal: g, pendingEvent, today, onTap }: {
           <div className="mb-3">
             <div className="flex items-center justify-between mb-1.5">
               <div className="flex items-center gap-1.5">
-                <Target size={10} className="text-slate-600" />
-                <span className="text-xs text-slate-500">{pct}% de la meta</span>
+                <Target size={10} className="text-slate-400" />
+                <span className="text-xs text-slate-400">{pct}% de la meta</span>
               </div>
               {remaining !== null && remaining > 0 && (
-                <span className="text-xs text-slate-500">{maskAmount(remaining, false)} restante</span>
+                <span className="text-xs text-slate-400">{maskAmount(remaining, false)} restante</span>
               )}
             </div>
             <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
@@ -210,11 +210,11 @@ function SavingGoalCard({ goal: g, pendingEvent, today, onTap }: {
           <div className={`flex items-center gap-2 rounded-xl px-3 py-2 ${isUrgent ? 'bg-blue-500/10' : 'bg-slate-700/50'}`}>
             {isUrgent
               ? <AlertCircle size={12} className="text-blue-400 flex-shrink-0" />
-              : <Calendar size={12} className="text-slate-500 flex-shrink-0" />}
+              : <Calendar size={12} className="text-slate-400 flex-shrink-0" />}
             <span className={`text-xs font-medium ${isUrgent ? 'text-blue-400' : 'text-slate-400'}`}>
               {due?.label}
             </span>
-            <span className="ml-auto text-xs text-slate-500">{maskAmount(pendingEvent.amount, false)}</span>
+            <span className="ml-auto text-xs text-slate-400">{maskAmount(pendingEvent.amount, false)}</span>
           </div>
         )}
       </div>

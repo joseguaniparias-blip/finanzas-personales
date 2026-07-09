@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Check, ArrowLeftRight, SkipForward, Minus, AlertTriangle, Trash2, CalendarDays } from 'lucide-react'
+import { Check, ArrowLeftRight, SkipForward, Minus, AlertTriangle, Trash2, CalendarDays, type LucideIcon } from 'lucide-react'
 import type { ScheduledEvent, Pocket } from '@/types'
 import { AmountInput, parseAmount } from './AmountInput'
 import { maskAmount } from './PrivacyToggle'
@@ -23,7 +23,8 @@ const PARTIAL_LABELS: Record<string, string> = {
 interface Props {
   event: ScheduledEvent
   label: string
-  icon: string
+  /** A Lucide icon component for system event types, or an emoji string (e.g. a user-chosen recurring-payment icon). */
+  icon: string | LucideIcon
   pockets: Pocket[]
   defaultPocketId: string
   onConfirm: (pocketId: string) => void
@@ -35,7 +36,7 @@ interface Props {
 }
 
 export function ConfirmEventSheet({
-  event, label, icon, pockets, defaultPocketId,
+  event, label, icon: Icon, pockets, defaultPocketId,
   onConfirm, onPartial, onPostpone, onReschedule, onDelete, onClose
 }: Props) {
   const [mode, setMode] = useState<'main' | 'pocket' | 'partial' | 'reschedule' | 'delete'>('main')
@@ -61,18 +62,20 @@ export function ConfirmEventSheet({
           <>
             {/* Event info */}
             <div className="flex items-center gap-3 mb-5">
-              <span className="text-2xl">{icon}</span>
+              {typeof Icon === 'string'
+                ? <span className="text-2xl">{Icon}</span>
+                : <Icon size={24} className="text-slate-200" />}
               <div className="flex-1">
                 <p className="text-slate-100 font-semibold text-sm">{label}</p>
                 <p className="text-emerald-400 font-bold text-lg">{maskAmount(event.amount, false)}</p>
               </div>
-              <p className="text-xs text-slate-500">{event.due_date}</p>
+              <p className="text-xs text-slate-400">{event.due_date}</p>
             </div>
 
             {pocket && (
-              <p className="text-xs text-slate-500 mb-3">
+              <p className="text-xs text-slate-400 mb-3">
                 Bolsillo: <span className="text-slate-300">{pocket.icon} {pocket.name}</span>
-                <span className={`ml-2 ${insufficientBalance ? 'text-red-400' : 'text-slate-500'}`}>
+                <span className={`ml-2 ${insufficientBalance ? 'text-red-400' : 'text-slate-400'}`}>
                   · {maskAmount(pocket.balance, false)}
                 </span>
               </p>
@@ -141,7 +144,7 @@ export function ConfirmEventSheet({
               </div>
             )}
 
-            <button onClick={onClose} className="w-full mt-4 text-slate-500 text-xs py-2">
+            <button onClick={onClose} className="w-full mt-4 text-slate-400 text-xs py-2">
               Cancelar
             </button>
           </>
@@ -150,7 +153,7 @@ export function ConfirmEventSheet({
         {mode === 'reschedule' && (
           <>
             <h3 className="text-slate-100 font-semibold mb-1">Cambiar fecha</h3>
-            <p className="text-slate-500 text-xs mb-4">Fecha actual: {event.due_date}</p>
+            <p className="text-slate-400 text-xs mb-4">Fecha actual: {event.due_date}</p>
             <input
               type="date"
               value={newDate}
@@ -175,7 +178,7 @@ export function ConfirmEventSheet({
         {mode === 'delete' && (
           <>
             <h3 className="text-slate-100 font-semibold mb-1">¿Eliminar este evento?</h3>
-            <p className="text-slate-500 text-xs mb-4">
+            <p className="text-slate-400 text-xs mb-4">
               Se quitará de la agenda. No se modifica el saldo ni el registro original (deuda/cobro/cadena).
             </p>
             <div className="grid grid-cols-2 gap-3">
@@ -210,7 +213,7 @@ export function ConfirmEventSheet({
                   <span>{p.icon}</span>
                   <div className="flex-1">
                     <p className="text-slate-200 text-sm font-medium">{p.name}</p>
-                    <p className="text-slate-500 text-xs">{maskAmount(p.balance, false)}</p>
+                    <p className="text-slate-400 text-xs">{maskAmount(p.balance, false)}</p>
                   </div>
                 </button>
               ))}
@@ -233,7 +236,7 @@ export function ConfirmEventSheet({
         {mode === 'partial' && (
           <>
             <h3 className="text-slate-100 font-semibold mb-1">Registrar otro monto</h3>
-            <p className="text-slate-500 text-xs mb-4">Cuota: {maskAmount(event.amount, false)}</p>
+            <p className="text-slate-400 text-xs mb-4">Cuota: {maskAmount(event.amount, false)}</p>
             <AmountInput
               label={event.type === 'collection' ? '¿Cuánto cobraste?' : '¿Cuánto pagaste?'}
               value={partialAmount}

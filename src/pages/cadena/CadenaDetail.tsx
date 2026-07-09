@@ -1,5 +1,5 @@
 ﻿import { useState } from 'react'
-import { ArrowLeft, Check, SkipForward, Trophy, Calendar, Trash2 } from 'lucide-react'
+import { ArrowLeft, Check, SkipForward, Trophy, Calendar, Trash2, Users } from 'lucide-react'
 import type { Cadena, Pocket } from '@/types'
 import { maskAmount } from '@/components/shared/PrivacyToggle'
 import { ConfirmEventSheet } from '@/components/shared/ConfirmEventSheet'
@@ -45,7 +45,7 @@ export function CadenaDetail({ cadena, pockets, onBack, onPaymentRecorded, onDel
         </button>
         <div className="flex-1">
           <h2 className="text-slate-100 text-lg font-bold">{cadena.name}</h2>
-          <p className="text-slate-500 text-xs">{freqLabel} · {cadena.participants} participantes</p>
+          <p className="text-slate-400 text-xs">{freqLabel} · {cadena.participants} participantes</p>
         </div>
         {cadena.status === 'completed' && (
           <span className="flex items-center gap-1 text-xs text-violet-400 bg-violet-400/10 px-2 py-1 rounded-full">
@@ -99,7 +99,7 @@ export function CadenaDetail({ cadena, pockets, onBack, onPaymentRecorded, onDel
             {!editingDate && (
               <button
                 onClick={() => { setEditingDate(true); setNewDate(pendingEvent.due_date) }}
-                className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 transition-colors">
+                className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-300 transition-colors">
                 <Calendar size={12} /> Cambiar fecha
               </button>
             )}
@@ -123,7 +123,7 @@ export function CadenaDetail({ cadena, pockets, onBack, onPaymentRecorded, onDel
               </button>
               <button
                 onClick={() => { setEditingDate(false); setNewDate('') }}
-                className="text-slate-500 hover:text-slate-300 px-2 py-2 text-sm transition-colors">
+                className="text-slate-400 hover:text-slate-300 px-2 py-2 text-sm transition-colors">
                 ✕
               </button>
             </div>
@@ -180,7 +180,7 @@ export function CadenaDetail({ cadena, pockets, onBack, onPaymentRecorded, onDel
         <ConfirmEventSheet
           event={pendingEvent}
           label={cadena.name}
-          icon="🟣"
+          icon={Users}
           pockets={pockets.filter(p => p.type !== 'platform')}
           defaultPocketId={cadena.source_pocket_id}
           onConfirm={async pocketId => { await confirmEvent(pendingEvent.id, pocketId); setConfirmSheet(false); onPaymentRecorded() }}

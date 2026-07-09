@@ -73,7 +73,7 @@ export function RecurringPaymentsPage({ userId }: Props) {
             <h2 className="text-slate-100 text-lg font-bold flex items-center gap-2">
               <span>{selected.icon}</span> {selected.name}
             </h2>
-            <p className="text-slate-500 text-xs">{freqLabel(selected)} · {selected.is_variable ? 'Monto variable' : 'Monto fijo'}</p>
+            <p className="text-slate-400 text-xs">{freqLabel(selected)} · {selected.is_variable ? 'Monto variable' : 'Monto fijo'}</p>
           </div>
           <button onClick={() => setEditing(selected)} className="p-2 rounded-full bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors">
             <Pencil size={16} />
@@ -145,17 +145,17 @@ export function RecurringPaymentsPage({ userId }: Props) {
         <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-5 mb-5 border border-slate-700">
           <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">Total mensual</p>
           <p className="text-3xl font-bold text-blue-400">{maskAmount(totalMonthly, false)}</p>
-          <p className="text-xs text-slate-500 mt-1">{payments.length} pago{payments.length !== 1 ? 's' : ''} activo{payments.length !== 1 ? 's' : ''}</p>
+          <p className="text-xs text-slate-400 mt-1">{payments.length} pago{payments.length !== 1 ? 's' : ''} activo{payments.length !== 1 ? 's' : ''}</p>
         </div>
       )}
 
       {payments.length === 0 ? (
         <div className="text-center py-16">
           <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center mx-auto mb-4">
-            <Repeat size={28} className="text-slate-600" />
+            <Repeat size={28} className="text-slate-400" />
           </div>
           <p className="text-slate-400 text-sm font-medium">Sin pagos recurrentes</p>
-          <p className="text-slate-600 text-xs mt-1">Arriendo, servicios, suscripciones…</p>
+          <p className="text-slate-400 text-xs mt-1">Arriendo, servicios, suscripciones…</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -175,7 +175,7 @@ export function RecurringPaymentsPage({ userId }: Props) {
                         <span className="flex-shrink-0 text-xs text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full">Variable</span>
                       )}
                     </div>
-                    <p className="text-xs text-slate-500">{maskAmount(p.amount, false)} · {freqLabel(p)}</p>
+                    <p className="text-xs text-slate-400">{maskAmount(p.amount, false)} · {freqLabel(p)}</p>
                   </div>
                 </div>
 
@@ -183,11 +183,11 @@ export function RecurringPaymentsPage({ userId }: Props) {
                   <div className={`flex items-center gap-2 rounded-xl px-3 py-2 ${isOverdue ? 'bg-red-500/10' : 'bg-slate-700/50'}`}>
                     {isOverdue
                       ? <AlertCircle size={12} className="text-red-400" />
-                      : <Calendar size={12} className="text-slate-500" />}
+                      : <Calendar size={12} className="text-slate-400" />}
                     <span className={`text-xs font-medium ${isOverdue ? 'text-red-400' : 'text-slate-400'}`}>
                       {due?.label}
                     </span>
-                    <span className="ml-auto text-xs text-slate-500">{maskAmount(pendingEvent.amount, false)}</span>
+                    <span className="ml-auto text-xs text-slate-400">{maskAmount(pendingEvent.amount, false)}</span>
                   </div>
                 )}
               </button>

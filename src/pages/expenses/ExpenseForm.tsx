@@ -95,7 +95,7 @@ export function ExpenseForm({ userId, pockets, categories, seedDefaults, addCate
           <Check size={32} className="text-red-400" />
         </div>
         <p className="text-red-400 font-semibold">Gasto registrado</p>
-        <p className="text-slate-500 text-sm">{maskAmount(amountNum, false)}{category ? ` · ${category.icon} ${category.name}` : ''}</p>
+        <p className="text-slate-400 text-sm">{maskAmount(amountNum, false)}{category ? ` · ${category.icon} ${category.name}` : ''}</p>
       </div>
     )
   }
@@ -104,17 +104,17 @@ export function ExpenseForm({ userId, pockets, categories, seedDefaults, addCate
     <div className="p-4 max-w-lg mx-auto">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-slate-100 text-lg font-bold">Registrar gasto</h2>
-        <button onClick={onCancel} className="text-slate-500 text-sm">Cancelar</button>
+        <button onClick={onCancel} className="text-slate-400 text-sm">Cancelar</button>
       </div>
 
       {/* Mode toggle */}
       <div className="flex gap-2 mb-5">
         <button onClick={() => setDetailed(false)}
-          className={`flex-1 py-2 rounded-xl text-sm font-medium transition-colors ${!detailed ? 'bg-slate-700 text-slate-100' : 'text-slate-500 hover:text-slate-300'}`}>
+          className={`flex-1 py-2 rounded-xl text-sm font-medium transition-colors ${!detailed ? 'bg-slate-700 text-slate-100' : 'text-slate-400 hover:text-slate-300'}`}>
           Rápido
         </button>
         <button onClick={() => setDetailed(true)}
-          className={`flex-1 py-2 rounded-xl text-sm font-medium transition-colors ${detailed ? 'bg-slate-700 text-slate-100' : 'text-slate-500 hover:text-slate-300'}`}>
+          className={`flex-1 py-2 rounded-xl text-sm font-medium transition-colors ${detailed ? 'bg-slate-700 text-slate-100' : 'text-slate-400 hover:text-slate-300'}`}>
           Detallado
         </button>
       </div>
@@ -159,7 +159,7 @@ export function ExpenseForm({ userId, pockets, categories, seedDefaults, addCate
             <div className="flex items-center justify-between mb-2">
               <p className="text-xs text-slate-400">Categoría</p>
               <button onClick={() => { setManagingCats(m => !m); setEditingCat(null) }}
-                className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 transition-colors">
+                className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-300 transition-colors">
                 <Pencil size={10} /> {managingCats ? 'Listo' : 'Gestionar'}
               </button>
             </div>
@@ -182,16 +182,16 @@ export function ExpenseForm({ userId, pockets, categories, seedDefaults, addCate
                             }
                             setEditingCat(null)
                           }} className="text-xs text-emerald-400 px-1">✓</button>
-                          <button onClick={() => setEditingCat(null)} className="text-xs text-slate-500 px-1">✕</button>
+                          <button onClick={() => setEditingCat(null)} className="text-xs text-slate-400 px-1">✕</button>
                         </div>
                       ) : (
                         <div className="flex items-center gap-1 bg-slate-800 border border-slate-700 rounded-full px-2.5 py-1.5">
                           <span className="text-xs">{c.icon}</span>
                           <span className="text-xs text-slate-300">{c.name}</span>
                           <button onClick={() => { setEditingCat(c); setEditName(c.name) }}
-                            className="text-slate-500 hover:text-slate-300 ml-0.5"><Pencil size={9} /></button>
+                            className="text-slate-400 hover:text-slate-300 ml-0.5"><Pencil size={9} /></button>
                           <button onClick={async () => { await deleteCategory(c.id); if (categoryId === c.id) setCategoryId(null) }}
-                            className="text-slate-500 hover:text-red-400 ml-0.5"><X size={9} /></button>
+                            className="text-slate-400 hover:text-red-400 ml-0.5"><X size={9} /></button>
                         </div>
                       )}
                     </div>
@@ -238,7 +238,7 @@ export function ExpenseForm({ userId, pockets, categories, seedDefaults, addCate
             <p className="text-xs text-slate-400 mb-2">Nota</p>
             <textarea value={note} onChange={e => setNote(e.target.value)}
               placeholder="Descripción opcional…" rows={2}
-              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-slate-100 text-sm placeholder:text-slate-600 focus:outline-none focus:border-blue-500 resize-none" />
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-slate-100 text-sm placeholder:text-slate-400 focus:outline-none focus:border-blue-500 resize-none" />
           </div>
         </>
       )}

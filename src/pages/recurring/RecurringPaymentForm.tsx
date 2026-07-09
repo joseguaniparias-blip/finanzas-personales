@@ -57,7 +57,7 @@ export function RecurringPaymentForm({ userId, pockets, categories, initial, onS
     <div className="p-4 max-w-lg mx-auto pb-8">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-slate-100 text-lg font-bold">{initial ? 'Editar pago' : 'Nuevo pago recurrente'}</h2>
-        <button onClick={onCancel} className="text-slate-500 text-sm">Cancelar</button>
+        <button onClick={onCancel} className="text-slate-400 text-sm">Cancelar</button>
       </div>
 
       {/* Name + icon */}
@@ -79,7 +79,7 @@ export function RecurringPaymentForm({ userId, pockets, categories, initial, onS
         <div className="flex items-center justify-between">
           <div>
             <p className="text-slate-200 text-sm font-medium">¿Monto variable?</p>
-            <p className="text-slate-500 text-xs mt-0.5">Activa si cambia cada período (ej: servicios públicos)</p>
+            <p className="text-slate-400 text-xs mt-0.5">Activa si cambia cada período (ej: servicios públicos)</p>
           </div>
           <button onClick={() => setIsVariable(v => !v)}
             className={`w-11 h-6 rounded-full transition-colors relative ${isVariable ? 'bg-blue-600' : 'bg-slate-600'}`}>
@@ -123,7 +123,7 @@ export function RecurringPaymentForm({ userId, pockets, categories, initial, onS
           <span className="text-slate-400 text-sm">Día</span>
           <input type="number" min={1} max={28} value={triggerDay} onChange={e => setTriggerDay(Number(e.target.value))}
             className="w-20 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 text-sm text-center focus:outline-none focus:border-blue-500" />
-          <span className="text-slate-500 text-sm">de cada mes</span>
+          <span className="text-slate-400 text-sm">de cada mes</span>
         </div>
       )}
       {frequency === 'yearly' && (
@@ -159,7 +159,7 @@ export function RecurringPaymentForm({ userId, pockets, categories, initial, onS
           <p className="text-xs text-slate-400 mb-2">Categoría (opcional)</p>
           <div className="grid grid-cols-3 gap-2">
             <button onClick={() => setCategoryId('')}
-              className={`py-2 rounded-xl text-xs transition-colors border ${!categoryId ? 'bg-slate-600 border-slate-500 text-slate-200' : 'border-slate-700 text-slate-500'}`}>
+              className={`py-2 rounded-xl text-xs transition-colors border ${!categoryId ? 'bg-slate-600 border-slate-500 text-slate-200' : 'border-slate-700 text-slate-400'}`}>
               Sin categoría
             </button>
             {expenseCategories.map(c => (
@@ -179,7 +179,7 @@ export function RecurringPaymentForm({ userId, pockets, categories, initial, onS
           <label className="block text-xs text-slate-400 mb-1">Primer vencimiento (opcional)</label>
           <input type="date" value={firstDueDate} onChange={e => setFirstDueDate(e.target.value)}
             className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-blue-500" />
-          <p className="text-xs text-slate-500 mt-1">Si lo dejas vacío, se agenda la próxima fecha según la frecuencia.</p>
+          <p className="text-xs text-slate-400 mt-1">Si lo dejas vacío, se agenda la próxima fecha según la frecuencia.</p>
         </div>
       )}
 

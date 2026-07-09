@@ -1,6 +1,6 @@
 ﻿import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Eye, EyeOff, TrendingUp, TrendingDown, CreditCard, HandCoins, PiggyBank, Users, Check, Settings, ChevronRight, X, Wallet, ArrowRight, Calendar, Repeat } from 'lucide-react'
+import { Eye, EyeOff, TrendingUp, TrendingDown, CreditCard, HandCoins, PiggyBank, Users, Check, Settings, ChevronRight, X, Wallet, ArrowRight, Calendar, Repeat, type LucideIcon } from 'lucide-react'
 import { usePockets } from '@/hooks/usePockets'
 import { useTransactions } from '@/hooks/useTransactions'
 import { useScheduledEvents } from '@/hooks/useScheduledEvents'
@@ -18,13 +18,13 @@ interface Props { userId: string }
 type BalancePeriod = 'day' | 'week' | 'month'
 type AgendaPeriod  = 'day' | 'week' | 'month' | 'specific'
 
-const EVENT_META: Record<string, { color: string; icon: string; label: string }> = {
-  debt:            { color: 'text-red-400',    icon: '🔴', label: 'Deuda' },
-  collection:      { color: 'text-emerald-400', icon: '🟢', label: 'Cobro' },
-  saving:          { color: 'text-blue-400',   icon: '💙', label: 'Ahorro' },
-  cadena:          { color: 'text-violet-400', icon: '🟣', label: 'Cadena' },
-  platform_payout: { color: 'text-orange-400', icon: '💰', label: 'Pago plataforma' },
-  recurring:       { color: 'text-cyan-400',   icon: '🔁', label: 'Pago recurrente' },
+const EVENT_META: Record<string, { color: string; Icon: LucideIcon; label: string }> = {
+  debt:            { color: 'text-red-400',     Icon: CreditCard, label: 'Deuda' },
+  collection:      { color: 'text-emerald-400', Icon: HandCoins,  label: 'Cobro' },
+  saving:          { color: 'text-blue-400',    Icon: PiggyBank,  label: 'Ahorro' },
+  cadena:          { color: 'text-violet-400',  Icon: Users,      label: 'Cadena' },
+  platform_payout: { color: 'text-orange-400',  Icon: Wallet,     label: 'Pago plataforma' },
+  recurring:       { color: 'text-cyan-400',    Icon: Repeat,     label: 'Pago recurrente' },
 }
 
 const DOT_COLOR: Record<string, string> = {
@@ -37,6 +37,17 @@ const DOT_COLOR: Record<string, string> = {
 }
 
 const DAY_LABELS = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb']
+
+// Full static classes per module accent. Tailwind can only see complete class
+// strings, so these must NOT be built by interpolation (`bg-${x}-600/5` never
+// gets generated). Icon + label inherit the color via `currentColor`.
+const MODULE_STYLES: Record<string, string> = {
+  emerald: 'border-emerald-600/20 bg-emerald-600/5 hover:bg-emerald-600/10 text-emerald-400',
+  red:     'border-red-600/20 bg-red-600/5 hover:bg-red-600/10 text-red-400',
+  blue:    'border-blue-600/20 bg-blue-600/5 hover:bg-blue-600/10 text-blue-400',
+  violet:  'border-violet-600/20 bg-violet-600/5 hover:bg-violet-600/10 text-violet-400',
+  cyan:    'border-cyan-600/20 bg-cyan-600/5 hover:bg-cyan-600/10 text-cyan-400',
+}
 
 function maskVal(amount: number, hidden: boolean) {
   if (hidden) return '••••••'
@@ -160,7 +171,7 @@ function MiniCalendar({ days, allEvents, selectedDay, today, onSelectDay }: Mini
             }`}
           >
             <span className={`text-[9px] font-semibold mb-0.5 uppercase tracking-wide ${
-              isSelected ? 'text-blue-200' : isPast ? 'text-slate-600' : 'text-slate-500'
+              isSelected ? 'text-blue-200' : isPast ? 'text-slate-400' : 'text-slate-400'
             }`}>
               {DAY_LABELS[dayOfWeek]}
             </span>
@@ -170,7 +181,7 @@ function MiniCalendar({ days, allEvents, selectedDay, today, onSelectDay }: Mini
                 : isToday
                   ? 'text-slate-100'
                   : isPast
-                    ? 'text-slate-600'
+                    ? 'text-slate-400'
                     : 'text-slate-300'
             }`}>
               {dayNum}
@@ -306,7 +317,7 @@ export function HomePage({ userId }: Props) {
   // a bit dimmer without re-implementing the whole card. The card is always
   // confirmable when its date is <= today (the user can still act on overdue).
   function renderEventCard(ev: ScheduledEvent, isOverdue: boolean) {
-    const meta = EVENT_META[ev.type] ?? { color: 'text-slate-400', icon: '📋', label: ev.type }
+    const meta = EVENT_META[ev.type] ?? { color: 'text-slate-400', Icon: Calendar, label: ev.type }
     const name = eventNames[ev.id] ?? '…'
     const canConfirm = ev.due_date <= today
 
@@ -320,7 +331,7 @@ export function HomePage({ userId }: Props) {
               ? 'bg-orange-500/10 border-orange-500/40 hover:bg-orange-500/15'
               : 'bg-orange-500/5 border-orange-500/25 hover:bg-orange-500/10'
           }`}>
-          <span className="text-lg leading-none">💰</span>
+          <Wallet size={18} className="text-orange-400 flex-shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-slate-200 text-sm font-medium truncate">{name}</p>
             <p className="text-xs text-orange-400">Transferir {maskVal(balance, hidden)}</p>
@@ -330,7 +341,7 @@ export function HomePage({ userId }: Props) {
               <Check size={12} /> Cobrar
             </span>
           ) : (
-            <span className="flex-shrink-0 text-xs text-slate-500">Ver →</span>
+            <span className="flex-shrink-0 text-xs text-slate-400">Ver →</span>
           )}
         </button>
       )
@@ -341,10 +352,10 @@ export function HomePage({ userId }: Props) {
         className={`flex items-center gap-3 rounded-xl p-3 border ${
           isOverdue ? 'bg-slate-800/80 border-red-900/40' : 'bg-slate-800 border-slate-700'
         }`}>
-        <span className="text-lg leading-none">{meta.icon}</span>
+        <meta.Icon size={18} className={`${meta.color} flex-shrink-0`} />
         <div className="flex-1 min-w-0">
           <p className="text-slate-200 text-sm font-medium truncate">{name}</p>
-          <p className="text-xs text-slate-500">{meta.label}</p>
+          <p className="text-xs text-slate-400">{meta.label}</p>
         </div>
         <div className="text-right mr-2">
           <p className={`${meta.color} font-bold text-sm`}>{maskVal(ev.amount, hidden)}</p>
@@ -365,7 +376,7 @@ export function HomePage({ userId }: Props) {
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div>
-          <p className="text-slate-500 text-xs">Bienvenido</p>
+          <p className="text-slate-400 text-xs">Bienvenido</p>
           <h1 className="text-slate-100 text-xl font-bold">{profile?.name ?? '…'}</h1>
         </div>
         <div className="flex items-center gap-2">
@@ -389,14 +400,14 @@ export function HomePage({ userId }: Props) {
         <div className="flex gap-1 mb-2">
           {(['day', 'week', 'month'] as BalancePeriod[]).map(p => (
             <button key={p} onClick={() => setBalancePeriod(p)}
-              className={`flex-1 py-1 rounded-lg text-xs font-medium transition-colors ${balancePeriod === p ? 'bg-slate-600 text-slate-100' : 'text-slate-500 hover:text-slate-400'}`}>
+              className={`flex-1 py-1 rounded-lg text-xs font-medium transition-colors ${balancePeriod === p ? 'bg-slate-600 text-slate-100' : 'text-slate-400 hover:text-slate-400'}`}>
               {p === 'day' ? 'Hoy' : p === 'week' ? 'Semana' : 'Mes'}
             </button>
           ))}
         </div>
 
         {/* Date range label */}
-        <p className="text-xs text-slate-500 mb-4 text-center tracking-wide">
+        <p className="text-xs text-slate-400 mb-4 text-center tracking-wide">
           📅 {periodRangeLabel(balancePeriod, from, to)}
         </p>
 
@@ -434,8 +445,8 @@ export function HomePage({ userId }: Props) {
       {platformPockets.length > 0 && (
         <div className="mb-5">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-xs text-slate-500 uppercase tracking-wide">Billeteras plataforma</p>
-            <Link to="/bolsillos" className="flex items-center gap-0.5 text-xs text-slate-600 hover:text-slate-400 transition-colors">
+            <p className="text-xs text-slate-400 uppercase tracking-wide">Billeteras plataforma</p>
+            <Link to="/bolsillos" className="flex items-center gap-0.5 text-xs text-slate-400 hover:text-slate-400 transition-colors">
               Ver todas <ChevronRight size={12} />
             </Link>
           </div>
@@ -456,17 +467,17 @@ export function HomePage({ userId }: Props) {
                   <p className={`font-semibold text-xs ${isNegative ? 'text-red-400' : 'text-orange-400'}`}>
                     {maskVal(p.balance, hidden)}
                   </p>
-                  <p className="text-[10px] text-slate-500 mt-0.5">esta semana</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">esta semana</p>
                   {pendingPayout ? (
                     <div className="mt-1.5 pt-1.5 border-t border-slate-700/50">
                       <p className="text-emerald-400 font-semibold text-xs">{maskVal(pendingPayout.amount, hidden)}</p>
-                      <p className="text-[10px] text-slate-500">por cobrar {formatShortDate(pendingPayout.due_date)}</p>
+                      <p className="text-[10px] text-slate-400">por cobrar {formatShortDate(pendingPayout.due_date)}</p>
                       <p className="text-[10px] text-orange-400/70 mt-0.5">Tocar para editar/cobrar</p>
                     </div>
                   ) : p.balance > 0 ? (
                     <div className="mt-1.5 pt-1.5 border-t border-slate-700/50">
                       <p className="text-[10px] text-slate-400 font-medium">Saldo pendiente por cobrar</p>
-                      <p className="text-[10px] text-slate-500">Cierra el domingo</p>
+                      <p className="text-[10px] text-slate-400">Cierra el domingo</p>
                     </div>
                   ) : null}
                 </Wrapper>
@@ -479,18 +490,18 @@ export function HomePage({ userId }: Props) {
       {/* Agenda / Calendario */}
       <div className="mb-5">
         <div className="flex items-center justify-between mb-2">
-          <p className="text-xs text-slate-500 uppercase tracking-wide">Agenda</p>
+          <p className="text-xs text-slate-400 uppercase tracking-wide">Agenda</p>
           <div className="flex bg-slate-800 rounded-lg p-0.5 gap-0.5">
             {(['day', 'week', 'month'] as AgendaPeriod[]).map(p => (
               <button key={p} onClick={() => handleAgendaPeriodChange(p)}
-                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${agendaPeriod === p ? 'bg-slate-600 text-slate-100' : 'text-slate-500 hover:text-slate-400'}`}>
+                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${agendaPeriod === p ? 'bg-slate-600 text-slate-100' : 'text-slate-400 hover:text-slate-400'}`}>
                 {p === 'day' ? 'Hoy' : p === 'week' ? 'Semana' : 'Mes'}
               </button>
             ))}
             {/* Fecha específica */}
             <button
               onClick={() => handleAgendaPeriodChange('specific')}
-              className={`px-2 py-1 rounded-md text-xs font-medium transition-colors flex items-center ${agendaPeriod === 'specific' ? 'bg-slate-600 text-slate-100' : 'text-slate-500 hover:text-slate-400'}`}
+              className={`px-2 py-1 rounded-md text-xs font-medium transition-colors flex items-center ${agendaPeriod === 'specific' ? 'bg-slate-600 text-slate-100' : 'text-slate-400 hover:text-slate-400'}`}
               title="Fecha específica"
             >
               <Calendar size={11} />
@@ -524,7 +535,7 @@ export function HomePage({ userId }: Props) {
         {/* Events list */}
         {agendaEvents.length === 0 && overdueEvents.length === 0 ? (
           <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 text-center">
-            <p className="text-slate-500 text-sm">Sin eventos{emptyLabel} 🎉</p>
+            <p className="text-slate-400 text-sm">Sin eventos{emptyLabel} 🎉</p>
           </div>
         ) : (
           <div className="space-y-5">
@@ -559,7 +570,7 @@ export function HomePage({ userId }: Props) {
                   const isToday = date === today
                   return (
                     <div key={date}>
-                      <p className={`text-xs font-semibold mb-1.5 ${isToday ? 'text-slate-300' : 'text-slate-500'}`}>
+                      <p className={`text-xs font-semibold mb-1.5 ${isToday ? 'text-slate-300' : 'text-slate-400'}`}>
                         {formatAgendaDate(date, today)}
                       </p>
                       <div className="space-y-2">
@@ -575,7 +586,7 @@ export function HomePage({ userId }: Props) {
       </div>
 
       {/* Modules grid */}
-      <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">Módulos</p>
+      <p className="text-xs text-slate-400 uppercase tracking-wide mb-2">Módulos</p>
       <div className="grid grid-cols-3 gap-2">
         {[
           { to: '/ingresos', icon: TrendingUp,  label: 'Ingresos', color: 'emerald' },
@@ -587,9 +598,9 @@ export function HomePage({ userId }: Props) {
           { to: '/recurrentes', icon: Repeat,    label: 'Recurrentes', color: 'cyan' },
         ].map(m => (
           <Link key={m.to} to={m.to}
-            className={`flex flex-col items-center gap-2 p-3 rounded-xl border border-${m.color}-600/20 bg-${m.color}-600/5 hover:bg-${m.color}-600/10 transition-colors`}>
-            <m.icon size={18} className={`text-${m.color}-400`} />
-            <p className={`text-${m.color}-400 text-xs font-medium`}>{m.label}</p>
+            className={`flex flex-col items-center gap-2 p-3 rounded-xl border transition-colors ${MODULE_STYLES[m.color]}`}>
+            <m.icon size={18} />
+            <p className="text-xs font-medium">{m.label}</p>
           </Link>
         ))}
       </div>
@@ -627,7 +638,7 @@ export function HomePage({ userId }: Props) {
         <ConfirmEventSheet
           event={confirmingEvent}
           label={eventNames[confirmingEvent.id] ?? ''}
-          icon={EVENT_META[confirmingEvent.type]?.icon ?? '📋'}
+          icon={EVENT_META[confirmingEvent.type]?.Icon ?? Calendar}
           pockets={nonPlatformPockets}
           defaultPocketId={nonPlatformPockets[0]?.id ?? ''}
           onConfirm={async pocketId => { await confirmEvent(confirmingEvent.id, pocketId); setConfirmingEvent(null) }}
@@ -698,10 +709,10 @@ function PlatformPayoutSheet({ event, platforms, pockets, onConfirm, onPostpone,
             </div>
             <div>
               <p className="text-slate-100 font-semibold text-sm">Día de pago · {platform?.name ?? 'Plataforma'}</p>
-              <p className="text-xs text-slate-500">Cierre de período semanal</p>
+              <p className="text-xs text-slate-400">Cierre de período semanal</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-slate-500 hover:text-slate-300 p-1">
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-300 p-1">
             <X size={16} />
           </button>
         </div>
@@ -712,7 +723,7 @@ function PlatformPayoutSheet({ event, platforms, pockets, onConfirm, onPostpone,
             <p className="text-xs text-slate-400 uppercase tracking-wider">Saldo en billetera {platform?.name}</p>
             {!editingAmount && (
               <button onClick={() => { setEditValue(amount.toString()); setEditingAmount(true) }}
-                className="text-[10px] text-slate-500 hover:text-orange-300 underline">
+                className="text-[10px] text-slate-400 hover:text-orange-300 underline">
                 Editar monto
               </button>
             )}
@@ -726,7 +737,7 @@ function PlatformPayoutSheet({ event, platforms, pockets, onConfirm, onPostpone,
                 autoFocus
                 className="w-full bg-slate-800 border border-orange-500 rounded-lg px-3 py-2 text-slate-100 text-lg font-bold focus:outline-none focus:border-orange-400 mb-2"
               />
-              <p className="text-[10px] text-slate-500 mb-2">
+              <p className="text-[10px] text-slate-400 mb-2">
                 La diferencia con {maskAmount(amount, false)} se ajustará en la billetera {platform?.name} para que no se pierda plata.
               </p>
               <div className="flex gap-2">
@@ -747,9 +758,9 @@ function PlatformPayoutSheet({ event, platforms, pockets, onConfirm, onPostpone,
               </p>
               {willTransfer ? (
                 <div className="flex items-center gap-1.5 mt-3 text-sm text-slate-300">
-                  <span className="text-slate-500 text-xs">Se transferirá</span>
+                  <span className="text-slate-400 text-xs">Se transferirá</span>
                   <span className="text-orange-300 font-semibold">{maskAmount(amount, false)}</span>
-                  <ArrowRight size={12} className="text-slate-500" />
+                  <ArrowRight size={12} className="text-slate-400" />
                   <span className="text-xs">{targetPocket?.icon} {targetPocket?.name ?? '–'}</span>
                 </div>
               ) : (
@@ -758,7 +769,7 @@ function PlatformPayoutSheet({ event, platforms, pockets, onConfirm, onPostpone,
                 </p>
               )}
               {walletPocket && (
-                <p className="text-[10px] text-slate-500 mt-3">
+                <p className="text-[10px] text-slate-400 mt-3">
                   Billetera {platform?.name} esta semana: <span className={walletPocket.balance < 0 ? 'text-red-400' : 'text-slate-400'}>{maskAmount(walletPocket.balance, false)}</span>
                 </p>
               )}
@@ -768,10 +779,10 @@ function PlatformPayoutSheet({ event, platforms, pockets, onConfirm, onPostpone,
 
         {/* Work period info */}
         <div className="bg-slate-800 rounded-xl p-3 mb-5 border border-slate-700">
-          <p className="text-xs text-slate-500 mb-2 font-medium uppercase tracking-wider">Período de trabajo</p>
+          <p className="text-xs text-slate-400 mb-2 font-medium uppercase tracking-wider">Período de trabajo</p>
           <p className="text-xs text-slate-400">
             Lo acumulado de lunes a domingo en la billetera <span className="text-slate-200">{platform?.name}</span> se transfiere a tu bolsillo en el día de cobro.
-            {!willTransfer && <span className="text-slate-500"> El saldo negativo se arrastra al siguiente período.</span>}
+            {!willTransfer && <span className="text-slate-400"> El saldo negativo se arrastra al siguiente período.</span>}
           </p>
         </div>
 

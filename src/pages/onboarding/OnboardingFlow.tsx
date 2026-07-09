@@ -103,7 +103,7 @@ export function OnboardingFlow({ userId, onComplete }: Props) {
       <div className="w-full max-w-sm">
         {/* Progress bar */}
         <div className="mb-6">
-          <div className="flex justify-between text-xs text-slate-500 mb-1.5">
+          <div className="flex justify-between text-xs text-slate-400 mb-1.5">
             <span>Paso {step} de 5</span>
             <span>{Math.round(progress)}%</span>
           </div>

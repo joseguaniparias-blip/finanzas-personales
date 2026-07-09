@@ -124,8 +124,8 @@ export function IncomePage({ userId }: Props) {
       {platformWallets.length > 0 && (
         <div className="mb-5">
           <div className="flex items-center gap-2 mb-3">
-            <Wallet size={12} className="text-slate-500" />
-            <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Billeteras plataforma</p>
+            <Wallet size={12} className="text-slate-400" />
+            <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Billeteras plataforma</p>
           </div>
           <div className="grid grid-cols-2 gap-2">
             {platformWallets.map(w => (
@@ -138,7 +138,7 @@ export function IncomePage({ userId }: Props) {
                   </p>
                 </div>
                 <p className="text-slate-100 font-bold text-base">{maskAmount(w.balance, false)}</p>
-                <p className="text-slate-500 text-xs mt-0.5">en billetera</p>
+                <p className="text-slate-400 text-xs mt-0.5">en billetera</p>
               </div>
             ))}
           </div>
@@ -147,24 +147,24 @@ export function IncomePage({ userId }: Props) {
 
       {/* Income history */}
       <div className="flex items-center gap-2 mb-3">
-        <TrendingUp size={12} className="text-slate-500" />
-        <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Historial</p>
+        <TrendingUp size={12} className="text-slate-400" />
+        <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Historial</p>
       </div>
 
       {grouped.length === 0 ? (
         <div className="text-center py-14">
           <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center mx-auto mb-4">
-            <TrendingUp size={28} className="text-slate-600" />
+            <TrendingUp size={28} className="text-slate-400" />
           </div>
           <p className="text-slate-400 text-sm font-medium">Sin ingresos en {range.label.toLowerCase()}</p>
-          <p className="text-slate-600 text-xs mt-1">Registra tu primer ingreso</p>
+          <p className="text-slate-400 text-xs mt-1">Registra tu primer ingreso</p>
         </div>
       ) : (
         <div className="space-y-6">
           {grouped.map(({ date, items, total: dayTotal }) => (
             <div key={date}>
               <div className="flex items-center justify-between mb-2.5">
-                <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider">{formatDate(date)}</p>
+                <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">{formatDate(date)}</p>
                 <p className="text-xs text-emerald-400 font-bold">+ {maskAmount(dayTotal, false)}</p>
               </div>
               <div className="space-y-2">
@@ -209,8 +209,8 @@ function IncomeCard({ tx, platforms, pockets }: { tx: Transaction; platforms: Pl
                 {platform.name}
               </span>
             )}
-            <span className="text-xs text-slate-600">{typeLabel}</span>
-            {pocket && <span className="text-xs text-slate-600">· {pocket.icon} {pocket.name}</span>}
+            <span className="text-xs text-slate-400">{typeLabel}</span>
+            {pocket && <span className="text-xs text-slate-400">· {pocket.icon} {pocket.name}</span>}
           </div>
         </div>
         <p className="text-emerald-400 font-bold text-sm flex-shrink-0 mt-0.5">+ {maskAmount(tx.amount, false)}</p>

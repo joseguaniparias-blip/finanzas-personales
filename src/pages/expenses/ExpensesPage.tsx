@@ -112,12 +112,12 @@ export function ExpensesPage({ userId }: Props) {
               {range.label}
             </p>
             <p className="text-3xl font-bold text-red-400">{maskAmount(total, false)}</p>
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-slate-400 mt-1">
               Promedio {maskAmount(avgPerDay, false)} / día
             </p>
           </div>
           <div className="text-right">
-            <p className="text-xs text-slate-500">Registros</p>
+            <p className="text-xs text-slate-400">Registros</p>
             <p className="text-lg font-bold text-slate-300">{allExpenses.length}</p>
           </div>
         </div>
@@ -137,12 +137,12 @@ export function ExpensesPage({ userId }: Props) {
                       style={{ width: `${pct}%` }} />
                   </div>
                   <span className="text-xs text-slate-400 w-20 text-right">{maskAmount(spent, false)}</span>
-                  <span className="text-xs text-slate-600 w-8 text-right">{pct.toFixed(0)}%</span>
+                  <span className="text-xs text-slate-400 w-8 text-right">{pct.toFixed(0)}%</span>
                 </button>
               )
             })}
             {activeCategories.length > 3 && (
-              <p className="text-xs text-slate-600 text-center pt-1">
+              <p className="text-xs text-slate-400 text-center pt-1">
                 +{activeCategories.length - 3} categorías más
               </p>
             )}
@@ -154,11 +154,11 @@ export function ExpensesPage({ userId }: Props) {
       <div className="flex items-center justify-between mb-4">
         <div className="flex gap-1">
           <button onClick={() => setView('list')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${view === 'list' ? 'bg-slate-700 text-slate-100' : 'text-slate-500 hover:text-slate-300'}`}>
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${view === 'list' ? 'bg-slate-700 text-slate-100' : 'text-slate-400 hover:text-slate-300'}`}>
             <LayoutList size={12} /> Historial
           </button>
           <button onClick={() => setView('categories')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${view === 'categories' ? 'bg-slate-700 text-slate-100' : 'text-slate-500 hover:text-slate-300'}`}>
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${view === 'categories' ? 'bg-slate-700 text-slate-100' : 'text-slate-400 hover:text-slate-300'}`}>
             <Tags size={12} /> Categorías
           </button>
         </div>
@@ -192,10 +192,10 @@ export function ExpensesPage({ userId }: Props) {
           {grouped.length === 0 ? (
             <div className="text-center py-16">
               <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center mx-auto mb-4">
-                <TrendingDown size={28} className="text-slate-600" />
+                <TrendingDown size={28} className="text-slate-400" />
               </div>
               <p className="text-slate-400 text-sm font-medium">Sin gastos en {range.label.toLowerCase()}</p>
-              <p className="text-slate-600 text-xs mt-1">Registra tu primer gasto</p>
+              <p className="text-slate-400 text-xs mt-1">Registra tu primer gasto</p>
             </div>
           ) : (
             <div className="space-y-6">
@@ -203,7 +203,7 @@ export function ExpensesPage({ userId }: Props) {
                 <div key={date}>
                   {/* Day header */}
                   <div className="flex items-center justify-between mb-2.5">
-                    <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider">{formatDate(date)}</p>
+                    <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">{formatDate(date)}</p>
                     <p className="text-xs text-red-400 font-bold">− {maskAmount(dayTotal, false)}</p>
                   </div>
                   <div className="space-y-2">
@@ -222,7 +222,7 @@ export function ExpensesPage({ userId }: Props) {
       {view === 'categories' && (
         <div className="space-y-3">
           {categories.length === 0 ? (
-            <p className="text-slate-500 text-sm text-center py-8">Sin categorías. Agrega una abajo.</p>
+            <p className="text-slate-400 text-sm text-center py-8">Sin categorías. Agrega una abajo.</p>
           ) : (
             categories.map(c => {
               const spent = spendingByCategory[c.id] ?? 0
@@ -241,7 +241,7 @@ export function ExpensesPage({ userId }: Props) {
                         <div className="flex items-center gap-2">
                           {overLimit && <span className="text-xs text-red-400">⚠️ Excedido</span>}
                           <button onClick={() => { setEditingCategory(c); setLimitDraft(c.monthly_limit?.toString() ?? '') }}
-                            className="text-slate-600 hover:text-slate-300 p-1 transition-colors">
+                            className="text-slate-400 hover:text-slate-300 p-1 transition-colors">
                             <ChevronRight size={14} />
                           </button>
                         </div>
@@ -250,9 +250,9 @@ export function ExpensesPage({ userId }: Props) {
                         <>
                           <div className="flex items-center gap-2 mb-1.5">
                             <span className={`text-xs font-medium ${overLimit ? 'text-red-400' : 'text-slate-300'}`}>{maskAmount(spent, false)}</span>
-                            <span className="text-slate-600 text-xs">/</span>
-                            <span className="text-xs text-slate-500">{maskAmount(c.monthly_limit!, false)}</span>
-                            <span className="text-xs text-slate-600 ml-auto">{pct.toFixed(0)}%</span>
+                            <span className="text-slate-400 text-xs">/</span>
+                            <span className="text-xs text-slate-400">{maskAmount(c.monthly_limit!, false)}</span>
+                            <span className="text-xs text-slate-400 ml-auto">{pct.toFixed(0)}%</span>
                           </div>
                           <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
                             <div className={`h-full rounded-full transition-all ${overLimit ? 'bg-red-500' : pct > 80 ? 'bg-amber-500' : 'bg-purple-500'}`}
@@ -260,7 +260,7 @@ export function ExpensesPage({ userId }: Props) {
                           </div>
                         </>
                       ) : (
-                        <p className="text-xs text-slate-500">
+                        <p className="text-xs text-slate-400">
                           {spent > 0 ? maskAmount(spent, false) + ' gastado' : 'Sin gastos · Sin límite'}
                         </p>
                       )}
@@ -302,9 +302,9 @@ export function ExpensesPage({ userId }: Props) {
               </div>
               <div className="flex-1">
                 <p className="text-slate-100 font-semibold">{editingCategory.name}</p>
-                <p className="text-xs text-slate-500">Configurar límite mensual</p>
+                <p className="text-xs text-slate-400">Configurar límite mensual</p>
               </div>
-              <button onClick={() => setEditingCategory(null)} className="text-slate-500 hover:text-slate-300 p-1">
+              <button onClick={() => setEditingCategory(null)} className="text-slate-400 hover:text-slate-300 p-1">
                 <X size={16} />
               </button>
             </div>
@@ -347,10 +347,10 @@ function ExpenseCard({ tx, categories, pocket }: { tx: Transaction; categories: 
           </p>
           <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
             {category && tx.note && (
-              <span className="text-xs text-slate-500 bg-slate-700/60 px-1.5 py-0.5 rounded-full">{category.icon} {category.name}</span>
+              <span className="text-xs text-slate-400 bg-slate-700/60 px-1.5 py-0.5 rounded-full">{category.icon} {category.name}</span>
             )}
             {pocket && (
-              <span className="text-xs text-slate-600">{pocket.icon} {pocket.name}</span>
+              <span className="text-xs text-slate-400">{pocket.icon} {pocket.name}</span>
             )}
           </div>
         </div>

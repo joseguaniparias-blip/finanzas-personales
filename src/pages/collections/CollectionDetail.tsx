@@ -1,5 +1,5 @@
 ﻿import { useState } from 'react'
-import { ArrowLeft, Check, SkipForward, Trash2 } from 'lucide-react'
+import { ArrowLeft, Check, SkipForward, Trash2, HandCoins } from 'lucide-react'
 import type { Collection, Pocket } from '@/types'
 import { maskAmount } from '@/components/shared/PrivacyToggle'
 import { ConfirmEventSheet } from '@/components/shared/ConfirmEventSheet'
@@ -39,7 +39,7 @@ export function CollectionDetail({ collection, pockets, onBack, onDelete, onPaym
         </button>
         <div className="flex-1">
           <h2 className="text-slate-100 text-lg font-bold">{collection.name}</h2>
-          <p className="text-slate-500 text-xs">👤 {collection.person_name}</p>
+          <p className="text-slate-400 text-xs">👤 {collection.person_name}</p>
         </div>
         {collection.status === 'fully_collected' && (
           <span className="flex items-center gap-1 text-xs text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded-full">
@@ -106,7 +106,7 @@ export function CollectionDetail({ collection, pockets, onBack, onDelete, onPaym
         <ConfirmEventSheet
           event={pendingEvent}
           label={`${collection.name} — ${collection.person_name}`}
-          icon="🟢"
+          icon={HandCoins}
           pockets={pockets.filter(p => p.type !== 'platform')}
           defaultPocketId={collection.dest_pocket_id}
           onConfirm={async pocketId => { await confirmEvent(pendingEvent.id, pocketId); setConfirmSheet(false); onPaymentRecorded() }}

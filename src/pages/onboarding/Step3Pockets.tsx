@@ -48,12 +48,12 @@ export function Step3Pockets({ initial, onNext, onBack }: Props) {
               placeholder="$0" min="0"
               className="w-28 bg-slate-900 rounded-lg px-2 py-1.5 text-sm text-emerald-400 text-right focus:outline-none" />
             {pockets.length > 1 && (
-              <button onClick={() => remove(i)} className="text-slate-600 hover:text-red-400 text-lg">×</button>
+              <button onClick={() => remove(i)} className="text-slate-400 hover:text-red-400 text-lg">×</button>
             )}
           </div>
         ))}
         <button onClick={addPocket}
-          className="w-full text-slate-500 text-sm py-2 border border-dashed border-slate-700 rounded-xl hover:border-slate-500">
+          className="w-full text-slate-400 text-sm py-2 border border-dashed border-slate-700 rounded-xl hover:border-slate-500">
           + Agregar cuenta bancaria
         </button>
       </div>

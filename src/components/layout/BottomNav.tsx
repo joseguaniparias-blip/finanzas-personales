@@ -27,7 +27,7 @@ export function BottomNav() {
                   ? 'bg-emerald-600 text-white p-2 rounded-full -mt-4 shadow-lg shadow-emerald-900'
                   : isActive
                     ? 'text-blue-400'
-                    : 'text-slate-500'
+                    : 'text-slate-400'
               }`
             }
           >

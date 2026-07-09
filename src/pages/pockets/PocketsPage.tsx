@@ -33,7 +33,7 @@ export function PocketsPage({ userId }: Props) {
           <p className="text-xs text-slate-400">SALDO TOTAL</p>
         </div>
         <p className="text-3xl font-bold text-emerald-400">{maskAmount(totalBalance, hidden)}</p>
-        <p className="text-xs text-slate-500 mt-1">{pockets.length} bolsillo{pockets.length !== 1 ? 's' : ''}</p>
+        <p className="text-xs text-slate-400 mt-1">{pockets.length} bolsillo{pockets.length !== 1 ? 's' : ''}</p>
       </div>
 
       {/* Pockets list */}
@@ -91,7 +91,7 @@ export function PocketsPage({ userId }: Props) {
               </h2>
               <button
                 onClick={() => { setShowForm(false); setEditing(null) }}
-                className="text-slate-500 hover:text-slate-300 text-xl leading-none"
+                className="text-slate-400 hover:text-slate-300 text-xl leading-none"
               >×</button>
             </div>
             {/* Contenido scrollable */}

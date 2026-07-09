@@ -53,7 +53,7 @@ export function RegisterPage({ userId }: Props) {
   return (
     <div className="p-4 max-w-lg mx-auto">
       <PageHeader title="Registrar" />
-      <p className="text-slate-500 text-sm mb-8">¿Qué quieres registrar?</p>
+      <p className="text-slate-400 text-sm mb-8">¿Qué quieres registrar?</p>
 
       <div className="grid grid-cols-2 gap-4">
         <button
@@ -65,7 +65,7 @@ export function RegisterPage({ userId }: Props) {
           </div>
           <div className="text-center">
             <p className="text-emerald-400 font-semibold text-sm">Ingreso</p>
-            <p className="text-slate-500 text-xs mt-0.5">Lo que ganaste hoy</p>
+            <p className="text-slate-400 text-xs mt-0.5">Lo que ganaste hoy</p>
           </div>
         </button>
 
@@ -78,7 +78,7 @@ export function RegisterPage({ userId }: Props) {
           </div>
           <div className="text-center">
             <p className="text-red-400 font-semibold text-sm">Gasto</p>
-            <p className="text-slate-500 text-xs mt-0.5">Lo que gastaste hoy</p>
+            <p className="text-slate-400 text-xs mt-0.5">Lo que gastaste hoy</p>
           </div>
         </button>
       </div>

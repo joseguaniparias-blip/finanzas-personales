@@ -30,7 +30,7 @@ export function Step2Platforms({ initial, onNext, onBack }: Props) {
             </button>
           )
         })}
-        <button className="flex items-center gap-2 p-3 rounded-xl border border-dashed border-slate-600 text-slate-500 text-sm">
+        <button className="flex items-center gap-2 p-3 rounded-xl border border-dashed border-slate-600 text-slate-400 text-sm">
           <span>➕</span> Otra
         </button>
       </div>

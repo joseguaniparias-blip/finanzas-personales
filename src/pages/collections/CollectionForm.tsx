@@ -57,7 +57,7 @@ export function CollectionForm({ userId, pockets, initial, onSave, onCancel }: P
     <div className="p-4 max-w-lg mx-auto">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-slate-100 text-lg font-bold">{initial ? 'Editar cobro' : 'Nuevo cobro'}</h2>
-        <button onClick={onCancel} className="text-slate-500 text-sm">Cancelar</button>
+        <button onClick={onCancel} className="text-slate-400 text-sm">Cancelar</button>
       </div>
 
       {/* Name */}
@@ -79,7 +79,7 @@ export function CollectionForm({ userId, pockets, initial, onSave, onCancel }: P
         <div className="flex items-center justify-between">
           <div>
             <p className="text-slate-200 text-sm font-medium">¿Tiene monto total?</p>
-            <p className="text-slate-500 text-xs mt-0.5">Hay un total definido a cobrar</p>
+            <p className="text-slate-400 text-xs mt-0.5">Hay un total definido a cobrar</p>
           </div>
           <button onClick={() => setHasTotal(h => !h)}
             className={`w-11 h-6 rounded-full transition-colors relative ${hasTotal ? 'bg-emerald-600' : 'bg-slate-600'}`}>
@@ -121,7 +121,7 @@ export function CollectionForm({ userId, pockets, initial, onSave, onCancel }: P
           <span className="text-slate-400 text-sm">Día</span>
           <input type="number" min={1} max={28} value={paymentDay} onChange={e => setPaymentDay(Number(e.target.value))}
             className="w-20 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 text-sm text-center focus:outline-none focus:border-blue-500" />
-          <span className="text-slate-500 text-sm">de cada mes</span>
+          <span className="text-slate-400 text-sm">de cada mes</span>
         </div>
       )}
 
@@ -153,7 +153,7 @@ export function CollectionForm({ userId, pockets, initial, onSave, onCancel }: P
             value={collectedAmount}
             onChange={setCollectedAmount}
           />
-          <p className="text-slate-500 text-xs mt-1">Ajusta si las cuotas registradas no cuadran</p>
+          <p className="text-slate-400 text-xs mt-1">Ajusta si las cuotas registradas no cuadran</p>
         </div>
       )}
 
@@ -163,7 +163,7 @@ export function CollectionForm({ userId, pockets, initial, onSave, onCancel }: P
           <div className="flex items-center justify-between">
             <div>
               <p className="text-slate-200 text-sm font-medium">¿Ya tiene cobros hechos?</p>
-              <p className="text-slate-500 text-xs mt-0.5">Para cobros iniciados antes de la app</p>
+              <p className="text-slate-400 text-xs mt-0.5">Para cobros iniciados antes de la app</p>
             </div>
             <button onClick={() => setStartedBefore(s => !s)}
               className={`w-11 h-6 rounded-full transition-colors relative ${startedBefore ? 'bg-amber-600' : 'bg-slate-600'}`}>

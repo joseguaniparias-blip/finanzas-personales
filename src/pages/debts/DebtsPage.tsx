@@ -103,7 +103,7 @@ export function DebtsPage({ userId }: Props) {
               <p className="text-3xl font-bold text-red-400">{maskAmount(totalDebt, false)}</p>
             </div>
             <div className="text-right">
-              <p className="text-xs text-slate-500">Deudas activas</p>
+              <p className="text-xs text-slate-400">Deudas activas</p>
               <p className="text-lg font-bold text-slate-300">{debts.length}</p>
             </div>
           </div>
@@ -121,10 +121,10 @@ export function DebtsPage({ userId }: Props) {
       {debts.length === 0 ? (
         <div className="text-center py-16">
           <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center mx-auto mb-4">
-            <CreditCard size={28} className="text-slate-600" />
+            <CreditCard size={28} className="text-slate-400" />
           </div>
           <p className="text-slate-400 text-sm font-medium">Sin deudas activas</p>
-          <p className="text-slate-600 text-xs mt-1">Registra créditos, préstamos o compromisos</p>
+          <p className="text-slate-400 text-xs mt-1">Registra créditos, préstamos o compromisos</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -179,10 +179,10 @@ function DebtCard({ debt, pendingEvent, today, onTap, onEdit }: {
                 <span className="flex-shrink-0 text-xs text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full">Único</span>
               )}
               {!debt.has_total && !isOnce && (
-                <span className="flex-shrink-0 text-xs text-slate-500 bg-slate-700 px-2 py-0.5 rounded-full">Indefinida</span>
+                <span className="flex-shrink-0 text-xs text-slate-400 bg-slate-700 px-2 py-0.5 rounded-full">Indefinida</span>
               )}
             </div>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-400">
               {maskAmount(debt.installment_amount, false)}
               {!isOnce && ` / ${debt.frequency === 'monthly' ? 'mes' : debt.frequency === 'weekly' ? 'semana' : 'día'}`}
             </p>
@@ -190,19 +190,19 @@ function DebtCard({ debt, pendingEvent, today, onTap, onEdit }: {
 
           <div className="flex items-start gap-2 flex-shrink-0">
             <button onClick={e => { e.stopPropagation(); onEdit() }}
-              className="p-1.5 rounded-lg text-slate-600 hover:text-slate-300 hover:bg-slate-700 transition-colors">
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-300 hover:bg-slate-700 transition-colors">
               <Pencil size={13} />
             </button>
             <div className="text-right">
               {debt.has_total && debt.total_amount ? (
                 <>
                   <p className="text-red-400 font-bold text-base">{maskAmount(remaining!, false)}</p>
-                  <p className="text-xs text-slate-500">por pagar</p>
+                  <p className="text-xs text-slate-400">por pagar</p>
                 </>
               ) : (
                 <>
                   <p className="text-slate-300 font-bold text-base">{maskAmount(debt.paid_amount, false)}</p>
-                  <p className="text-xs text-slate-500">pagado</p>
+                  <p className="text-xs text-slate-400">pagado</p>
                 </>
               )}
             </div>
@@ -212,7 +212,7 @@ function DebtCard({ debt, pendingEvent, today, onTap, onEdit }: {
         {/* Progress bar */}
         {progress !== null && (
           <div className="mb-3">
-            <div className="flex justify-between text-xs text-slate-500 mb-1.5">
+            <div className="flex justify-between text-xs text-slate-400 mb-1.5">
               <span>{pct}% completado</span>
               <span>{maskAmount(debt.paid_amount, false)} de {maskAmount(debt.total_amount!, false)}</span>
             </div>
@@ -228,11 +228,11 @@ function DebtCard({ debt, pendingEvent, today, onTap, onEdit }: {
           <div className={`flex items-center gap-2 rounded-xl px-3 py-2 ${isOverdue ? 'bg-red-500/10' : 'bg-slate-700/50'}`}>
             {isOverdue
               ? <AlertCircle size={12} className="text-red-400 flex-shrink-0" />
-              : <Calendar size={12} className="text-slate-500 flex-shrink-0" />}
+              : <Calendar size={12} className="text-slate-400 flex-shrink-0" />}
             <span className={`text-xs font-medium ${isOverdue ? 'text-red-400' : 'text-slate-400'}`}>
               {due?.label}
             </span>
-            <span className="ml-auto text-xs text-slate-500">{maskAmount(pendingEvent.amount, false)}</span>
+            <span className="ml-auto text-xs text-slate-400">{maskAmount(pendingEvent.amount, false)}</span>
           </div>
         )}
 

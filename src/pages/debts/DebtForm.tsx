@@ -78,7 +78,7 @@ export function DebtForm({ userId, pockets, initial, onSave, onCancel }: Props) 
     <div className="p-4 max-w-lg mx-auto">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-slate-100 text-lg font-bold">{initial ? 'Editar deuda' : 'Nueva deuda'}</h2>
-        <button onClick={onCancel} className="text-slate-500 text-sm">Cancelar</button>
+        <button onClick={onCancel} className="text-slate-400 text-sm">Cancelar</button>
       </div>
 
       {/* Name */}
@@ -97,7 +97,7 @@ export function DebtForm({ userId, pockets, initial, onSave, onCancel }: Props) 
         <div className="flex items-center justify-between">
           <div>
             <p className="text-slate-200 text-sm font-medium">¿Tiene monto total?</p>
-            <p className="text-slate-500 text-xs mt-0.5">La deuda tiene un total definido</p>
+            <p className="text-slate-400 text-xs mt-0.5">La deuda tiene un total definido</p>
           </div>
           <button
             onClick={() => setHasTotal(h => !h)}
@@ -173,7 +173,7 @@ export function DebtForm({ userId, pockets, initial, onSave, onCancel }: Props) 
                 onChange={e => setPaymentDay(Number(e.target.value))}
                 className="w-20 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 text-sm text-center focus:outline-none focus:border-blue-500"
               />
-              <span className="text-slate-500 text-sm">de cada mes</span>
+              <span className="text-slate-400 text-sm">de cada mes</span>
             </div>
           )}
         </div>
@@ -221,7 +221,7 @@ export function DebtForm({ userId, pockets, initial, onSave, onCancel }: Props) 
             value={paidAmount}
             onChange={setPaidAmount}
           />
-          <p className="text-slate-500 text-xs mt-1">Ajusta si las cuotas registradas no cuadran</p>
+          <p className="text-slate-400 text-xs mt-1">Ajusta si las cuotas registradas no cuadran</p>
         </div>
       )}
 
@@ -230,7 +230,7 @@ export function DebtForm({ userId, pockets, initial, onSave, onCancel }: Props) 
         <div className="flex items-center justify-between">
           <div>
             <p className="text-slate-200 text-sm font-medium">¿Ya tiene pagos hechos?</p>
-            <p className="text-slate-500 text-xs mt-0.5">Para deudas que iniciaron antes de la app</p>
+            <p className="text-slate-400 text-xs mt-0.5">Para deudas que iniciaron antes de la app</p>
           </div>
           <button
             onClick={() => setStartedBefore(s => !s)}
@@ -248,7 +248,7 @@ export function DebtForm({ userId, pockets, initial, onSave, onCancel }: Props) 
               <span className="text-slate-100 font-semibold w-8 text-center">{startInstallment}</span>
               <button onClick={() => setStartInstallment(s => s + 1)}
                 className="w-8 h-8 rounded-full bg-slate-700 text-slate-300 text-lg">+</button>
-              <span className="text-slate-500 text-sm">cuota{startInstallment !== 1 ? 's' : ''}</span>
+              <span className="text-slate-400 text-sm">cuota{startInstallment !== 1 ? 's' : ''}</span>
             </div>
           </div>
         )}

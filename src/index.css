@@ -1,5 +1,57 @@
 @import "tailwindcss";
 
+/* ─── Design tokens ──────────────────────────────────────────────────────────
+   Semantic colors mapped 1:1 to the current palette so the look is unchanged.
+   These generate utilities like bg-surface, text-income, border-line, and
+   support opacity modifiers (bg-income/10). Prefer these over raw slate-*/…
+   classes in new and migrated code. */
+@theme {
+  /* Surfaces & structure */
+  --color-bg: #020617;            /* slate-950 */
+  --color-surface: #1e293b;       /* slate-800 */
+  --color-surface-muted: #0f172a; /* slate-900 */
+  --color-line: #334155;          /* slate-700 (borders) */
+
+  /* Text — three levels, all AA on the dark background */
+  --color-ink: #f1f5f9;           /* slate-100 (primary) */
+  --color-ink-muted: #cbd5e1;     /* slate-300 (secondary) */
+  --color-ink-faint: #94a3b8;     /* slate-400 (tertiary/labels) */
+
+  /* Domain */
+  --color-income: #34d399;        /* emerald-400 */
+  --color-expense: #f87171;       /* red-400 */
+  --color-debt: #f87171;          /* red-400 */
+  --color-collection: #34d399;    /* emerald-400 */
+  --color-saving: #60a5fa;        /* blue-400 */
+  --color-cadena: #a78bfa;        /* violet-400 */
+  --color-platform: #fb923c;      /* orange-400 */
+  --color-recurring: #22d3ee;     /* cyan-400 */
+
+  /* Semantic UI */
+  --color-success: #34d399;       /* emerald-400 */
+  --color-danger: #f87171;        /* red-400 */
+  --color-warning: #fbbf24;       /* amber-400 */
+  --color-info: #60a5fa;          /* blue-400 */
+}
+
 * { box-sizing: border-box; }
 body { margin: 0; font-family: system-ui, -apple-system, sans-serif; }
 input, button, select, textarea { font-family: inherit; }
+
+/* ─── Accessibility floor ────────────────────────────────────────────────── */
+
+/* Visible keyboard focus everywhere, even on elements without their own style. */
+:focus-visible {
+  outline: 2px solid var(--color-info);
+  outline-offset: 2px;
+}
+
+/* Respect users who prefer reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

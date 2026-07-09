@@ -38,7 +38,7 @@ export function PocketCard({ pocket, hidden, onEdit }: Props) {
         {/* Info */}
         <div className="flex-1 min-w-0">
           <p className="text-slate-100 text-sm font-semibold truncate">{pocket.name}</p>
-          <p className="text-xs text-slate-500 mt-0.5">{TYPE_LABELS[pocket.type] ?? pocket.type}</p>
+          <p className="text-xs text-slate-400 mt-0.5">{TYPE_LABELS[pocket.type] ?? pocket.type}</p>
         </div>
 
         {/* Balance */}
@@ -46,7 +46,7 @@ export function PocketCard({ pocket, hidden, onEdit }: Props) {
           <p className={`text-base font-bold ${isNegative ? 'text-red-400' : isPlatform ? 'text-orange-400' : 'text-slate-100'}`}>
             {maskAmount(pocket.balance, hidden)}
           </p>
-          <ChevronRight size={14} className="text-slate-600" />
+          <ChevronRight size={14} className="text-slate-400" />
         </div>
       </div>
     </button>

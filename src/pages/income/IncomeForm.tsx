@@ -223,7 +223,7 @@ export function IncomeForm({ userId, platforms, pockets, categories, addCategory
           <Check size={32} className="text-emerald-400" />
         </div>
         <p className="text-emerald-400 font-semibold">Ingreso registrado</p>
-        <p className="text-slate-500 text-sm">{maskAmount(totalNum, false)} · {doneLabel}</p>
+        <p className="text-slate-400 text-sm">{maskAmount(totalNum, false)} · {doneLabel}</p>
       </div>
     )
   }
@@ -232,7 +232,7 @@ export function IncomeForm({ userId, platforms, pockets, categories, addCategory
     <div className="p-4 max-w-lg mx-auto">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-slate-100 text-lg font-bold">Registrar ingreso</h2>
-        <button onClick={onCancel} className="text-slate-500 text-sm">Cancelar</button>
+        <button onClick={onCancel} className="text-slate-400 text-sm">Cancelar</button>
       </div>
 
       {/* Type toggle */}
@@ -267,7 +267,7 @@ export function IncomeForm({ userId, platforms, pockets, categories, addCategory
           <div className="mb-5">
             <p className="text-xs text-slate-400 mb-2">Plataforma</p>
             {platforms.length === 0 ? (
-              <p className="text-slate-500 text-sm">No tienes plataformas activas</p>
+              <p className="text-slate-400 text-sm">No tienes plataformas activas</p>
             ) : (
               <div className="flex gap-2 flex-wrap">
                 {platforms.map(p => (
@@ -325,7 +325,7 @@ export function IncomeForm({ userId, platforms, pockets, categories, addCategory
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-slate-200 text-sm font-medium">¿Recibiste efectivo?</p>
-                <p className="text-slate-500 text-xs mt-0.5">Propinas, pagos en mano, adelantos…</p>
+                <p className="text-slate-400 text-xs mt-0.5">Propinas, pagos en mano, adelantos…</p>
               </div>
               <button onClick={() => setHasCash(h => !h)}
                 className={`w-11 h-6 rounded-full transition-colors relative ${hasCash ? 'bg-emerald-600' : 'bg-slate-600'}`}>
@@ -350,7 +350,7 @@ export function IncomeForm({ userId, platforms, pockets, categories, addCategory
                       <AmountInput label="" value={split.amount} onChange={v => updateSplit(i, 'amount', v)} className="flex-1" />
                       {cashSplits.length > 1 && (
                         <button onClick={() => removeSplit(i)}
-                          className="p-2 rounded-lg bg-slate-700 text-slate-500 hover:text-red-400 transition-colors">
+                          className="p-2 rounded-lg bg-slate-700 text-slate-400 hover:text-red-400 transition-colors">
                           <Trash2 size={14} />
                         </button>
                       )}
@@ -518,9 +518,9 @@ function CategoryPicker({
   return (
     <div className="mb-5">
       <div className="flex items-center justify-between mb-2">
-        <p className="text-xs text-slate-400">Categoría <span className="text-slate-600">(opcional)</span></p>
+        <p className="text-xs text-slate-400">Categoría <span className="text-slate-400">(opcional)</span></p>
         <button onClick={() => { setManagingCats(m => !m); setEditingCat(null) }}
-          className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 transition-colors">
+          className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-300 transition-colors">
           <Pencil size={10} /> {managingCats ? 'Listo' : 'Gestionar'}
         </button>
       </div>
@@ -540,16 +540,16 @@ function CategoryPicker({
                     }
                     setEditingCat(null)
                   }} className="text-xs text-emerald-400 px-1">✓</button>
-                  <button onClick={() => setEditingCat(null)} className="text-xs text-slate-500 px-1">✕</button>
+                  <button onClick={() => setEditingCat(null)} className="text-xs text-slate-400 px-1">✕</button>
                 </div>
               ) : (
                 <div className="flex items-center gap-1 bg-slate-800 border border-slate-700 rounded-full px-2.5 py-1.5">
                   <span className="text-xs">{c.icon}</span>
                   <span className="text-xs text-slate-300">{c.name}</span>
                   <button onClick={() => { setEditingCat(c); setEditName(c.name) }}
-                    className="text-slate-500 hover:text-slate-300 ml-0.5"><Pencil size={9} /></button>
+                    className="text-slate-400 hover:text-slate-300 ml-0.5"><Pencil size={9} /></button>
                   <button onClick={async () => { await deleteCategory(c.id); if (categoryId === c.id) setCategoryId(null) }}
-                    className="text-slate-500 hover:text-red-400 ml-0.5"><X size={9} /></button>
+                    className="text-slate-400 hover:text-red-400 ml-0.5"><X size={9} /></button>
                 </div>
               )
             ) : (

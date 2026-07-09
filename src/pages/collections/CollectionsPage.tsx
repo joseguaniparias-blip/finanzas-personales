@@ -88,7 +88,7 @@ export function CollectionsPage({ userId }: Props) {
               <p className="text-3xl font-bold text-emerald-400">{maskAmount(totalPending, false)}</p>
             </div>
             <div className="text-right">
-              <p className="text-xs text-slate-500">Cobros activos</p>
+              <p className="text-xs text-slate-400">Cobros activos</p>
               <p className="text-lg font-bold text-slate-300">{collections.length}</p>
             </div>
           </div>
@@ -106,10 +106,10 @@ export function CollectionsPage({ userId }: Props) {
       {collections.length === 0 ? (
         <div className="text-center py-16">
           <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center mx-auto mb-4">
-            <HandCoins size={28} className="text-slate-600" />
+            <HandCoins size={28} className="text-slate-400" />
           </div>
           <p className="text-slate-400 text-sm font-medium">Sin cobros activos</p>
-          <p className="text-slate-600 text-xs mt-1">Registra dinero que te deben</p>
+          <p className="text-slate-400 text-xs mt-1">Registra dinero que te deben</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -156,14 +156,14 @@ function CollectionCard({ collection: c, pendingEvent, today, onTap }: {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <p className="text-slate-200 font-semibold text-sm truncate">{c.name}</p>
-              {!c.has_total && <span className="flex-shrink-0 text-xs text-slate-500 bg-slate-700 px-2 py-0.5 rounded-full">Indefinido</span>}
+              {!c.has_total && <span className="flex-shrink-0 text-xs text-slate-400 bg-slate-700 px-2 py-0.5 rounded-full">Indefinido</span>}
               {isFuture && <span className="flex-shrink-0 text-xs text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full">Futuro</span>}
             </div>
             <div className="flex items-center gap-1.5">
-              <User size={10} className="text-slate-600" />
-              <p className="text-xs text-slate-500">{c.person_name}</p>
+              <User size={10} className="text-slate-400" />
+              <p className="text-xs text-slate-400">{c.person_name}</p>
               <span className="text-slate-700">·</span>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-400">
                 {maskAmount(c.installment_amount, false)}
                 {c.frequency !== 'once' && `/${c.frequency === 'monthly' ? 'mes' : c.frequency === 'weekly' ? 'sem' : 'día'}`}
               </p>
@@ -173,12 +173,12 @@ function CollectionCard({ collection: c, pendingEvent, today, onTap }: {
             {c.has_total && c.total_amount ? (
               <>
                 <p className="text-emerald-400 font-bold text-base">{maskAmount(remaining!, false)}</p>
-                <p className="text-xs text-slate-500">por cobrar</p>
+                <p className="text-xs text-slate-400">por cobrar</p>
               </>
             ) : (
               <>
                 <p className="text-slate-300 font-bold text-base">{maskAmount(c.collected_amount, false)}</p>
-                <p className="text-xs text-slate-500">cobrado</p>
+                <p className="text-xs text-slate-400">cobrado</p>
               </>
             )}
           </div>
@@ -187,7 +187,7 @@ function CollectionCard({ collection: c, pendingEvent, today, onTap }: {
         {/* Progress */}
         {progress !== null && (
           <div className="mb-3">
-            <div className="flex justify-between text-xs text-slate-500 mb-1.5">
+            <div className="flex justify-between text-xs text-slate-400 mb-1.5">
               <span>{pct}% cobrado</span>
               <span>{maskAmount(c.collected_amount, false)} de {maskAmount(c.total_amount!, false)}</span>
             </div>
@@ -203,11 +203,11 @@ function CollectionCard({ collection: c, pendingEvent, today, onTap }: {
           <div className={`flex items-center gap-2 rounded-xl px-3 py-2 ${due?.urgent ? 'bg-amber-500/10' : 'bg-slate-700/50'}`}>
             {due?.urgent
               ? <AlertCircle size={12} className="text-amber-400 flex-shrink-0" />
-              : <Calendar size={12} className="text-slate-500 flex-shrink-0" />}
+              : <Calendar size={12} className="text-slate-400 flex-shrink-0" />}
             <span className={`text-xs font-medium ${due?.urgent ? 'text-amber-400' : 'text-slate-400'}`}>
               {due?.label}
             </span>
-            <span className="ml-auto text-xs text-slate-500">{maskAmount(pendingEvent.amount, false)}</span>
+            <span className="ml-auto text-xs text-slate-400">{maskAmount(pendingEvent.amount, false)}</span>
           </div>
         )}
       </div>

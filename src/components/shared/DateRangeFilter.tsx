@@ -104,7 +104,7 @@ export function DateRangeFilter({ value, onChange, presets = DEFAULT_PRESETS }: 
 
       {/* Active range summary (only for custom — presets are self-evident) */}
       {value.preset === 'custom' && (
-        <p className="text-xs text-slate-500 mt-2">{value.from} → {value.to}</p>
+        <p className="text-xs text-slate-400 mt-2">{value.from} → {value.to}</p>
       )}
 
       {showCustom && (
@@ -140,7 +140,7 @@ function CustomRangeSheet({ initial, onApply, onClose }: {
       <div className="bg-slate-900 w-full max-w-lg rounded-t-3xl border-t border-slate-700 px-6 pt-6 pb-8" style={{ maxHeight: '90dvh' }}>
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-slate-100 font-semibold text-sm">Rango personalizado</h3>
-          <button onClick={onClose} className="text-slate-500 hover:text-slate-300 p-1">
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-300 p-1">
             <X size={16} />
           </button>
         </div>

@@ -206,7 +206,7 @@ export function HistoryPage({ userId }: Props) {
         <div className="flex gap-1 bg-slate-800 rounded-xl p-1 flex-1">
           {([['all','Todos'],['income','Ingresos'],['expense','Gastos']] as [TypeFilter,string][]).map(([t,label]) => (
             <button key={t} onClick={() => setTypeFilter(t)}
-              className={`flex-1 py-1 rounded-lg text-xs font-medium transition-colors ${typeFilter === t ? 'bg-slate-600 text-slate-100' : 'text-slate-500'}`}>
+              className={`flex-1 py-1 rounded-lg text-xs font-medium transition-colors ${typeFilter === t ? 'bg-slate-600 text-slate-100' : 'text-slate-400'}`}>
               {label}
             </button>
           ))}
@@ -232,11 +232,11 @@ export function HistoryPage({ userId }: Props) {
         </div>
       </div>
 
-      {loading && <p className="text-slate-500 text-sm animate-pulse text-center py-8">Cargando…</p>}
+      {loading && <p className="text-slate-400 text-sm animate-pulse text-center py-8">Cargando…</p>}
 
       {!loading && groups.length === 0 && (
         <div className="text-center py-12">
-          <p className="text-slate-500 text-sm">Sin movimientos en este período</p>
+          <p className="text-slate-400 text-sm">Sin movimientos en este período</p>
         </div>
       )}
 
@@ -244,7 +244,7 @@ export function HistoryPage({ userId }: Props) {
       <div className="space-y-5">
         {groups.map(({ date, items }) => (
           <div key={date}>
-            <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">{formatDate(date)}</p>
+            <p className="text-xs text-slate-400 uppercase tracking-wide mb-2">{formatDate(date)}</p>
             <div className="space-y-2">
               {items.map(tx => {
                 const pocket = pocketMap[tx.pocket_id]
@@ -273,7 +273,7 @@ export function HistoryPage({ userId }: Props) {
                           : txLabel(tx)}
                       </p>
                       {pocket && (
-                        <p className="text-xs text-slate-500">{pocket.icon} {pocket.name}</p>
+                        <p className="text-xs text-slate-400">{pocket.icon} {pocket.name}</p>
                       )}
                     </div>
                     <p className={`font-bold text-sm flex-shrink-0 ${
@@ -339,7 +339,7 @@ function TransactionDetailView({ tx, pocket, category, onBack, onEdit, onDelete 
         }`}>
           {isTransfer ? '' : isIncome ? '+' : '−'} {maskAmount(tx.amount, false)}
         </p>
-        <p className="text-slate-500 text-sm mt-1">{formatDate(tx.date)}</p>
+        <p className="text-slate-400 text-sm mt-1">{formatDate(tx.date)}</p>
       </div>
 
       {/* Info rows */}
@@ -357,7 +357,7 @@ function TransactionDetailView({ tx, pocket, category, onBack, onEdit, onDelete 
         {isLinked ? (
           <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
             <p className="text-slate-300 text-sm mb-1">Movimiento automático</p>
-            <p className="text-slate-500 text-xs">
+            <p className="text-slate-400 text-xs">
               Se generó desde <span className="text-slate-300">{sourceLabel ?? 'otro módulo'}</span>. Para cambiarlo o eliminarlo, hazlo desde ese módulo — así el saldo y el pendiente quedan bien.
             </p>
           </div>
@@ -434,7 +434,7 @@ function TransactionEditForm({ tx, pockets, categories, onSave, onCancel }: Edit
     <div className="p-4 max-w-lg mx-auto">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-slate-100 text-lg font-bold">Editar registro</h2>
-        <button onClick={onCancel} className="text-slate-500 text-sm">Cancelar</button>
+        <button onClick={onCancel} className="text-slate-400 text-sm">Cancelar</button>
       </div>
 
       {/* Type */}
@@ -485,7 +485,7 @@ function TransactionEditForm({ tx, pockets, categories, onSave, onCancel }: Edit
           <p className="text-xs text-slate-400 mb-2">Categoría</p>
           <div className="grid grid-cols-3 gap-2">
             <button onClick={() => setCategoryId('')}
-              className={`py-2 rounded-xl text-xs transition-colors border ${!categoryId ? 'bg-slate-600 border-slate-500 text-slate-200' : 'border-slate-700 text-slate-500'}`}>
+              className={`py-2 rounded-xl text-xs transition-colors border ${!categoryId ? 'bg-slate-600 border-slate-500 text-slate-200' : 'border-slate-700 text-slate-400'}`}>
               Sin categoría
             </button>
             {categories.map(c => (
@@ -504,7 +504,7 @@ function TransactionEditForm({ tx, pockets, categories, onSave, onCancel }: Edit
         <label className="block text-xs text-slate-400 mb-1">Nota (opcional)</label>
         <input value={note} onChange={e => setNote(e.target.value)}
           placeholder="Descripción…"
-          className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-blue-500 placeholder:text-slate-600" />
+          className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-blue-500 placeholder:text-slate-400" />
       </div>
 
       <button onClick={handleSave} disabled={!canSave || saving}

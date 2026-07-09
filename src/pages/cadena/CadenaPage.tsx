@@ -64,7 +64,7 @@ export function CadenaPage({ userId }: Props) {
         <div className="text-center py-16">
           <Users size={36} className="text-slate-700 mx-auto mb-3" />
           <p className="text-slate-400 text-sm">Sin cadenas activas</p>
-          <p className="text-slate-600 text-xs mt-1">Registra tu cadena o cooperativa grupal</p>
+          <p className="text-slate-400 text-xs mt-1">Registra tu cadena o cooperativa grupal</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -83,13 +83,13 @@ export function CadenaPage({ userId }: Props) {
                       {overdue && <span className="text-xs text-violet-400 bg-violet-400/10 px-1.5 py-0.5 rounded-full">🔔 Pendiente</span>}
                       {isMyTurn && <span className="text-xs text-amber-400 bg-amber-400/10 px-1.5 py-0.5 rounded-full">🎉 Te toca cobrar</span>}
                     </div>
-                    <p className="text-xs text-slate-500 mt-0.5">
+                    <p className="text-xs text-slate-400 mt-0.5">
                       Ronda {c.current_round}/{c.participants} · {c.frequency === 'monthly' ? 'Mensual' : 'Semanal'}
                     </p>
                   </div>
                   <div className="text-right ml-2">
                     <p className="text-violet-400 font-bold text-sm">{maskAmount(c.contribution_amount, false)}</p>
-                    <p className="text-xs text-slate-500">por turno</p>
+                    <p className="text-xs text-slate-400">por turno</p>
                   </div>
                 </div>
                 <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
@@ -97,8 +97,8 @@ export function CadenaPage({ userId }: Props) {
                     style={{ width: `${((c.paid_rounds / c.participants) * 100).toFixed(1)}%` }} />
                 </div>
                 <div className="flex justify-between mt-1.5">
-                  <p className="text-xs text-slate-600">{c.paid_rounds} rondas pagadas</p>
-                  <p className="text-xs text-slate-500">Bote: {maskAmount(totalPot, false)}</p>
+                  <p className="text-xs text-slate-400">{c.paid_rounds} rondas pagadas</p>
+                  <p className="text-xs text-slate-400">Bote: {maskAmount(totalPot, false)}</p>
                 </div>
               </button>
             )

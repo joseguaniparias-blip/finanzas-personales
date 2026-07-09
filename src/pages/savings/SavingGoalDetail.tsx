@@ -1,5 +1,5 @@
 ﻿import { useState } from 'react'
-import { ArrowLeft, Check, SkipForward, Trash2 } from 'lucide-react'
+import { ArrowLeft, Check, SkipForward, Trash2, PiggyBank } from 'lucide-react'
 import type { SavingGoal, Pocket } from '@/types'
 import { maskAmount } from '@/components/shared/PrivacyToggle'
 import { ConfirmEventSheet } from '@/components/shared/ConfirmEventSheet'
@@ -34,7 +34,7 @@ export function SavingGoalDetail({ goal, pockets, onBack, onSavingRecorded }: Pr
         </button>
         <div className="flex-1">
           <h2 className="text-slate-100 text-lg font-bold">{goal.name}</h2>
-          <p className="text-slate-500 text-xs">{freqLabel}</p>
+          <p className="text-slate-400 text-xs">{freqLabel}</p>
         </div>
       </div>
 
@@ -53,7 +53,7 @@ export function SavingGoalDetail({ goal, pockets, onBack, onSavingRecorded }: Pr
           <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
             <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${(progress! * 100).toFixed(1)}%` }} />
           </div>
-          <p className="text-xs text-slate-500 mt-2">Meta: {maskAmount(goal.target_amount, false)}</p>
+          <p className="text-xs text-slate-400 mt-2">Meta: {maskAmount(goal.target_amount, false)}</p>
         </div>
       )}
 
@@ -97,7 +97,7 @@ export function SavingGoalDetail({ goal, pockets, onBack, onSavingRecorded }: Pr
         <ConfirmEventSheet
           event={pendingEvent}
           label={goal.name}
-          icon="💙"
+          icon={PiggyBank}
           pockets={pockets.filter(p => p.type !== 'platform')}
           defaultPocketId={goal.source_pocket_id}
           onConfirm={async pocketId => { await confirmEvent(pendingEvent.id, pocketId); setConfirmSheet(false); onSavingRecorded() }}

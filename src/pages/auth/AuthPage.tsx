@@ -97,14 +97,14 @@ export function AuthPage() {
 
           <div className="mt-5 text-center text-sm">
             {mode === 'login' ? (
-              <p className="text-slate-500">
+              <p className="text-slate-400">
                 ¿No tienes cuenta?{' '}
                 <button onClick={() => switchMode('register')} className="text-blue-400 hover:text-blue-300 font-medium">
                   Regístrate
                 </button>
               </p>
             ) : (
-              <p className="text-slate-500">
+              <p className="text-slate-400">
                 ¿Ya tienes cuenta?{' '}
                 <button onClick={() => switchMode('login')} className="text-blue-400 hover:text-blue-300 font-medium">
                   Ingresar
