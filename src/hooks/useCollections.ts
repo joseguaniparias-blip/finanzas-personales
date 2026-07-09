@@ -10,7 +10,6 @@ interface CollectionsHook {
   loading: boolean
   addCollection: (c: NewCollection) => Promise<Collection>
   updateCollection: (id: string, updates: Partial<Collection>) => Promise<void>
-  recordCollection: (id: string, amount: number) => Promise<void>
   closeCollection: (id: string) => Promise<void>
 }
 
@@ -55,18 +54,6 @@ export function useCollections(userId: string): CollectionsHook {
     await load()
   }
 
-  const recordCollection = async (id: string, amount: number) => {
-    const col = await db.collections.get(id)
-    if (!col) return
-    const newCollected = col.collected_amount + amount
-    const updates: Partial<Collection> = { collected_amount: newCollected }
-    if (col.has_total && col.total_amount && newCollected >= col.total_amount) {
-      updates.status = 'fully_collected'
-    }
-    await db.collections.update(id, updates)
-    await load()
-  }
-
   const closeCollection = async (id: string) => {
     const linked = await db.scheduled_events
       .where('user_id').equals(userId)
@@ -77,7 +64,7 @@ export function useCollections(userId: string): CollectionsHook {
     await load()
   }
 
-  return { collections, loading, addCollection, updateCollection, recordCollection, closeCollection }
+  return { collections, loading, addCollection, updateCollection, closeCollection }
 }
 
 async function scheduleNextCollectionEvent(col: Collection) {

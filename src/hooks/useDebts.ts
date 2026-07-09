@@ -10,7 +10,6 @@ interface DebtsHook {
   loading: boolean
   addDebt: (d: NewDebt, firstDueDate?: string) => Promise<Debt>
   updateDebt: (id: string, updates: Partial<Debt>) => Promise<void>
-  recordPayment: (id: string, amount: number) => Promise<void>
   closeDebt: (id: string) => Promise<void>
 }
 
@@ -59,18 +58,6 @@ export function useDebts(userId: string): DebtsHook {
     await load()
   }
 
-  const recordPayment = async (id: string, amount: number) => {
-    const debt = await db.debts.get(id)
-    if (!debt) return
-    const newPaid = debt.paid_amount + amount
-    const updates: Partial<Debt> = { paid_amount: newPaid }
-    if (debt.has_total && debt.total_amount && newPaid >= debt.total_amount) {
-      updates.status = 'paid_off'
-    }
-    await db.debts.update(id, updates)
-    await load()
-  }
-
   const closeDebt = async (id: string) => {
     const linked = await db.scheduled_events
       .where('user_id').equals(userId)
@@ -81,7 +68,7 @@ export function useDebts(userId: string): DebtsHook {
     await load()
   }
 
-  return { debts, loading, addDebt, updateDebt, recordPayment, closeDebt }
+  return { debts, loading, addDebt, updateDebt, closeDebt }
 }
 
 async function scheduleNextEvent(debt: Debt, overrideDueDate?: string) {

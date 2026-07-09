@@ -10,7 +10,6 @@ interface CadenasHook {
   loading: boolean
   addCadena: (c: NewCadena) => Promise<Cadena>
   updateCadena: (id: string, updates: Partial<Cadena>) => Promise<void>
-  recordPayment: (id: string) => Promise<void>
   closeCadena: (id: string) => Promise<void>
   deleteCadena: (id: string) => Promise<void>
 }
@@ -53,23 +52,11 @@ export function useCadenas(userId: string): CadenasHook {
     await load()
   }
 
-  const recordPayment = async (id: string) => {
-    const cadena = await db.cadenas.get(id)
-    if (!cadena) return
-    const newPaid = cadena.paid_rounds + 1
-    const newCurrent = cadena.current_round + 1
-    const updates: Partial<Cadena> = { paid_rounds: newPaid, current_round: newCurrent }
-    if (newCurrent > cadena.participants) {
-      updates.status = 'completed'
-    }
-    await db.cadenas.update(id, updates)
-    await load()
-  }
-
   const closeCadena = async (id: string) => {
     // 'cancelled' = el usuario abandonó / cerró manualmente.
     // 'completed' se reserva para cuando todas las rondas naturalmente terminaron
-    // (ver recordPayment que setea completed cuando current_round > participants).
+    // (ver handleCadenaConfirm en useScheduledEvents, que setea completed cuando
+    // current_round > participants al confirmar cada aporte).
     await db.transaction('rw', db.cadenas, db.scheduled_events, async () => {
       const linked = await db.scheduled_events
         .where('user_id').equals(userId)
@@ -92,7 +79,7 @@ export function useCadenas(userId: string): CadenasHook {
     await load()
   }
 
-  return { cadenas, loading, addCadena, updateCadena, recordPayment, closeCadena, deleteCadena }
+  return { cadenas, loading, addCadena, updateCadena, closeCadena, deleteCadena }
 }
 
 async function scheduleNextCadenaEvent(cadena: Cadena) {

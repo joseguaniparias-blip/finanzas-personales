@@ -1,9 +1,43 @@
 import { supabase } from '@/lib/supabase'
-import { db } from '@/lib/db'
+import { db, type SyncOp } from '@/lib/db'
+import { enqueueSyncOp, processSyncQueue } from '@/lib/syncQueue'
+import type { Table } from 'dexie'
 
 // Prevents circular sync: pull → hook → push → loop
 let syncing = false
 let hooksSetup = false
+
+const nowISO = () => new Date().toISOString()
+
+/**
+ * Last-writer-wins comparison for a pulled row vs its local copy. The server
+ * wins only when it is strictly newer. If the server row has no `updated_at`
+ * yet (pre-migration), we never clobber the local copy.
+ */
+export function isServerNewer(
+  server: { updated_at?: string },
+  local: { updated_at?: string },
+): boolean {
+  const s = server.updated_at
+  const l = local.updated_at
+  if (s && l) return s > l
+  if (s && !l) return true
+  return false
+}
+
+/** Merge server rows into a Dexie table by last-writer-wins on `updated_at`. */
+export async function mergeServerRows<T extends { id: string; updated_at?: string }>(
+  table: Table<T>,
+  rows: T[] | null | undefined,
+): Promise<void> {
+  if (!rows?.length) return
+  for (const row of rows) {
+    const local = await table.get(row.id)
+    if (!local || isServerNewer(row, local)) {
+      await table.put(row)
+    }
+  }
+}
 
 // Dexie stores these booleans as 0/1 due to IndexedDB index limitations.
 // Supabase expects actual booleans.
@@ -29,21 +63,47 @@ function toSupabase(table: string, record: Record<string, unknown>): Record<stri
 
 function pushRecord(table: string, record: Record<string, unknown>) {
   if (syncing) return
-  supabase.from(table).upsert(toSupabase(table, record)).then(({ error }) => {
-    if (error) console.warn(`[sync] push error on ${table}:`, error.message)
-  })
+  // Optimistic push. If it fails (offline, transient, RLS hiccup) park the op in
+  // the durable outbox so it's retried on next load / reconnect instead of lost.
+  supabase.from(table).upsert(toSupabase(table, record)).then(
+    ({ error }) => { if (error) enqueueSyncOp('upsert', table, record) },
+    () => { enqueueSyncOp('upsert', table, record) },
+  )
 }
 
 function deleteRecord(table: string, id: string) {
   if (syncing) return
-  supabase.from(table).delete().eq('id', id).then(({ error }) => {
-    if (error) console.warn(`[sync] delete error on ${table}:`, error.message)
-  })
+  supabase.from(table).delete().eq('id', id).then(
+    ({ error }) => { if (error) enqueueSyncOp('delete', table, { id }) },
+    () => { enqueueSyncOp('delete', table, { id }) },
+  )
+}
+
+/** Executes one queued op against Supabase; throws on error so it stays queued. */
+async function runSyncOp(op: SyncOp): Promise<void> {
+  if (op.op === 'delete') {
+    const { error } = await supabase.from(op.table).delete().eq('id', op.payload.id as string)
+    if (error) throw new Error(error.message)
+  } else {
+    const { error } = await supabase.from(op.table).upsert(toSupabase(op.table, op.payload))
+    if (error) throw new Error(error.message)
+  }
+}
+
+/** Retries every parked sync op. Safe to call repeatedly; no-op while pulling. */
+export async function flushSyncQueue(): Promise<void> {
+  if (syncing) return
+  await processSyncQueue(runSyncOp)
 }
 
 export function setupSyncHooks() {
   if (hooksSetup) return
   hooksSetup = true
+
+  // Retry parked ops whenever connectivity returns.
+  if (typeof window !== 'undefined') {
+    window.addEventListener('online', () => { flushSyncQueue() })
+  }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const tables: [string, any][] = [
@@ -62,10 +122,16 @@ export function setupSyncHooks() {
 
   for (const [tableName, table] of tables) {
     table.hook('creating', (_key: unknown, obj: Record<string, unknown>) => {
+      // Stamp updated_at for last-writer-wins sync (unless we're applying a pull,
+      // where the server's own timestamp must be preserved).
+      if (!syncing && obj.updated_at == null) obj.updated_at = nowISO()
       pushRecord(tableName, obj)
     })
     table.hook('updating', (mods: Record<string, unknown>, _key: unknown, obj: Record<string, unknown>) => {
-      pushRecord(tableName, { ...obj, ...mods })
+      if (syncing) return
+      const updated_at = nowISO()
+      pushRecord(tableName, { ...obj, ...mods, updated_at })
+      return { updated_at }
     })
     table.hook('deleting', (key: string) => {
       deleteRecord(tableName, key)
@@ -74,35 +140,16 @@ export function setupSyncHooks() {
 }
 
 /**
- * Pulls data from Supabase into the local Dexie store.
- *
- * IMPORTANT — only runs when the local store is EMPTY for this user.
- * Previously this ran on every login and `bulkPut` overwrote local records
- * with whatever the server had, silently destroying offline-only changes
- * that hadn't been pushed yet (network failure, slow background sync).
- *
- * Trade-off: multi-device sync is degraded. Changes made on device B won't
- * automatically appear on device A unless A's local store is cleared. The
- * proper fix requires `updated_at` columns + per-row conflict resolution,
- * which is a schema change deferred to a separate task.
+ * Pulls cloud data into local Dexie, merging by last-writer-wins on
+ * `updated_at`. Runs on every login: a row is overwritten locally only when the
+ * server copy is strictly newer, so a change made on another device propagates
+ * here while local-only edits that are newer are preserved (and later flushed
+ * by the outbox). Requires migration 003 (updated_at columns); before that the
+ * merge is conservative and never clobbers local rows.
  */
 export async function pullFromSupabase(userId: string) {
   syncing = true
   try {
-    // Decide if local store is "empty" for this user. We check a few key
-    // tables; if any has data, we treat local as the source of truth and skip
-    // the pull entirely.
-    const [localPocketsCount, localTxsCount, localProfile] = await Promise.all([
-      db.pockets.where('user_id').equals(userId).count(),
-      db.transactions.where('user_id').equals(userId).count(),
-      db.user_profiles.get(userId),
-    ])
-    const hasLocalData = localPocketsCount > 0 || localTxsCount > 0 || !!localProfile
-    if (hasLocalData) {
-      // Skip — local store wins. Push hooks will keep server in sync going forward.
-      return
-    }
-
     const [
       { data: platforms },
       { data: pockets },
@@ -134,17 +181,17 @@ export async function pullFromSupabase(userId: string) {
       db.debts, db.collections, db.saving_goals, db.cadenas,
       db.scheduled_events, db.recurring_payments, db.user_profiles,
     ], async () => {
-      if (platforms?.length)        await db.platforms.bulkPut(platforms)
-      if (pockets?.length)          await db.pockets.bulkPut(pockets)
-      if (categories?.length)       await db.categories.bulkPut(categories)
-      if (transactions?.length)     await db.transactions.bulkPut(transactions)
-      if (debts?.length)            await db.debts.bulkPut(debts)
-      if (collections?.length)      await db.collections.bulkPut(collections)
-      if (saving_goals?.length)     await db.saving_goals.bulkPut(saving_goals)
-      if (cadenas?.length)          await db.cadenas.bulkPut(cadenas)
-      if (scheduled_events?.length) await db.scheduled_events.bulkPut(scheduled_events)
-      if (recurring_payments?.length) await db.recurring_payments.bulkPut(recurring_payments)
-      if (user_profiles?.length)    await db.user_profiles.bulkPut(user_profiles)
+      await mergeServerRows(db.platforms, platforms)
+      await mergeServerRows(db.pockets, pockets)
+      await mergeServerRows(db.categories, categories)
+      await mergeServerRows(db.transactions, transactions)
+      await mergeServerRows(db.debts, debts)
+      await mergeServerRows(db.collections, collections)
+      await mergeServerRows(db.saving_goals, saving_goals)
+      await mergeServerRows(db.cadenas, cadenas)
+      await mergeServerRows(db.scheduled_events, scheduled_events)
+      await mergeServerRows(db.recurring_payments, recurring_payments)
+      await mergeServerRows(db.user_profiles, user_profiles)
     })
   } catch (e) {
     console.warn('[sync] pull failed:', e)

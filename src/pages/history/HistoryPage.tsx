@@ -6,7 +6,18 @@ import { useCategories } from '@/hooks/useCategories'
 import { maskAmount } from '@/components/shared/PrivacyToggle'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { AmountInput, parseAmount } from '@/components/shared/AmountInput'
+import { isEntityLinkedTransaction } from '@/lib/integrity'
 import type { Transaction, Pocket, Category } from '@/types'
+
+// Human label for the module a system-generated transaction came from.
+const SOURCE_MODULE_LABEL: Record<string, string> = {
+  debt: 'Deudas',
+  collection: 'Cobros',
+  saving: 'Ahorros',
+  cadena: 'Cadena',
+  platform: 'Plataformas (día de pago)',
+  recurring: 'Pagos recurrentes',
+}
 import { todayISO, addDaysISO } from '@/lib/date'
 import { DateRangeFilter, buildPreset, type DateRange } from '@/components/shared/DateRangeFilter'
 
@@ -296,6 +307,11 @@ function TransactionDetailView({ tx, pocket, category, onBack, onEdit, onDelete 
   const [confirmDelete, setConfirmDelete] = useState(false)
   const isIncome = tx.type === 'income'
   const isTransfer = tx.type === 'transfer'
+  // System-generated movements (a debt payment, a collected cobro, a platform
+  // payout, …) must not be edited/deleted here: doing so would fix the pocket
+  // balance but leave the source entity's counter (paid_amount, …) out of sync.
+  const isLinked = isEntityLinkedTransaction(tx)
+  const sourceLabel = tx.reference_type ? SOURCE_MODULE_LABEL[tx.reference_type] : undefined
 
   return (
     <div className="p-4 max-w-lg mx-auto">
@@ -304,7 +320,7 @@ function TransactionDetailView({ tx, pocket, category, onBack, onEdit, onDelete 
           <ArrowLeft size={18} />
         </button>
         <h2 className="text-slate-100 text-lg font-bold flex-1">Detalle</h2>
-        {!isTransfer && (
+        {!isTransfer && !isLinked && (
           <button onClick={onEdit} className="p-2 rounded-full bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors">
             <Pencil size={16} />
           </button>
@@ -336,9 +352,16 @@ function TransactionDetailView({ tx, pocket, category, onBack, onEdit, onDelete 
         )}
       </div>
 
-      {/* Delete */}
+      {/* Delete — blocked for system-generated movements */}
       <div className="mt-4">
-        {!confirmDelete ? (
+        {isLinked ? (
+          <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
+            <p className="text-slate-300 text-sm mb-1">Movimiento automático</p>
+            <p className="text-slate-500 text-xs">
+              Se generó desde <span className="text-slate-300">{sourceLabel ?? 'otro módulo'}</span>. Para cambiarlo o eliminarlo, hazlo desde ese módulo — así el saldo y el pendiente quedan bien.
+            </p>
+          </div>
+        ) : !confirmDelete ? (
           <button onClick={() => setConfirmDelete(true)}
             className="w-full flex items-center justify-center gap-2 text-red-500 hover:text-red-400 py-2.5 rounded-xl text-sm transition-colors">
             <Trash2 size={14} /> Eliminar registro

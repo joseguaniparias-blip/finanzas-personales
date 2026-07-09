@@ -4,6 +4,20 @@ import type {
   Debt, Collection, SavingGoal, Cadena, ScheduledEvent, RecurringPayment
 } from '@/types'
 
+/**
+ * A pending cloud-sync operation held locally until it succeeds. Keyed by
+ * `${table}:${recordId}` so repeated writes to the same record collapse to one
+ * entry (latest wins; a delete supersedes a pending upsert).
+ */
+export interface SyncOp {
+  key: string
+  op: 'upsert' | 'delete'
+  table: string
+  payload: Record<string, unknown>
+  attempts: number
+  updated_at: string
+}
+
 // IndexedDB cannot index booleans — coerce them to 0/1 for indexed boolean fields
 function coerceBooleans<T extends object>(obj: T, fields: (keyof T)[]): T {
   const copy = { ...obj }
@@ -28,6 +42,7 @@ class FinanzasDB extends Dexie {
   cadenas!: Table<Cadena>
   scheduled_events!: Table<ScheduledEvent>
   recurring_payments!: Table<RecurringPayment>
+  sync_queue!: Table<SyncOp>
 
   constructor() {
     super('FinanzasDB')
@@ -51,6 +66,12 @@ class FinanzasDB extends Dexie {
       await tx.table('categories').toCollection().modify(c => {
         if (!('kind' in c)) c.kind = 'expense'
       })
+    })
+
+    // v3: durable outbox for cloud sync — retries pushes that failed (offline,
+    // transient error) instead of losing them.
+    this.version(3).stores({
+      sync_queue: 'key, table'
     })
 
     // Coerce boolean is_active → 0/1 so IndexedDB can index and filter it

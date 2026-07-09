@@ -13,7 +13,7 @@ import { HistoryPage } from '@/pages/history/HistoryPage'
 import { ReportsPage } from '@/pages/reports/ReportsPage'
 import { usePlatformPayouts } from '@/hooks/usePlatformPayouts'
 import { useOrphanCleanup } from '@/hooks/useOrphanCleanup'
-import { setupSyncHooks, pullFromSupabase } from '@/lib/sync'
+import { setupSyncHooks, pullFromSupabase, flushSyncQueue } from '@/lib/sync'
 import { IncomePage } from '@/pages/income/IncomePage'
 import { ExpensesPage } from '@/pages/expenses/ExpensesPage'
 import { DebtsPage } from '@/pages/debts/DebtsPage'
@@ -35,8 +35,11 @@ function AppRoutes() {
   // Set up Dexie → Supabase push hooks once (global to the DB instance)
   useEffect(() => { setupSyncHooks() }, [])
 
-  // Pull all cloud data into local DB when user logs in
-  useEffect(() => { if (user) pullFromSupabase(user.id) }, [user?.id])
+  // On login: first flush any pushes parked in the outbox (so local-only edits
+  // reach the server), then pull + merge cloud data by last-writer-wins.
+  useEffect(() => {
+    if (user) flushSyncQueue().then(() => pullFromSupabase(user.id))
+  }, [user?.id])
 
   useEffect(() => {
     if (!user) { setOnboardingDone(null); return }
@@ -90,7 +93,7 @@ function AppRoutes() {
 
   return (
     <Routes>
-      <Route element={<AppShell />}>
+      <Route element={<AppShell userId={user.id} />}>
         <Route path="/"           element={<HomePage userId={user.id} />} />
         <Route path="/bolsillos"  element={<PocketsPage userId={user.id} />} />
         <Route path="/registrar"  element={<RegisterPage userId={user.id} />} />
