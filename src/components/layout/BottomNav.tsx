@@ -24,15 +24,23 @@ export function BottomNav() {
             className={({ isActive }) =>
               `flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition-colors ${
                 tab.center
-                  ? 'bg-emerald-600 text-white p-2 rounded-full -mt-4 shadow-lg shadow-emerald-900'
+                  ? 'bg-accent text-on-accent p-2 rounded-full -mt-4 shadow-lg'
                   : isActive
-                    ? 'text-blue-400'
+                    ? 'text-accent'
                     : 'text-slate-400'
               }`
             }
           >
-            <tab.icon size={tab.center ? 26 : 20} />
-            {!tab.center && <span className="text-[10px]">{tab.label}</span>}
+            {({ isActive }) => (
+              <>
+                {/* Lit "current" tick above the active tab — the moto-dashboard motif. */}
+                {!tab.center && (
+                  <span className={`h-0.5 w-5 rounded-full ${isActive ? 'bg-accent' : 'bg-transparent'}`} />
+                )}
+                <tab.icon size={tab.center ? 26 : 20} />
+                {!tab.center && <span className="text-[10px]">{tab.label}</span>}
+              </>
+            )}
           </NavLink>
         ))}
       </div>

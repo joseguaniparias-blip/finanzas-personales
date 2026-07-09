@@ -369,8 +369,8 @@ export function ConfigPage({ userId }: Props) {
 
         <button onClick={() => setSection('categories')}
           className="w-full flex items-center gap-3 bg-slate-800 border border-slate-700 rounded-xl p-4 hover:bg-slate-700 transition-colors">
-          <div className="w-9 h-9 rounded-full bg-cyan-600/20 flex items-center justify-center">
-            <Tags size={16} className="text-cyan-400" />
+          <div className="w-9 h-9 rounded-full bg-teal-600/20 flex items-center justify-center">
+            <Tags size={16} className="text-teal-400" />
           </div>
           <div className="flex-1 text-left">
             <p className="text-slate-200 text-sm font-medium">Categorías</p>
@@ -481,7 +481,7 @@ function CategoryManager({ userId, categories, addCategory, updateCategory, dele
     <div className="p-4 max-w-lg mx-auto">
       <PageHeader title="Categorías" right={
         <button onClick={() => setShowAdd(s => !s)}
-          className="flex items-center gap-1.5 bg-cyan-600 hover:bg-cyan-500 text-white px-3 py-2 rounded-xl text-xs font-semibold transition-colors">
+          className="flex items-center gap-1.5 bg-teal-600 hover:bg-teal-500 text-white px-3 py-2 rounded-xl text-xs font-semibold transition-colors">
           <Plus size={14} /> Nueva
         </button>
       } />
@@ -518,7 +518,7 @@ function CategoryManager({ userId, categories, addCategory, updateCategory, dele
             <button onClick={() => { setShowAdd(false); setNewName(''); setNewIcon('📦') }}
               className="flex-1 py-2 rounded-xl bg-slate-700 text-slate-300 text-sm">Cancelar</button>
             <button onClick={handleAdd} disabled={!newName.trim()}
-              className="flex-1 py-2 rounded-xl bg-cyan-600 disabled:opacity-40 text-white text-sm font-semibold">
+              className="flex-1 py-2 rounded-xl bg-teal-600 disabled:opacity-40 text-white text-sm font-semibold">
               Agregar
             </button>
           </div>

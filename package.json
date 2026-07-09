@@ -14,6 +14,8 @@
     "generate-icons": "pwa-assets-generator --preset minimal public/favicon.svg"
   },
   "dependencies": {
+    "@fontsource/inter": "^5.2.8",
+    "@fontsource/space-grotesk": "^5.2.10",
     "@supabase/supabase-js": "^2.105.3",
     "@tailwindcss/vite": "^4.2.4",
     "class-variance-authority": "^0.7.1",

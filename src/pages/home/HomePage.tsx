@@ -24,7 +24,7 @@ const EVENT_META: Record<string, { color: string; Icon: LucideIcon; label: strin
   saving:          { color: 'text-blue-400',    Icon: PiggyBank,  label: 'Ahorro' },
   cadena:          { color: 'text-violet-400',  Icon: Users,      label: 'Cadena' },
   platform_payout: { color: 'text-orange-400',  Icon: Wallet,     label: 'Pago plataforma' },
-  recurring:       { color: 'text-cyan-400',    Icon: Repeat,     label: 'Pago recurrente' },
+  recurring:       { color: 'text-teal-400',    Icon: Repeat,     label: 'Pago recurrente' },
 }
 
 const DOT_COLOR: Record<string, string> = {
@@ -33,7 +33,7 @@ const DOT_COLOR: Record<string, string> = {
   saving:          'bg-blue-500',
   cadena:          'bg-violet-500',
   platform_payout: 'bg-orange-500',
-  recurring:       'bg-cyan-500',
+  recurring:       'bg-teal-500',
 }
 
 const DAY_LABELS = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb']
@@ -46,7 +46,7 @@ const MODULE_STYLES: Record<string, string> = {
   red:     'border-red-600/20 bg-red-600/5 hover:bg-red-600/10 text-red-400',
   blue:    'border-blue-600/20 bg-blue-600/5 hover:bg-blue-600/10 text-blue-400',
   violet:  'border-violet-600/20 bg-violet-600/5 hover:bg-violet-600/10 text-violet-400',
-  cyan:    'border-cyan-600/20 bg-cyan-600/5 hover:bg-cyan-600/10 text-cyan-400',
+  teal:    'border-teal-600/20 bg-teal-600/5 hover:bg-teal-600/10 text-teal-400',
 }
 
 function maskVal(amount: number, hidden: boolean) {
@@ -377,7 +377,7 @@ export function HomePage({ userId }: Props) {
       <div className="flex items-center justify-between mb-5">
         <div>
           <p className="text-slate-400 text-xs">Bienvenido</p>
-          <h1 className="text-slate-100 text-xl font-bold">{profile?.name ?? '…'}</h1>
+          <h1 className="font-display text-slate-100 text-xl font-bold">{profile?.name ?? '…'}</h1>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => setHidden(!hidden)}
@@ -391,10 +391,11 @@ export function HomePage({ userId }: Props) {
         </div>
       </div>
 
-      {/* Balance card */}
-      <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-5 mb-4 border border-slate-700">
-        <p className="text-xs text-slate-400 mb-1">SALDO TOTAL</p>
-        <p className="text-3xl font-bold text-slate-100 mb-4">{maskVal(totalBalance, hidden)}</p>
+      {/* Balance card — "Tablero" (moto instrument readout) */}
+      <div className="bg-slate-800 rounded-2xl p-5 mb-4 border border-slate-700">
+        <p className="font-display text-[11px] tracking-[0.18em] uppercase text-slate-400 mb-1.5">Saldo total</p>
+        <p className="font-display tabular text-4xl font-bold text-accent leading-none">{maskVal(totalBalance, hidden)}</p>
+        <div className="h-0.5 w-16 bg-accent rounded-full mt-3 mb-4"></div>
 
         {/* Period tabs */}
         <div className="flex gap-1 mb-2">
@@ -407,18 +408,18 @@ export function HomePage({ userId }: Props) {
         </div>
 
         {/* Date range label */}
-        <p className="text-xs text-slate-400 mb-4 text-center tracking-wide">
-          📅 {periodRangeLabel(balancePeriod, from, to)}
+        <p className="text-xs text-slate-400 mb-4 text-center tracking-wide flex items-center justify-center gap-1.5">
+          <Calendar size={12} /> {periodRangeLabel(balancePeriod, from, to)}
         </p>
 
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-emerald-600/10 rounded-xl p-3">
             <p className="text-xs text-slate-400 mb-0.5">↑ Ingresos</p>
-            <p className="text-emerald-400 font-bold text-sm">{maskVal(income, hidden)}</p>
+            <p className="font-display tabular text-emerald-400 font-bold text-base">{maskVal(income, hidden)}</p>
           </div>
           <div className="bg-red-600/10 rounded-xl p-3">
             <p className="text-xs text-slate-400 mb-0.5">↓ Gastos</p>
-            <p className="text-red-400 font-bold text-sm">{maskVal(expense, hidden)}</p>
+            <p className="font-display tabular text-red-400 font-bold text-base">{maskVal(expense, hidden)}</p>
           </div>
         </div>
       </div>
@@ -595,7 +596,7 @@ export function HomePage({ userId }: Props) {
           { to: '/cobros',   icon: HandCoins,    label: 'Cobros',  color: 'emerald' },
           { to: '/ahorros',  icon: PiggyBank,    label: 'Ahorros', color: 'blue' },
           { to: '/cadena',   icon: Users,        label: 'Cadena',  color: 'violet' },
-          { to: '/recurrentes', icon: Repeat,    label: 'Recurrentes', color: 'cyan' },
+          { to: '/recurrentes', icon: Repeat,    label: 'Recurrentes', color: 'teal' },
         ].map(m => (
           <Link key={m.to} to={m.to}
             className={`flex flex-col items-center gap-2 p-3 rounded-xl border transition-colors ${MODULE_STYLES[m.color]}`}>
