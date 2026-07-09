@@ -78,7 +78,7 @@ export function SavingGoalDetail({ goal, pockets, onBack, onSavingRecorded }: Pr
           <p className="text-slate-200 font-bold text-lg mb-4">{maskAmount(pendingEvent.amount, false)}</p>
           <div className="grid grid-cols-2 gap-2 mb-2">
             <button onClick={() => setConfirmSheet(true)}
-              className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white py-2.5 rounded-xl text-sm font-semibold transition-colors">
+              className="flex items-center justify-center gap-2 bg-accent hover:bg-accent-strong text-on-accent py-2.5 rounded-xl text-sm font-semibold transition-colors">
               <Check size={14} /> Registrar aporte
             </button>
             <button onClick={() => { postponeEvent(pendingEvent.id); onSavingRecorded() }}

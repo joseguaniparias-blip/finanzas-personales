@@ -88,7 +88,7 @@ export function DebtsPage({ userId }: Props) {
         title="Deudas"
         right={
           <button onClick={() => setShowForm(true)}
-            className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-xl text-xs font-semibold transition-colors">
+            className="flex items-center gap-1.5 bg-accent hover:bg-accent-strong text-on-accent px-3 py-2 rounded-xl text-xs font-semibold transition-colors">
             <Plus size={14} /> Nueva
           </button>
         }

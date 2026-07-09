@@ -37,7 +37,7 @@ export function Step2Platforms({ initial, onNext, onBack }: Props) {
       <div className="flex gap-3">
         <button onClick={onBack} className="flex-1 bg-slate-800 text-slate-300 py-3 rounded-xl text-sm">← Atrás</button>
         <button onClick={() => selected.length > 0 && onNext(selected)} disabled={selected.length === 0}
-          className="flex-2 bg-blue-600 disabled:opacity-40 text-white font-semibold py-3 px-6 rounded-xl text-sm">
+          className="flex-2 bg-accent disabled:opacity-40 text-on-accent font-semibold py-3 px-6 rounded-xl text-sm">
           Siguiente →
         </button>
       </div>

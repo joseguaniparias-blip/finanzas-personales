@@ -161,7 +161,7 @@ function CustomRangeSheet({ initial, onApply, onClose }: {
         </div>
 
         <button onClick={apply} disabled={!valid}
-          className="w-full mt-6 bg-blue-600 disabled:opacity-40 hover:bg-blue-500 text-white py-3 rounded-xl font-semibold text-sm transition-colors">
+          className="w-full mt-6 bg-accent disabled:opacity-40 hover:bg-accent-strong text-on-accent py-3 rounded-xl font-semibold text-sm transition-colors">
           Aplicar
         </button>
       </div>

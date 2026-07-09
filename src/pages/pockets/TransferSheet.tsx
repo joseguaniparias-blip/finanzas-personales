@@ -117,7 +117,7 @@ export function TransferSheet({ pockets, defaultFromId, onTransfer, onClose }: P
         )}
 
         <button onClick={handle} disabled={!canTransfer || submitting}
-          className="w-full bg-blue-600 disabled:opacity-40 hover:bg-blue-500 text-white py-4 rounded-xl font-semibold text-sm transition-colors">
+          className="w-full bg-accent disabled:opacity-40 hover:bg-accent-strong text-on-accent py-4 rounded-xl font-semibold text-sm transition-colors">
           {submitting ? 'Transfiriendo…' : 'Transferir'}
         </button>
       </div>

@@ -89,7 +89,7 @@ export function SavingGoalForm({ userId, pockets, initial, onSave, onCancel }: P
           <div className="flex gap-1">
             {DAYS_OF_WEEK.map((d, i) => (
               <button key={i} onClick={() => setTriggerDay(i)}
-                className={`flex-1 py-2 rounded-lg text-xs transition-colors ${triggerDay === i ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'}`}>{d}</button>
+                className={`flex-1 py-2 rounded-lg text-xs transition-colors ${triggerDay === i ? 'bg-accent text-on-accent' : 'bg-slate-800 text-slate-400'}`}>{d}</button>
             ))}
           </div>
         </div>
@@ -116,7 +116,7 @@ export function SavingGoalForm({ userId, pockets, initial, onSave, onCancel }: P
       </div>
 
       <button onClick={handleSave} disabled={!canSave || saving}
-        className="w-full bg-blue-600 disabled:opacity-40 hover:bg-blue-500 text-white py-4 rounded-xl font-semibold text-sm transition-colors">
+        className="w-full bg-accent disabled:opacity-40 hover:bg-accent-strong text-on-accent py-4 rounded-xl font-semibold text-sm transition-colors">
         {saving ? 'Guardando…' : initial ? 'Guardar cambios' : 'Crear meta'}
       </button>
     </div>

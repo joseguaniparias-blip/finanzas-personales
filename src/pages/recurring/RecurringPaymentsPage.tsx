@@ -94,7 +94,7 @@ export function RecurringPaymentsPage({ userId }: Props) {
             </p>
             <p className="text-slate-200 font-bold text-lg mb-4">{maskAmount(pendingEvent.amount, false)}</p>
             <button onClick={() => setConfirmingEvent(pendingEvent)}
-              className="w-full bg-blue-600 hover:bg-blue-500 text-white py-2.5 rounded-xl text-sm font-semibold transition-colors">
+              className="w-full bg-accent hover:bg-accent-strong text-on-accent py-2.5 rounded-xl text-sm font-semibold transition-colors">
               Registrar pago
             </button>
           </div>
@@ -135,7 +135,7 @@ export function RecurringPaymentsPage({ userId }: Props) {
         title="Pagos recurrentes"
         right={
           <button onClick={() => setShowForm(true)}
-            className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-xl text-xs font-semibold transition-colors">
+            className="flex items-center gap-1.5 bg-accent hover:bg-accent-strong text-on-accent px-3 py-2 rounded-xl text-xs font-semibold transition-colors">
             <Plus size={14} /> Nuevo
           </button>
         }

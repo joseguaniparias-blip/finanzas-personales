@@ -60,7 +60,7 @@ export function Step3Pockets({ initial, onNext, onBack }: Props) {
       <div className="flex gap-3">
         <button onClick={onBack} className="flex-1 bg-slate-800 text-slate-300 py-3 rounded-xl text-sm">← Atrás</button>
         <button onClick={() => onNext(pockets.filter(p => p.name.trim()))}
-          className="flex-2 bg-blue-600 text-white font-semibold py-3 px-6 rounded-xl text-sm">
+          className="flex-2 bg-accent text-on-accent font-semibold py-3 px-6 rounded-xl text-sm">
           Siguiente →
         </button>
       </div>

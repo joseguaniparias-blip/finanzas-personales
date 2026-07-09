@@ -89,7 +89,7 @@ export function AuthPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-semibold py-3 rounded-xl transition-colors"
+              className="w-full bg-accent hover:bg-accent-strong disabled:opacity-50 text-on-accent font-semibold py-3 rounded-xl transition-colors"
             >
               {loading ? 'Cargando...' : mode === 'login' ? 'Entrar' : 'Crear cuenta'}
             </button>

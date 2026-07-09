@@ -19,7 +19,7 @@ export function Step1Name({ initial, onNext }: Props) {
         />
       </div>
       <button onClick={() => name.trim() && onNext(name.trim())} disabled={!name.trim()}
-        className="w-full bg-blue-600 disabled:opacity-40 text-white font-semibold py-3.5 rounded-xl">
+        className="w-full bg-accent disabled:opacity-40 text-on-accent font-semibold py-3.5 rounded-xl">
         Siguiente →
       </button>
     </div>

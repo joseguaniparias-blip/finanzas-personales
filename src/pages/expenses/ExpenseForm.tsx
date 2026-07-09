@@ -225,7 +225,7 @@ export function ExpenseForm({ userId, pockets, categories, seedDefaults, addCate
                     onKeyDown={e => e.key === 'Enter' && handleAddCategory()}
                     className="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500" />
                   <button onClick={handleAddCategory} disabled={!newCatName.trim()}
-                    className="flex items-center gap-1 bg-blue-600 disabled:opacity-40 hover:bg-blue-500 text-white px-3 py-2 rounded-lg text-xs font-semibold transition-colors">
+                    className="flex items-center gap-1 bg-accent disabled:opacity-40 hover:bg-accent-strong text-on-accent px-3 py-2 rounded-lg text-xs font-semibold transition-colors">
                     <Plus size={12} /> Agregar
                   </button>
                 </div>

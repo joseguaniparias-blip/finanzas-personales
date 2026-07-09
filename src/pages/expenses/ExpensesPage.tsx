@@ -320,7 +320,7 @@ export function ExpensesPage({ userId }: Props) {
                 const limit = parseAmount(limitDraft)
                 await updateCategory(editingCategory.id, { monthly_limit: limit > 0 ? limit : null })
                 setEditingCategory(null)
-              }} className="py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold transition-colors">
+              }} className="py-3 rounded-xl bg-accent hover:bg-accent-strong text-on-accent text-sm font-semibold transition-colors">
                 Guardar
               </button>
             </div>

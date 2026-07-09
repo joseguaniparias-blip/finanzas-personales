@@ -58,7 +58,7 @@ export function PocketForm({ userId, initial, onSave, onDelete, onCancel }: Prop
         <div className="flex gap-2">
           {(['cash', 'bank', 'platform'] as PocketType[]).map(t => (
             <button key={t} type="button" onClick={() => setType(t)}
-              className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors ${type === t ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'}`}>
+              className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors ${type === t ? 'bg-accent text-on-accent' : 'bg-slate-800 text-slate-400'}`}>
               {t === 'cash' ? 'Efectivo' : t === 'bank' ? 'Banco/Digital' : 'Plataforma'}
             </button>
           ))}
@@ -108,7 +108,7 @@ export function PocketForm({ userId, initial, onSave, onDelete, onCancel }: Prop
           Cancelar
         </button>
         <button type="submit"
-          className="flex-2 bg-blue-600 text-white py-3 px-6 rounded-xl font-semibold text-sm">
+          className="flex-2 bg-accent text-on-accent py-3 px-6 rounded-xl font-semibold text-sm">
           {initial ? 'Guardar cambios' : 'Agregar bolsillo'}
         </button>
       </div>

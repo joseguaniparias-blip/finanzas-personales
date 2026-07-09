@@ -167,7 +167,7 @@ export function ConfirmEventSheet({
               <button
                 disabled={!newDate || newDate === event.due_date}
                 onClick={() => { onReschedule?.(newDate); onClose() }}
-                className="py-3 rounded-xl bg-blue-600 disabled:opacity-40 text-white text-sm font-semibold"
+                className="py-3 rounded-xl bg-accent disabled:opacity-40 text-on-accent text-sm font-semibold"
               >
                 Guardar fecha
               </button>

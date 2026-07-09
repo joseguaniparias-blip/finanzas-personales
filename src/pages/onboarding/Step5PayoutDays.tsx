@@ -40,7 +40,7 @@ export function Step5PayoutDays({ platforms, pocketOptions, initial, onFinish, o
                 <div className="flex gap-1.5">
                   {DAYS_OF_WEEK.map((d, i) => (
                     <button key={i} onClick={() => update(name, 'day', i)}
-                      className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${cfg.day === i ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-400'}`}>
+                      className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${cfg.day === i ? 'bg-accent text-on-accent' : 'bg-slate-700 text-slate-400'}`}>
                       {d}
                     </button>
                   ))}
