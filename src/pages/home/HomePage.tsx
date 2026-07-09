@@ -443,9 +443,12 @@ export function HomePage({ userId }: Props) {
             {platformPockets.map(p => {
               const pendingPayout = events.find(e => e.type === 'platform_payout' && e.reference_id === p.platform_id && e.status === 'pending')
               const isNegative = p.balance < 0
+              const clickable = !!pendingPayout
+              const Wrapper = clickable ? 'button' : 'div'
               return (
-                <div key={p.id}
-                  className={`flex-shrink-0 rounded-xl px-3 py-2 min-w-[130px] border ${isNegative ? 'bg-red-600/5 border-red-600/30' : 'bg-orange-600/5 border-orange-600/20'}`}>
+                <Wrapper key={p.id}
+                  {...(clickable ? { onClick: () => setConfirmingPayout(pendingPayout) } : {})}
+                  className={`flex-shrink-0 rounded-xl px-3 py-2 min-w-[130px] border text-left transition-colors ${isNegative ? 'bg-red-600/5 border-red-600/30' : 'bg-orange-600/5 border-orange-600/20'} ${clickable ? 'hover:bg-orange-500/15 cursor-pointer' : ''}`}>
                   <div className="flex items-center gap-1.5 mb-1">
                     <span className="text-sm">{p.icon}</span>
                     <span className="text-xs text-slate-400 truncate">{p.name}</span>
@@ -458,6 +461,7 @@ export function HomePage({ userId }: Props) {
                     <div className="mt-1.5 pt-1.5 border-t border-slate-700/50">
                       <p className="text-emerald-400 font-semibold text-xs">{maskVal(pendingPayout.amount, hidden)}</p>
                       <p className="text-[10px] text-slate-500">por cobrar {formatShortDate(pendingPayout.due_date)}</p>
+                      <p className="text-[10px] text-orange-400/70 mt-0.5">Tocar para editar/cobrar</p>
                     </div>
                   ) : p.balance > 0 ? (
                     <div className="mt-1.5 pt-1.5 border-t border-slate-700/50">
@@ -465,7 +469,7 @@ export function HomePage({ userId }: Props) {
                       <p className="text-[10px] text-slate-500">Cierra el domingo</p>
                     </div>
                   ) : null}
-                </div>
+                </Wrapper>
               )
             })}
           </div>
