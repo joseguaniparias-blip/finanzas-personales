@@ -4,13 +4,24 @@ import type { Transaction } from '@/types'
 /**
  * Data-integrity layer.
  *
+ * ⚠️ BROKEN BY DESIGN — DO NOT WIRE `checkIntegrity` / `healPocketBalances`
+ * BACK INTO THE UI. The banner + Config panel that used them were removed
+ * (2026-07-09) because their premise is false: a pocket's **opening balance**
+ * (set at creation in onboarding / addPocket / platform creation) is stored
+ * directly on `pocket.balance` and is NEVER written to the ledger. So
+ * `computePocketBalance` (= Σ ledger) is always LOWER than the true balance by
+ * the opening amount → every real pocket looks "drifted" → healing overwrote
+ * correct balances with the too-low ledger sum, destroying the opening amount.
+ * To make this usable, first record opening balances as ledger entries (or add
+ * an `opening_balance` field) so truth = opening + Σ ledger. Only
+ * `isEntityLinkedTransaction` below is live (used by HistoryPage).
+ *
  * `pocket.balance` is a running total maintained by hand across many write
  * paths (income, expense, transfer, event confirm, weekly close, history
  * edit/delete). If any path has a bug — or a sync/crash applies a partial
  * write — the stored balance silently drifts from the truth and nothing
- * detects it. These functions recompute the *authoritative* balance from the
- * transaction ledger so drift can be surfaced (checkIntegrity) and corrected
- * (healPocketBalances).
+ * detects it. These functions recompute a balance from the transaction ledger
+ * ONLY (see the warning above — this excludes opening balances).
  *
  * Invariants recomputed here:
  *  - cash / bank pocket: balance = Σ signed(txns on the pocket)

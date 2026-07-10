@@ -93,7 +93,7 @@ function AppRoutes() {
 
   return (
     <Routes>
-      <Route element={<AppShell userId={user.id} />}>
+      <Route element={<AppShell />}>
         <Route path="/"           element={<HomePage userId={user.id} />} />
         <Route path="/bolsillos"  element={<PocketsPage userId={user.id} />} />
         <Route path="/registrar"  element={<RegisterPage userId={user.id} />} />

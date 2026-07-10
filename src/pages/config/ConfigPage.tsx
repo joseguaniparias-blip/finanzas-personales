@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { LogOut, ChevronRight, User, Bell, Trash2, Plus, Tags, Pencil, Check, X, Eye, Bike, ShieldCheck, CheckCircle } from 'lucide-react'
+import { LogOut, ChevronRight, User, Bell, Trash2, Plus, Tags, Pencil, Check, X, Eye, Bike } from 'lucide-react'
 import type { Category, CategoryKind } from '@/types'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { usePlatforms } from '@/hooks/usePlatforms'
@@ -11,11 +11,10 @@ import { db } from '@/lib/db'
 import { DAYS_OF_WEEK, PLATFORM_DEFAULTS } from '@/types'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { AmountInput, parseAmount } from '@/components/shared/AmountInput'
-import { checkIntegrity, healPocketBalances, type BalanceDrift } from '@/lib/integrity'
 
 interface Props { userId: string }
 
-type Section = 'main' | 'profile' | 'platforms' | 'category_limits' | 'categories' | 'integrity'
+type Section = 'main' | 'profile' | 'platforms' | 'category_limits' | 'categories'
 
 const PLATFORM_COLORS = ['#fb923c', '#60a5fa', '#4ade80', '#a78bfa', '#f87171', '#fbbf24', '#94a3b8']
 
@@ -35,9 +34,6 @@ export function ConfigPage({ userId }: Props) {
   const [name, setName] = useState(profile?.name ?? '')
   const [savingName, setSavingName] = useState(false)
   const [editingLimits, setEditingLimits] = useState<Record<string, string>>({})
-  const [driftReport, setDriftReport] = useState<BalanceDrift[] | null>(null)
-  const [checkingIntegrity, setCheckingIntegrity] = useState(false)
-  const [healing, setHealing] = useState(false)
 
   const nonPlatformPockets = pockets.filter(p => p.type !== 'platform')
 
@@ -259,84 +255,6 @@ export function ConfigPage({ userId }: Props) {
     )
   }
 
-  if (section === 'integrity') {
-    const runCheck = async () => {
-      setCheckingIntegrity(true)
-      try { setDriftReport(await checkIntegrity(userId)) }
-      finally { setCheckingIntegrity(false) }
-    }
-    const runHeal = async () => {
-      setHealing(true)
-      try {
-        await healPocketBalances(userId)
-        setDriftReport(await checkIntegrity(userId))
-      } finally { setHealing(false) }
-    }
-    const fmt = (n: number) => `$ ${n.toLocaleString('es-CO')}`
-
-    return (
-      <div className="p-4 max-w-lg mx-auto">
-        <PageHeader title="Integridad de datos" />
-        <p className="text-slate-400 text-xs mb-4">
-          Recalcula el saldo real de cada bolsillo desde tu historial de movimientos y lo compara con el saldo guardado. Si algo no cuadra, aquí lo ves y lo corriges.
-        </p>
-
-        <button onClick={runCheck} disabled={checkingIntegrity}
-          className="w-full bg-accent disabled:opacity-40 hover:bg-accent-strong text-on-accent py-3 rounded-xl font-semibold text-sm transition-colors mb-4">
-          {checkingIntegrity ? 'Revisando…' : 'Revisar ahora'}
-        </button>
-
-        {driftReport !== null && driftReport.length === 0 && (
-          <div className="bg-emerald-600/10 border border-emerald-600/25 rounded-2xl p-5 text-center">
-            <CheckCircle size={28} className="text-emerald-400 mx-auto mb-2" />
-            <p className="text-emerald-300 text-sm font-medium">Todo cuadra</p>
-            <p className="text-slate-400 text-xs mt-1">Cada bolsillo coincide con su historial.</p>
-          </div>
-        )}
-
-        {driftReport !== null && driftReport.length > 0 && (
-          <div className="space-y-3">
-            <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3">
-              <p className="text-amber-300 text-sm font-semibold">
-                {driftReport.length} {driftReport.length === 1 ? 'bolsillo no cuadra' : 'bolsillos no cuadran'}
-              </p>
-              <p className="text-slate-400 text-xs mt-0.5">
-                El saldo guardado no coincide con la suma de sus movimientos.
-              </p>
-            </div>
-
-            {driftReport.map(d => (
-              <div key={d.pocketId} className="bg-slate-800 border border-slate-700 rounded-xl p-4">
-                <p className="text-slate-200 text-sm font-medium mb-2">{d.pocketName}</p>
-                <div className="grid grid-cols-2 gap-3 text-xs">
-                  <div>
-                    <p className="text-slate-400">Guardado</p>
-                    <p className="text-slate-300 font-semibold">{fmt(d.stored)}</p>
-                  </div>
-                  <div>
-                    <p className="text-slate-400">Real (historial)</p>
-                    <p className="text-emerald-300 font-semibold">{fmt(d.computed)}</p>
-                  </div>
-                </div>
-                <p className={`text-xs mt-2 ${d.diff > 0 ? 'text-red-400' : 'text-amber-400'}`}>
-                  Diferencia: {d.diff > 0 ? '+' : ''}{fmt(d.diff)}
-                </p>
-              </div>
-            ))}
-
-            <button onClick={runHeal} disabled={healing}
-              className="w-full bg-emerald-600 disabled:opacity-40 hover:bg-emerald-500 text-white py-3 rounded-xl font-semibold text-sm transition-colors">
-              {healing ? 'Corrigiendo…' : 'Corregir saldos al valor real'}
-            </button>
-            <p className="text-slate-400 text-[11px] text-center">
-              Ajusta cada saldo guardado al valor calculado desde tu historial. No borra movimientos.
-            </p>
-          </div>
-        )}
-      </div>
-    )
-  }
-
   // Main screen
   return (
     <div className="p-4 max-w-lg mx-auto">
@@ -391,17 +309,6 @@ export function ConfigPage({ userId }: Props) {
           <ChevronRight size={16} className="text-slate-400" />
         </button>
 
-        <button onClick={() => { setSection('integrity'); setDriftReport(null) }}
-          className="w-full flex items-center gap-3 bg-slate-800 border border-slate-700 rounded-xl p-4 hover:bg-slate-700 transition-colors">
-          <div className="w-9 h-9 rounded-full bg-emerald-600/20 flex items-center justify-center">
-            <ShieldCheck size={16} className="text-emerald-400" />
-          </div>
-          <div className="flex-1 text-left">
-            <p className="text-slate-200 text-sm font-medium">Integridad de datos</p>
-            <p className="text-slate-400 text-xs">Verifica que tus saldos cuadren con el historial</p>
-          </div>
-          <ChevronRight size={16} className="text-slate-400" />
-        </button>
 
         <div className="flex items-center gap-3 bg-slate-800 border border-slate-700 rounded-xl p-4">
           <div className="w-9 h-9 rounded-full bg-slate-700 flex items-center justify-center">
