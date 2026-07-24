@@ -89,6 +89,10 @@ export interface Transaction {
   platform_id: string | null
   reference_id: string | null
   reference_type: string | null
+  /** The scheduled_events.id that generated this transaction, when it came from
+   * confirming/abonando an agenda event. Lets us reverse or edit that exact
+   * payment later. Null for manual transactions and legacy rows. */
+  event_id?: string | null
   note: string | null
   receipt_url: string | null
   date: string              // YYYY-MM-DD

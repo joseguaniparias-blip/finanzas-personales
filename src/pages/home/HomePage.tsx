@@ -1,6 +1,6 @@
 ﻿import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Eye, EyeOff, TrendingUp, TrendingDown, CreditCard, HandCoins, PiggyBank, Users, Check, Settings, ChevronRight, X, Wallet, ArrowRight, Calendar, Repeat, type LucideIcon } from 'lucide-react'
+import { Eye, EyeOff, TrendingUp, TrendingDown, CreditCard, HandCoins, PiggyBank, Users, Check, Settings, ChevronRight, X, Wallet, ArrowRight, Calendar, Repeat, Pencil } from 'lucide-react'
 import { usePockets } from '@/hooks/usePockets'
 import { useTransactions } from '@/hooks/useTransactions'
 import { useScheduledEvents } from '@/hooks/useScheduledEvents'
@@ -8,6 +8,8 @@ import { useUserProfile } from '@/hooks/useUserProfile'
 import { usePlatforms } from '@/hooks/usePlatforms'
 import { useToday } from '@/hooks/useToday'
 import { ConfirmEventSheet } from '@/components/shared/ConfirmEventSheet'
+import { CorrectEventSheet } from '@/components/shared/CorrectEventSheet'
+import { EVENT_META } from '@/components/shared/eventMeta'
 import { db } from '@/lib/db'
 import type { ScheduledEvent, Platform, Pocket } from '@/types'
 import { maskAmount } from '@/components/shared/PrivacyToggle'
@@ -17,15 +19,6 @@ interface Props { userId: string }
 
 type BalancePeriod = 'day' | 'week' | 'month'
 type AgendaPeriod  = 'day' | 'week' | 'month' | 'specific'
-
-const EVENT_META: Record<string, { color: string; Icon: LucideIcon; label: string }> = {
-  debt:            { color: 'text-red-400',     Icon: CreditCard, label: 'Deuda' },
-  collection:      { color: 'text-emerald-400', Icon: HandCoins,  label: 'Cobro' },
-  saving:          { color: 'text-blue-400',    Icon: PiggyBank,  label: 'Ahorro' },
-  cadena:          { color: 'text-violet-400',  Icon: Users,      label: 'Cadena' },
-  platform_payout: { color: 'text-orange-400',  Icon: Wallet,     label: 'Pago plataforma' },
-  recurring:       { color: 'text-teal-400',    Icon: Repeat,     label: 'Pago recurrente' },
-}
 
 const DOT_COLOR: Record<string, string> = {
   debt:            'bg-red-500',
@@ -209,7 +202,7 @@ function MiniCalendar({ days, allEvents, selectedDay, today, onSelectDay }: Mini
 export function HomePage({ userId }: Props) {
   const { pockets, totalBalance } = usePockets(userId)
   const { transactions } = useTransactions(userId)
-  const { events, confirmEvent, partialEvent, postponeEvent, rescheduleEvent, deleteEvent } = useScheduledEvents(userId)
+  const { events, recentConfirmed, confirmEvent, partialEvent, postponeEvent, rescheduleEvent, deleteEvent, reverseConfirmed, editConfirmed } = useScheduledEvents(userId)
   const { profile, setHidden } = useUserProfile(userId)
   const { platforms } = usePlatforms(userId)
 
@@ -220,6 +213,7 @@ export function HomePage({ userId }: Props) {
   const [eventNames, setEventNames] = useState<Record<string, string>>({})
   const [confirmingEvent, setConfirmingEvent] = useState<ScheduledEvent | null>(null)
   const [confirmingPayout, setConfirmingPayout] = useState<ScheduledEvent | null>(null)
+  const [correctingEvent, setCorrectingEvent] = useState<ScheduledEvent | null>(null)
 
   const hidden = profile?.balance_hidden ?? false
   // 'today' as YYYY-MM-DD in LOCAL time, auto-refreshing at midnight so the
@@ -264,7 +258,7 @@ export function HomePage({ userId }: Props) {
   useEffect(() => {
     async function resolveNames() {
       const map: Record<string, string> = {}
-      for (const ev of events) {
+      for (const ev of [...events, ...recentConfirmed]) {
         if (map[ev.id]) continue
         if (ev.type === 'debt') {
           const d = await db.debts.get(ev.reference_id)
@@ -288,8 +282,8 @@ export function HomePage({ userId }: Props) {
       }
       setEventNames(map)
     }
-    if (events.length > 0) resolveNames()
-  }, [events])
+    if (events.length > 0 || recentConfirmed.length > 0) resolveNames()
+  }, [events, recentConfirmed])
 
   // Balance period income/expense
   const { from, to } = balanceDates(balancePeriod)
@@ -360,10 +354,17 @@ export function HomePage({ userId }: Props) {
         <div className="text-right mr-2">
           <p className={`${meta.color} font-bold text-sm`}>{maskVal(ev.amount, hidden)}</p>
         </div>
-        {canConfirm && (
+        {canConfirm ? (
           <button onClick={() => setConfirmingEvent(ev)}
             className="flex-shrink-0 flex items-center gap-1 bg-slate-700 hover:bg-slate-600 text-slate-300 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors">
             <Check size={12} /> Ok
+          </button>
+        ) : (
+          // Future card: still actionable so the user can register an advance
+          // payment/collection. The sheet shows an "antes de su fecha" notice.
+          <button onClick={() => setConfirmingEvent(ev)}
+            className="flex-shrink-0 flex items-center gap-1 bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-400 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors">
+            Adelantar
           </button>
         )}
       </div>
@@ -586,6 +587,33 @@ export function HomePage({ userId }: Props) {
         )}
       </div>
 
+      {/* Confirmados recientes — corregir un pago si hubo un error */}
+      {recentConfirmed.length > 0 && (
+        <div className="mb-6">
+          <p className="text-xs text-slate-400 uppercase tracking-wide mb-2">Confirmados recientes</p>
+          <div className="space-y-2">
+            {recentConfirmed.map(ev => {
+              const meta = EVENT_META[ev.type] ?? { color: 'text-slate-400', Icon: Calendar, label: ev.type }
+              const name = eventNames[ev.id] ?? '…'
+              return (
+                <div key={ev.id} className="flex items-center gap-3 rounded-xl p-3 border bg-slate-800/60 border-slate-700/60">
+                  <meta.Icon size={18} className={`${meta.color} flex-shrink-0`} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-slate-300 text-sm font-medium truncate">{name}</p>
+                    <p className="text-xs text-slate-400">{ev.due_date}</p>
+                  </div>
+                  <p className={`${meta.color} font-bold text-sm mr-2`}>{maskVal(ev.amount, hidden)}</p>
+                  <button onClick={() => setCorrectingEvent(ev)}
+                    className="flex-shrink-0 flex items-center gap-1 bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-400 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors">
+                    <Pencil size={12} /> Corregir
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Modules grid */}
       <p className="text-xs text-slate-400 uppercase tracking-wide mb-2">Módulos</p>
       <div className="grid grid-cols-3 gap-2">
@@ -645,9 +673,31 @@ export function HomePage({ userId }: Props) {
           onConfirm={async pocketId => { await confirmEvent(confirmingEvent.id, pocketId); setConfirmingEvent(null) }}
           onPartial={async (pocketId, amount) => { await partialEvent(confirmingEvent.id, pocketId, amount); setConfirmingEvent(null) }}
           onPostpone={() => { postponeEvent(confirmingEvent.id); setConfirmingEvent(null) }}
-          onReschedule={async newDate => { await rescheduleEvent(confirmingEvent.id, newDate); setConfirmingEvent(null) }}
+          onReschedule={async newDate => {
+            await rescheduleEvent(confirmingEvent.id, newDate)
+            setConfirmingEvent(null)
+            // #1 — reveal the change immediately: jump the agenda to the new
+            // date so the moved card is visible right where it landed, instead
+            // of silently vanishing from the current period/filter.
+            setCalendarDayFilter(null)
+            setSpecificDate(newDate)
+            setAgendaPeriod('specific')
+          }}
           onDelete={async () => { await deleteEvent(confirmingEvent.id); setConfirmingEvent(null) }}
           onClose={() => setConfirmingEvent(null)}
+        />
+      )}
+
+      {/* Correction sheet — edit or undo a confirmed payment */}
+      {correctingEvent && (
+        <CorrectEventSheet
+          event={correctingEvent}
+          label={eventNames[correctingEvent.id] ?? ''}
+          icon={EVENT_META[correctingEvent.type]?.Icon ?? Calendar}
+          pockets={nonPlatformPockets}
+          onEdit={async changes => { await editConfirmed(correctingEvent.id, changes); setCorrectingEvent(null) }}
+          onReverse={async () => { await reverseConfirmed(correctingEvent.id); setCorrectingEvent(null) }}
+          onClose={() => setCorrectingEvent(null)}
         />
       )}
     </div>

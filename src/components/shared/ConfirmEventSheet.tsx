@@ -4,6 +4,7 @@ import type { ScheduledEvent, Pocket } from '@/types'
 import { AmountInput, parseAmount } from './AmountInput'
 import { maskAmount } from './PrivacyToggle'
 import { useSubmitLock } from '@/hooks/useSubmitLock'
+import { todayISO } from '@/lib/date'
 
 const CONFIRM_LABELS: Record<string, string> = {
   debt:            'Pagué',
@@ -53,6 +54,7 @@ export function ConfirmEventSheet({
   const insufficientBalance = isExpense && pocket !== undefined && pocket.balance < event.amount
   const partialNum = parseAmount(partialAmount)
   const isOverpayment = partialNum > event.amount
+  const isAdvance = event.due_date > todayISO()
 
   return (
     <div className="fixed inset-0 bg-black/70 z-[60] flex items-end justify-center" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
@@ -86,6 +88,15 @@ export function ConfirmEventSheet({
                 <AlertTriangle size={14} className="text-red-400 flex-shrink-0" />
                 <p className="text-xs text-red-400">
                   Saldo insuficiente — faltan {maskAmount(event.amount - (pocket?.balance ?? 0), false)}
+                </p>
+              </div>
+            )}
+
+            {isAdvance && (
+              <div className="flex items-center gap-2 bg-blue-500/10 border border-blue-500/30 rounded-xl px-3 py-2 mb-4">
+                <CalendarDays size={14} className="text-blue-400 flex-shrink-0" />
+                <p className="text-xs text-blue-400">
+                  Registrando antes de su fecha ({event.due_date}). El movimiento queda con la fecha de hoy.
                 </p>
               </div>
             )}
