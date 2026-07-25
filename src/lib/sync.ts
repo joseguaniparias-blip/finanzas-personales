@@ -53,12 +53,54 @@ const BOOL_FIELDS: Record<string, string[]> = {
   recurring_payments: ['is_variable', 'is_active'],
 }
 
-function toSupabase(table: string, record: Record<string, unknown>): Record<string, unknown> {
-  const copy = { ...record }
-  for (const field of BOOL_FIELDS[table] ?? []) {
-    if (field in copy) copy[field] = Boolean(copy[field])
+/**
+ * The exact set of columns each table has in Supabase (per migrations 001–005).
+ * `toSupabase` sends ONLY these, so a field that lives only in the local Dexie
+ * store — a UI flag, or a new column whose migration hasn't run yet — never
+ * reaches the upsert. Without this guard an unknown column makes PostgREST
+ * reject the whole row, and the op is parked in the outbox retrying forever
+ * (local works, but the row never syncs). Keep in lockstep with the SQL schema.
+ */
+export const SUPABASE_COLUMNS: Record<string, string[]> = {
+  user_profiles: ['id', 'name', 'onboarding_completed', 'balance_hidden', 'created_at', 'updated_at'],
+  platforms: ['id', 'user_id', 'name', 'color', 'payout_day', 'payout_pocket_id', 'is_active',
+    'created_at', 'updated_at', 'last_closed_sunday'],
+  pockets: ['id', 'user_id', 'name', 'type', 'platform_id', 'balance', 'color', 'icon',
+    'is_active', 'created_at', 'updated_at'],
+  categories: ['id', 'user_id', 'name', 'icon', 'monthly_limit', 'is_default', 'kind',
+    'created_at', 'updated_at'],
+  transactions: ['id', 'user_id', 'type', 'amount', 'pocket_id', 'category_id', 'platform_id',
+    'reference_id', 'reference_type', 'note', 'receipt_url', 'date', 'created_at',
+    'transfer_group_id', 'transfer_other_pocket_id', 'event_id', 'updated_at'],
+  debts: ['id', 'user_id', 'name', 'has_total', 'total_amount', 'installment_amount', 'frequency',
+    'payment_day', 'source_pocket_id', 'paid_amount', 'status', 'started_before_app',
+    'start_installment', 'created_at', 'updated_at'],
+  collections: ['id', 'user_id', 'name', 'person_name', 'has_total', 'total_amount',
+    'installment_amount', 'frequency', 'payment_day', 'dest_pocket_id', 'collected_amount',
+    'status', 'start_date', 'started_before_app', 'start_installment', 'created_at', 'updated_at'],
+  saving_goals: ['id', 'user_id', 'name', 'target_amount', 'contribution_amount', 'contribution_type',
+    'frequency', 'trigger_day', 'source_pocket_id', 'saved_amount', 'is_active', 'created_at', 'updated_at'],
+  cadenas: ['id', 'user_id', 'name', 'participants', 'contribution_amount', 'frequency', 'my_turn',
+    'payout_pocket_id', 'source_pocket_id', 'current_round', 'paid_rounds', 'started_before_app',
+    'status', 'created_at', 'updated_at'],
+  scheduled_events: ['id', 'user_id', 'type', 'reference_id', 'reference_type', 'amount', 'due_date',
+    'status', 'actual_pocket_id', 'partial_amount', 'remaining_after_partial', 'created_at', 'updated_at'],
+  recurring_payments: ['id', 'user_id', 'name', 'icon', 'amount', 'is_variable', 'frequency',
+    'trigger_day', 'source_pocket_id', 'category_id', 'is_active', 'created_at', 'updated_at'],
+}
+
+export function toSupabase(table: string, record: Record<string, unknown>): Record<string, unknown> {
+  const allowed = SUPABASE_COLUMNS[table]
+  const bools = BOOL_FIELDS[table] ?? []
+  const out: Record<string, unknown> = {}
+  // Fall back to the raw record if a table has no declared allowlist (shouldn't
+  // happen for synced tables), so we never silently send nothing.
+  const keys = allowed ?? Object.keys(record)
+  for (const key of keys) {
+    if (!(key in record)) continue
+    out[key] = bools.includes(key) ? Boolean(record[key]) : record[key]
   }
-  return copy
+  return out
 }
 
 function pushRecord(table: string, record: Record<string, unknown>) {
