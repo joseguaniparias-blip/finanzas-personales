@@ -1,0 +1,38 @@
+name: CI
+
+# Runs the safety net on every push and PR to main, before Vercel deploys.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Type-check + production build. Blocking: a type error or broken build
+      # must never reach production.
+      - name: Build (tsc + vite)
+        run: npm run build
+
+      # Unit / integration tests (Vitest). Blocking.
+      - name: Test
+        run: npm run test:run
+
+      # Lint is informative for now — the repo carries pre-existing lint errors
+      # (set-state-in-effect, exhaustive-deps). Surfaced in logs without failing
+      # the build; flip to blocking once the backlog is cleared.
+      - name: Lint (non-blocking)
+        run: npm run lint
+        continue-on-error: true
