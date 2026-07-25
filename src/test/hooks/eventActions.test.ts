@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { db } from '@/lib/db'
-import { confirmEventTx, partialEventTx, reverseEvent, editConfirmedEvent } from '@/hooks/useScheduledEvents'
+import { confirmEventTx, partialEventTx, reverseEvent, editConfirmedEvent, normalizeLegacyPartials } from '@/hooks/useScheduledEvents'
 import type { Pocket, Debt, Collection, ScheduledEvent } from '@/types'
 
 const USER = 'user-events-1'
@@ -103,6 +103,21 @@ describe('partialEventTx keeps the card pending with the remainder (#3)', () => 
     expect((await db.pockets.get('p1'))?.balance).toBe(50000)
     expect((await db.debts.get('d1'))?.paid_amount).toBe(50000)
     expect((await db.scheduled_events.get('e1'))?.status).toBe('confirmed')
+  })
+})
+
+describe('normalizeLegacyPartials migrates old partial rows', () => {
+  it('turns a legacy partial into pending with amount = remaining (no double charge)', async () => {
+    await db.scheduled_events.add(ev({
+      id: 'e1', type: 'debt', reference_id: 'd1', amount: 50000,
+      status: 'partial', partial_amount: 20000, remaining_after_partial: 30000,
+    }))
+
+    await normalizeLegacyPartials(USER)
+
+    const e = await db.scheduled_events.get('e1')
+    expect(e?.status).toBe('pending')
+    expect(e?.amount).toBe(30000)
   })
 })
 

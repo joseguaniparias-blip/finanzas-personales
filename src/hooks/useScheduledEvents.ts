@@ -37,6 +37,13 @@ export function useScheduledEvents(userId: string): ScheduledEventsHook {
   useEffect(() => () => { mountedRef.current = false }, [])
 
   const load = useCallback(async () => {
+    // Migrate any legacy 'partial' rows (created before the abono-libre change,
+    // where the event was parked as 'partial' with its ORIGINAL amount and the
+    // outstanding balance stored in remaining_after_partial). If we surfaced
+    // those as-is, confirming one would re-charge the FULL cuota — double-billing
+    // the part already paid. Normalise them to pending with amount = remaining.
+    await normalizeLegacyPartials(userId)
+
     // Pure read. Orphan/duplicate cleanup runs once per session via
     // useOrphanCleanup (mounted in App.tsx), so this hook stays cheap.
     const all = await db.scheduled_events
@@ -44,9 +51,8 @@ export function useScheduledEvents(userId: string): ScheduledEventsHook {
       .sortBy('due_date')
     if (!mountedRef.current) return
     // A partial abono no longer parks the event in a dead 'partial' state — the
-    // card stays pending with the remaining amount. Legacy 'partial' rows are
-    // still surfaced (and re-normalised on next touch) so their remainder is not
-    // lost. See partialEventTx.
+    // card stays pending with the remaining amount. Any 'partial' row still seen
+    // here is mid-migration; treat it as pending.
     const pending = all.filter(e => e.status === 'pending' || e.status === 'partial')
     const confirmed = all
       .filter(e => e.status === 'confirmed' && e.type !== 'platform_payout')
@@ -301,6 +307,24 @@ export async function editConfirmedEvent(id: string, changes: EventEdit) {
     if (primary && Object.keys(txUpdates).length) await db.transactions.update(primary.id, txUpdates)
     if (Object.keys(evUpdates).length) await db.scheduled_events.update(id, evUpdates)
   })
+}
+
+/**
+ * One-time data migration: convert legacy 'partial' events (original amount +
+ * remaining_after_partial) into pending events whose amount IS the remaining
+ * balance, so the abono-libre model applies uniformly and no confirm re-charges
+ * an already-paid portion. Idempotent — once migrated the rows are 'pending' and
+ * skipped.
+ */
+export async function normalizeLegacyPartials(userId: string) {
+  const legacy = await db.scheduled_events
+    .where('user_id').equals(userId)
+    .and(e => e.status === 'partial')
+    .toArray()
+  for (const e of legacy) {
+    const remaining = e.remaining_after_partial ?? e.amount
+    await db.scheduled_events.update(e.id, { status: 'pending', amount: remaining })
+  }
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
