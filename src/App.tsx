@@ -14,6 +14,7 @@ import { ReportsPage } from '@/pages/reports/ReportsPage'
 import { usePlatformPayouts } from '@/hooks/usePlatformPayouts'
 import { useOrphanCleanup } from '@/hooks/useOrphanCleanup'
 import { setupSyncHooks, pullFromSupabase, flushSyncQueue } from '@/lib/sync'
+import { checkRemoteWipe } from '@/lib/wipe'
 import { IncomePage } from '@/pages/income/IncomePage'
 import { ExpensesPage } from '@/pages/expenses/ExpensesPage'
 import { DebtsPage } from '@/pages/debts/DebtsPage'
@@ -35,10 +36,18 @@ function AppRoutes() {
   // Set up Dexie → Supabase push hooks once (global to the DB instance)
   useEffect(() => { setupSyncHooks() }, [])
 
-  // On login: first flush any pushes parked in the outbox (so local-only edits
-  // reach the server), then pull + merge cloud data by last-writer-wins.
+  // On login, in this exact order:
+  //   1. checkRemoteWipe — if the account was reset from another device while
+  //      this one was away, clear the stale local copy FIRST. Flushing the
+  //      outbox before this would push the deleted rows straight back up.
+  //   2. flushSyncQueue — parked local-only edits reach the server.
+  //   3. pullFromSupabase — merge cloud data by last-writer-wins.
   useEffect(() => {
-    if (user) flushSyncQueue().then(() => pullFromSupabase(user.id))
+    if (user) {
+      checkRemoteWipe(user.id)
+        .then(() => flushSyncQueue())
+        .then(() => pullFromSupabase(user.id))
+    }
   }, [user?.id])
 
   useEffect(() => {
@@ -55,7 +64,7 @@ function AppRoutes() {
       // 2. Fallback: check Supabase (user on new device or after clearing storage)
       const { data } = await supabase
         .from('user_profiles')
-        .select('onboarding_completed, name, balance_hidden, created_at')
+        .select('onboarding_completed, name, balance_hidden, created_at, wiped_at')
         .eq('id', user!.id)
         .single()
 
@@ -66,7 +75,10 @@ function AppRoutes() {
           name: data.name ?? '',
           onboarding_completed: true,
           balance_hidden: data.balance_hidden ?? false,
-          created_at: data.created_at ?? new Date().toISOString()
+          created_at: data.created_at ?? new Date().toISOString(),
+          // Carry the reset mark down, or this device would read as one that
+          // missed the wipe and clear itself on the next launch.
+          wiped_at: data.wiped_at ?? null
         })
         setOnboardingDone(true)
       } else {

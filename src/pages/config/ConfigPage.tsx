@@ -11,10 +11,11 @@ import { db } from '@/lib/db'
 import { DAYS_OF_WEEK, PLATFORM_DEFAULTS } from '@/types'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { AmountInput, parseAmount } from '@/components/shared/AmountInput'
+import { DangerZoneMenu, DangerConfirm, type DangerMode } from '@/pages/config/DangerZone'
 
 interface Props { userId: string }
 
-type Section = 'main' | 'profile' | 'platforms' | 'category_limits' | 'categories'
+type Section = 'main' | 'profile' | 'platforms' | 'category_limits' | 'categories' | DangerMode
 
 const PLATFORM_COLORS = ['#fb923c', '#60a5fa', '#4ade80', '#a78bfa', '#f87171', '#fbbf24', '#94a3b8']
 
@@ -243,6 +244,10 @@ export function ConfigPage({ userId }: Props) {
     )
   }
 
+  if (section === 'reset' || section === 'delete_account') {
+    return <DangerConfirm userId={userId} mode={section} onBack={() => setSection('main')} />
+  }
+
   if (section === 'categories') {
     return (
       <CategoryManager
@@ -329,6 +334,8 @@ export function ConfigPage({ userId }: Props) {
         className="w-full flex items-center justify-center gap-2 bg-red-600/10 border border-red-600/20 hover:bg-red-600/20 text-red-400 py-3 rounded-xl text-sm font-semibold transition-colors">
         <LogOut size={16} /> Cerrar sesión
       </button>
+
+      <DangerZoneMenu onSelect={setSection} />
     </div>
   )
 }

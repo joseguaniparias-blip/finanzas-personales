@@ -62,7 +62,7 @@ const BOOL_FIELDS: Record<string, string[]> = {
  * (local works, but the row never syncs). Keep in lockstep with the SQL schema.
  */
 export const SUPABASE_COLUMNS: Record<string, string[]> = {
-  user_profiles: ['id', 'name', 'onboarding_completed', 'balance_hidden', 'created_at', 'updated_at'],
+  user_profiles: ['id', 'name', 'onboarding_completed', 'balance_hidden', 'created_at', 'updated_at', 'wiped_at'],
   platforms: ['id', 'user_id', 'name', 'color', 'payout_day', 'payout_pocket_id', 'is_active',
     'created_at', 'updated_at', 'last_closed_sunday'],
   pockets: ['id', 'user_id', 'name', 'type', 'platform_id', 'balance', 'color', 'icon',
@@ -136,6 +136,25 @@ async function runSyncOp(op: SyncOp): Promise<void> {
 export async function flushSyncQueue(): Promise<void> {
   if (syncing) return
   await processSyncQueue(runSyncOp)
+}
+
+/**
+ * Runs `fn` with the Dexie → Supabase push hooks muted, then restores them.
+ *
+ * Used by the wipe flows: clearing every table would otherwise fire the
+ * `deleting` hook once per row and issue hundreds of individual DELETEs against
+ * Supabase. The server side of a wipe is already done in one bulk delete per
+ * table, so the per-row pushes are pure waste — and, mid-wipe, actively
+ * harmful. Reuses the same `syncing` guard that protects pulls.
+ */
+export async function withSyncSuspended<T>(fn: () => Promise<T>): Promise<T> {
+  const previous = syncing
+  syncing = true
+  try {
+    return await fn()
+  } finally {
+    syncing = previous
+  }
 }
 
 export function setupSyncHooks() {

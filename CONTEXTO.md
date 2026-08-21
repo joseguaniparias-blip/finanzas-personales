@@ -160,6 +160,44 @@ hace `bulkPut` en Dexie. Bandera `syncing` evita el ciclo pull→hook→push→p
 booleanos indexados (`is_active`, etc.) se almacenan como `0|1`. La función
 `toSupabase()` los re-convierte a `true|false` antes de subir.
 
+### 3.6 Borrado y reinicio de datos
+
+`src/lib/wipe.ts` implementa dos acciones, expuestas en la "Zona de peligro" al
+final de Configuración: **Empezar de cero** (borra los datos, conserva la cuenta,
+vuelve al onboarding) y **Eliminar mi cuenta** (borra también el usuario de
+Auth). Antes de ejecutar cualquiera, la pantalla ofrece descargar un respaldo
+JSON (`src/lib/exportData.ts`) y exige escribir la palabra `BORRAR`.
+
+Tres reglas sostienen el módulo, y romper cualquiera de ellas produce un bug
+silencioso:
+
+1. **Nube primero, local después.** Si se limpiara local primero y el borrado en
+   la nube fallara, el siguiente `pullFromSupabase` restauraría todo y el
+   reinicio se desharía solo. Todos los pasos son idempotentes: reintentar tras
+   un fallo parcial termina el trabajo.
+2. **Purgar `sync_queue` antes que las tablas.** Los upserts parqueados en el
+   outbox se reenvían al reconectar y **resucitan filas borradas**.
+3. **Silenciar los hooks de sync** con `withSyncSuspended()`. Vaciar las tablas
+   con los hooks vivos dispararía un `DELETE` por fila contra Supabase, encima
+   del borrado masivo que ya se hizo.
+
+**Propagación a otros dispositivos**: un celular que estaba apagado durante el
+reinicio conserva su copia local y la re-subiría. Por eso `user_profiles` tiene
+`wiped_at` (migración 006) y `App.tsx` llama a `checkRemoteWipe()` **antes** de
+`flushSyncQueue()`: si el `wiped_at` del servidor es más nuevo que el local, ese
+dispositivo se limpia solo.
+
+⚠️ Cualquier código que reescriba el perfil local **debe conservar `wiped_at`**
+(ver `OnboardingFlow.finish` y el fallback de `checkOnboarding` en `App.tsx`).
+Perderlo hace que el dispositivo parezca haberse saltado un reinicio y se borre
+a sí mismo en el siguiente arranque — justo después de que el usuario acabe de
+rehacer el onboarding.
+
+**Eliminar cuenta** va por el RPC `delete_my_account()` (`SECURITY DEFINER`, sin
+parámetros, anclado a `auth.uid()`). Como todas las tablas declaran
+`references auth.users on delete cascade`, ese único `delete` limpia el servidor
+entero. La anon key no puede tocar `auth.users` directamente.
+
 ---
 
 ## 4. Flujo de un usuario típico

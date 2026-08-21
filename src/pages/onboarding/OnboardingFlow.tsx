@@ -85,13 +85,19 @@ export function OnboardingFlow({ userId, onComplete }: Props) {
       onboarding_completed: true, balance_hidden: false
     })
 
-    // 4. Sync profile to local DB so App.tsx detects it instantly on next load
+    // 4. Sync profile to local DB so App.tsx detects it instantly on next load.
+    //    Spread the existing row first: after a data reset the profile carries a
+    //    `wiped_at` mark, and dropping it here would make this device look like
+    //    it had missed the reset — checkRemoteWipe would then erase the data the
+    //    user just entered in this very onboarding.
+    const existing = await db.user_profiles.get(userId)
     await db.user_profiles.put({
+      ...existing,
       id: userId,
       name: finalData.name,
       onboarding_completed: true,
       balance_hidden: false,
-      created_at: now
+      created_at: existing?.created_at ?? now
     })
 
     setSaving(false)
