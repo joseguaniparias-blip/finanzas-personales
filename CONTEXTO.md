@@ -193,10 +193,21 @@ Perderlo hace que el dispositivo parezca haberse saltado un reinicio y se borre
 a sí mismo en el siguiente arranque — justo después de que el usuario acabe de
 rehacer el onboarding.
 
+⚠️ **El orden de borrado es carga estructural, no cosmética.** Seis tablas
+referencian `pockets` con `on delete restrict` (`transactions`, `debts`,
+`collections`, `saving_goals`, `cadenas`, `recurring_payments`). Borrar
+`pockets` antes que ellas hace que Postgres rechace la sentencia con
+`violates foreign key constraint "transactions_pocket_id_fkey"`. `DATA_TABLES`
+en `wipe.ts` va hijos → `pockets` → padres, y `wipe.test.ts` bloquea ese orden
+(el mock no tiene FKs, así que el orden es lo único defendible desde un test).
+
 **Eliminar cuenta** va por el RPC `delete_my_account()` (`SECURITY DEFINER`, sin
-parámetros, anclado a `auth.uid()`). Como todas las tablas declaran
-`references auth.users on delete cascade`, ese único `delete` limpia el servidor
-entero. La anon key no puede tocar `auth.users` directamente.
+parámetros, anclado a `auth.uid()`). La anon key no puede tocar `auth.users`
+directamente. La función **no** confía en el `on delete cascade`: borra las
+tablas hijas explícitamente en el mismo orden y sólo después quita el usuario
+(migración 007). `RESTRICT` en PostgreSQL se verifica de inmediato y no se puede
+diferir, y el orden en que se procesan varias cascadas hermanas no está
+garantizado — confiar en él era una lotería.
 
 ---
 

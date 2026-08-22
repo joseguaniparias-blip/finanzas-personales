@@ -115,6 +115,27 @@ describe('resetAllData', () => {
     expect(calls.deletes).toHaveLength(10)
   })
 
+  it('deletes children before parents, or Postgres rejects the wipe', async () => {
+    // Six tables reference pockets with `on delete restrict` (migraciones 001 y
+    // 002). Deleting pockets while any of them still has rows raises
+    // "violates foreign key constraint transactions_pocket_id_fkey" and the
+    // whole reset aborts. The mock has no FKs, so only the ORDER can be
+    // asserted here — and the order is load-bearing, not cosmetic.
+    const RESTRICT_ON_POCKETS = [
+      'transactions', 'debts', 'collections', 'saving_goals', 'cadenas',
+      'recurring_payments',
+    ]
+    await resetAllData(USER)
+    const pocketsAt = calls.deletes.indexOf('pockets')
+    expect(pocketsAt).toBeGreaterThanOrEqual(0)
+    for (const child of RESTRICT_ON_POCKETS) {
+      expect(
+        calls.deletes.indexOf(child),
+        `"${child}" referencia a pockets con RESTRICT: debe borrarse ANTES`,
+      ).toBeLessThan(pocketsAt)
+    }
+  })
+
   it('clears local data and purges the outbox', async () => {
     await resetAllData(USER)
     expect(await db.transactions.count()).toBe(0)
