@@ -17,11 +17,32 @@ import { withSyncSuspended } from '@/lib/sync'
  *    one DELETE per row against Supabase, on top of the bulk delete already done.
  */
 
-/** Tables that hold user data, all keyed by `user_id`. */
+/**
+ * Tables that hold user data, all keyed by `user_id`.
+ *
+ * **The order is load-bearing: children first, parents last.** Six tables
+ * reference `pockets` with `on delete restrict` (transactions, debts,
+ * collections, saving_goals, cadenas, recurring_payments — migraciones 001 y
+ * 002). Deleting `pockets` while any of them still has rows makes Postgres
+ * reject the statement with
+ * `violates foreign key constraint "transactions_pocket_id_fkey"`, and the
+ * whole reset aborts.
+ *
+ * `platforms` and `categories` are only ever referenced with `set null`, so
+ * they are safe anywhere; they go last for symmetry. `pockets` itself points at
+ * `platforms` with `set null`, so pockets-before-platforms is fine.
+ *
+ * `wipe.test.ts` locks this ordering — the mock has no foreign keys, so the
+ * order is the only thing a test can defend.
+ */
 const DATA_TABLES = [
-  'platforms', 'pockets', 'categories', 'transactions', 'debts',
-  'collections', 'saving_goals', 'cadenas', 'scheduled_events',
-  'recurring_payments',
+  // 1. Everything that references pockets…
+  'transactions', 'debts', 'collections', 'saving_goals', 'cadenas',
+  'recurring_payments', 'scheduled_events',
+  // 2. …then pockets itself…
+  'pockets',
+  // 3. …then what only ever had `set null` references.
+  'platforms', 'categories',
 ] as const
 
 /** Thrown when a wipe is attempted without connectivity. */
