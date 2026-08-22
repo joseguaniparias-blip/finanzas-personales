@@ -42,6 +42,16 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
-    css: false
+    css: false,
+    // `src/lib/supabase.ts` throws at import time when these are missing, so any
+    // test that transitively imports it dies before a single assertion runs.
+    // CI has no `.env.local` and needs no real project: every test mocks the
+    // Supabase client, so obviously-fake values are enough to get past the
+    // guard. Without this the suite is red on any machine lacking a local env
+    // file — which is exactly what happened to CI from the day it was added.
+    env: {
+      VITE_SUPABASE_URL: 'http://localhost:54321',
+      VITE_SUPABASE_ANON_KEY: 'test-anon-key-not-a-real-secret'
+    }
   }
 })

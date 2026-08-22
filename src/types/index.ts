@@ -22,6 +22,9 @@ export interface UserProfile {
   onboarding_completed: boolean
   balance_hidden: boolean
   created_at: string
+  /** ISO timestamp of the last full data reset. Devices whose local copy predates
+   *  this mark wipe themselves on startup instead of re-uploading stale rows. */
+  wiped_at?: string | null
 }
 
 export interface Platform {
