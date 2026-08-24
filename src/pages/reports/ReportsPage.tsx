@@ -6,6 +6,7 @@ import { maskAmount } from '@/components/shared/PrivacyToggle'
 import { PageHeader } from '@/components/shared/PageHeader'
 import type { Transaction } from '@/types'
 import { DateRangeFilter, buildPreset, type DateRange } from '@/components/shared/DateRangeFilter'
+import { isEarning } from '@/lib/transactions'
 
 interface Props { userId: string }
 
@@ -38,7 +39,9 @@ export function ReportsPage({ userId }: Props) {
 
   useEffect(() => { load() }, [load])
 
-  const incomes  = txs.filter(t => t.type === 'income')
+  // isEarning y no `type === 'income'`: el saldo inicial declarado al
+  // registrarse entra al bolsillo, pero no es una ganancia del periodo.
+  const incomes  = txs.filter(isEarning)
   const expenses = txs.filter(t => t.type === 'expense')
   const totalIncome  = incomes.reduce((s, t) => s + t.amount, 0)
   const totalExpense = expenses.reduce((s, t) => s + t.amount, 0)

@@ -11,6 +11,7 @@ import type { Platform, Pocket, Transaction } from '@/types'
 import { TrendingUp, Plus, Wallet } from 'lucide-react'
 import { todayISO, addDaysISO } from '@/lib/date'
 import { DateRangeFilter, buildPreset, type DateRange } from '@/components/shared/DateRangeFilter'
+import { isEarning } from '@/lib/transactions'
 
 interface Props { userId: string }
 
@@ -61,7 +62,7 @@ export function IncomePage({ userId }: Props) {
   }, [userId, transactions, platforms, loadingP])
 
   const { from, to } = range
-  const allIncome = transactions.filter(t => t.type === 'income' && t.date >= from && t.date <= to)
+  const allIncome = transactions.filter(t => isEarning(t) && t.date >= from && t.date <= to)
 
   // Split: platform vs other
   const platformIncome = allIncome.filter(t => t.platform_id !== null)

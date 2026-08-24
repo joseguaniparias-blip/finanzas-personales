@@ -1,6 +1,7 @@
 ﻿import { useEffect } from 'react'
 import { db } from '@/lib/db'
 import { toISODate } from '@/lib/date'
+import { SALDO_INICIAL } from '@/lib/transactions'
 
 /**
  * Weekly close logic for platform wallets.
@@ -51,6 +52,21 @@ export function usePlatformPayouts(userId: string) {
         if (daysGap > 7) {
           await db.platforms.update(platform.id, { last_closed_sunday: lastSundayStr })
           continue
+        }
+
+        // ── Step 0.5: Rescatar el saldo inicial que quedó sin transacción ─────
+        // Usuarios que se registraron antes de que el onboarding respaldara el
+        // saldo declarado tienen esa plata varada en la billetera: el cierre
+        // suma transacciones y ese saldo no es ninguna. Se repara una sola vez
+        // (después queda respaldado y este paso no vuelve a encontrar nada).
+        {
+          const rescuePocket = (await db.pockets
+            .where('platform_id').equals(platform.id)
+            .and(p => Boolean(p.is_active))
+            .toArray())[0]
+          if (rescuePocket) {
+            await rescueUnbackedBalance(userId, platform, rescuePocket, todayDateOnly)
+          }
         }
 
         // ── Step 1: Clean up pending events (merge duplicates, delete invalid) ──
@@ -155,9 +171,12 @@ export function usePlatformPayouts(userId: string) {
             })
           }
 
-          // Subtract the closed amount from the pocket (preserves new-week earnings)
+          // Subtract the closed amount from the pocket (preserves new-week earnings).
+          // Re-read: el rescate de saldo inicial (Step 0.5) pudo haber movido el
+          // balance en esta misma pasada, y `platformPocket` ya estaría viejo.
+          const freshPocket = await db.pockets.get(platformPocket.id)
           await db.pockets.update(platformPocket.id, {
-            balance: platformPocket.balance - closingBalance
+            balance: (freshPocket?.balance ?? platformPocket.balance) - closingBalance
           })
         }
         // closingBalance <= 0: no payout event, pocket untouched
@@ -168,6 +187,110 @@ export function usePlatformPayouts(userId: string) {
 
     closePastWeeks()
   }, [userId])
+}
+
+/**
+ * Rescata el saldo de plataforma que nunca tuvo una transacción que lo
+ * respaldara — el que escribía el onboarding viejo directo en `pockets.balance`.
+ *
+ * Ese saldo es invisible para el cierre semanal (que suma transacciones), así
+ * que se quedaba en la billetera para siempre: el usuario veía plata que la app
+ * nunca le ponía a cobrar.
+ *
+ * Es idempotente sin necesidad de marcador: la reparación crea la transacción
+ * que faltaba, y en la siguiente pasada ya hay respaldo y no encuentra nada.
+ */
+async function rescueUnbackedBalance(
+  userId: string,
+  platform: { id: string; name: string; created_at: string; payout_day: number | null; last_closed_sunday?: string | null },
+  pocket: { id: string; balance: number },
+  todayDateOnly: Date
+): Promise<void> {
+  const txs = await db.transactions.where('pocket_id').equals(pocket.id).toArray()
+  if (txs.some(t => t.reference_type === SALDO_INICIAL)) return   // ya reparado
+
+  const backed = txs.reduce((s, t) => s + (t.type === 'income' ? t.amount : -t.amount), 0)
+
+  // Cada cierre le restó al bolsillo exactamente el monto de su evento, sin
+  // dejar transacción. Para reconstruir el saldo original hay que devolverlos.
+  // `partial_amount` importa: al abonar, `amount` se reescribe con el restante.
+  const events = await db.scheduled_events
+    .where('user_id').equals(userId)
+    .filter(e => e.type === 'platform_payout' && e.reference_id === platform.id)
+    .toArray()
+  const yaCobrado = events.reduce((s, e) => s + e.amount + (e.partial_amount ?? 0), 0)
+
+  const saldoInicial = pocket.balance - backed + yaCobrado
+  // <= 0 significa que no hay nada varado, o que los eventos se editaron/borraron
+  // a mano y la cuenta ya no cuadra. En ambos casos: no inventar plata.
+  if (saldoInicial <= 0) return
+
+  // La fecha real en que el usuario declaró ese saldo: cuando creó la plataforma.
+  const created = new Date(platform.created_at)
+  const seedDate = isNaN(created.getTime()) ? isoDate(todayDateOnly) : isoDate(created)
+
+  // La transacción NO mueve el balance: ese dinero ya está dentro del bolsillo,
+  // lo único que faltaba era el respaldo que lo hace visible para el cierre.
+  await db.transactions.add({
+    id: crypto.randomUUID(),
+    user_id: userId,
+    type: 'income',
+    amount: saldoInicial,
+    pocket_id: pocket.id,
+    category_id: null,
+    platform_id: platform.id,
+    reference_id: null,
+    reference_type: SALDO_INICIAL,
+    note: `Saldo inicial ${platform.name}`,
+    receipt_url: null,
+    date: seedDate,
+    created_at: new Date().toISOString()
+  })
+
+  // Si la semana a la que pertenece ese saldo sigue abierta, no hay más que
+  // hacer: ahora es una transacción y el cierre del domingo la va a tomar sola.
+  const lastClosed = platform.last_closed_sunday
+  if (!lastClosed || seedDate > lastClosed || platform.payout_day === null) return
+
+  // Si su semana YA se cerró, ese cierre pasó de largo. Hay que ponerlo a cobrar
+  // ahora, con la misma fecha de pago que le habría tocado.
+  const payoutDate = nextOccurrenceAfter(new Date(lastClosed + 'T00:00:00'), platform.payout_day)
+  while (payoutDate < todayDateOnly) {
+    payoutDate.setDate(payoutDate.getDate() + 7)
+  }
+  const dueDate = isoDate(payoutDate)
+
+  const existing = await db.scheduled_events
+    .where('user_id').equals(userId)
+    .filter(e => e.type === 'platform_payout'
+              && e.reference_id === platform.id
+              && e.status === 'pending'
+              && e.due_date === dueDate)
+    .first()
+
+  if (existing) {
+    await db.scheduled_events.update(existing.id, { amount: existing.amount + saldoInicial })
+  } else {
+    await db.scheduled_events.add({
+      id: crypto.randomUUID(),
+      user_id: userId,
+      type: 'platform_payout',
+      reference_id: platform.id,
+      reference_type: 'platform',
+      amount: saldoInicial,
+      due_date: dueDate,
+      status: 'pending',
+      actual_pocket_id: null,
+      partial_amount: null,
+      remaining_after_partial: null,
+      created_at: new Date().toISOString()
+    })
+  }
+
+  const fresh = await db.pockets.get(pocket.id)
+  await db.pockets.update(pocket.id, {
+    balance: (fresh?.balance ?? pocket.balance) - saldoInicial
+  })
 }
 
 /**

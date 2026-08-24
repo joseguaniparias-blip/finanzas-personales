@@ -14,6 +14,7 @@ import { db } from '@/lib/db'
 import type { ScheduledEvent, Platform, Pocket } from '@/types'
 import { maskAmount } from '@/components/shared/PrivacyToggle'
 import { toISODate } from '@/lib/date'
+import { isEarning } from '@/lib/transactions'
 
 interface Props { userId: string }
 
@@ -288,7 +289,7 @@ export function HomePage({ userId }: Props) {
   // Balance period income/expense
   const { from, to } = balanceDates(balancePeriod)
   const periodTxs = transactions.filter(t => t.date >= from && t.date <= to)
-  const income  = periodTxs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0)
+  const income  = periodTxs.filter(isEarning).reduce((s, t) => s + t.amount, 0)
   const expense = periodTxs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0)
 
   const nonPlatformPockets = pockets.filter(p => p.type !== 'platform')

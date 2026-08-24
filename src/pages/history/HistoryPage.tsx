@@ -23,6 +23,7 @@ const SOURCE_MODULE_LABEL: Record<string, string> = {
 }
 import { todayISO, addDaysISO } from '@/lib/date'
 import { DateRangeFilter, buildPreset, type DateRange } from '@/components/shared/DateRangeFilter'
+import { isEarning } from '@/lib/transactions'
 
 interface Props { userId: string }
 
@@ -117,7 +118,8 @@ export function HistoryPage({ userId }: Props) {
     return true
   })
 
-  const totalIncome  = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0)
+  // El saldo inicial se sigue listando en el historial, pero no suma como ingreso.
+  const totalIncome  = filtered.filter(isEarning).reduce((s, t) => s + t.amount, 0)
   const totalExpense = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0)
   const groups = groupByDate(filtered)
 

@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { db } from '@/lib/db'
 import { supabase } from '@/lib/supabase'
+import { SALDO_INICIAL } from '@/lib/transactions'
+import { todayISO } from '@/lib/date'
 import type { OnboardingData, PocketDraft, PayoutConfig } from '@/types'
 import { PLATFORM_DEFAULTS } from '@/types'
 import { Step1Name } from './Step1Name'
@@ -58,11 +60,36 @@ export function OnboardingFlow({ userId, onComplete }: Props) {
       const platformId = crypto.randomUUID()
 
       const pocketId = crypto.randomUUID()
+      const saldoInicial = finalData.platformBalances[platformName] ?? 0
       await db.pockets.add({
         id: pocketId, user_id: userId, name: platformName, type: 'platform',
-        platform_id: platformId, balance: finalData.platformBalances[platformName] ?? 0,
+        platform_id: platformId, balance: saldoInicial,
         color: def.color, icon: def.icon, is_active: true, created_at: new Date().toISOString()
       })
+
+      // El saldo declarado necesita una transacción que lo respalde: el cierre
+      // semanal arma el corte sumando transacciones del rango lunes→domingo, así
+      // que un saldo escrito solo en `pockets.balance` nunca se cobraría.
+      // Va con la fecha de hoy porque el paso 4 pregunta por lo acumulado ESTA
+      // semana, que es justo la que se cerrará el domingo.
+      // No toca el balance: ya quedó incluido arriba.
+      if (saldoInicial > 0) {
+        await db.transactions.add({
+          id: crypto.randomUUID(),
+          user_id: userId,
+          type: 'income',
+          amount: saldoInicial,
+          pocket_id: pocketId,
+          category_id: null,
+          platform_id: platformId,
+          reference_id: null,
+          reference_type: SALDO_INICIAL,
+          note: `Saldo inicial ${platformName}`,
+          receipt_url: null,
+          date: todayISO(),
+          created_at: new Date().toISOString()
+        })
+      }
 
       // Translate the draft-${i} id from Step5 into the real pocket UUID.
       // Fallback to the first non-platform pocket if the mapping is missing.
