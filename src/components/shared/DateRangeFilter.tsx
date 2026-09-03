@@ -1,9 +1,11 @@
-import { useState } from 'react'
-import { Calendar, X } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Calendar, CalendarRange, X } from 'lucide-react'
+import { useToday } from '@/hooks/useToday'
 import {
   todayISO, addDaysISO,
   startOfWeekISO, endOfWeekISO,
   startOfMonthISO, endOfMonthISO,
+  formatRangeLabel,
 } from '@/lib/date'
 
 export interface DateRange {
@@ -71,6 +73,23 @@ export function buildPreset(preset: Exclude<PresetKey, 'custom'>): DateRange {
 export function DateRangeFilter({ value, onChange, presets = DEFAULT_PRESETS }: Props) {
   const [showCustom, setShowCustom] = useState(false)
 
+  // `buildPreset` lee el reloj una sola vez, al montar, y el rango queda
+  // congelado en el state del padre. En una PWA que vive abierta en el
+  // bolsillo eso significa que a las 00:01 "Hoy" sigue apuntando al día
+  // anterior: el gasto que el repartidor acaba de registrar se guarda con la
+  // fecha nueva y no aparece en la lista, así que lo registra otra vez.
+  // Al cruzar la medianoche recalculamos el preset activo. Un rango
+  // personalizado no se toca: lo eligió el usuario a mano.
+  const today = useToday()
+  const lastTodayRef = useRef(today)
+
+  useEffect(() => {
+    if (lastTodayRef.current === today) return
+    lastTodayRef.current = today
+    if (value.preset === 'custom') return
+    onChange(buildPreset(value.preset))
+  }, [today, value.preset, onChange])
+
   const handlePreset = (p: PresetKey) => {
     if (p === 'custom') {
       setShowCustom(true)
@@ -102,10 +121,11 @@ export function DateRangeFilter({ value, onChange, presets = DEFAULT_PRESETS }: 
         })}
       </div>
 
-      {/* Active range summary (only for custom — presets are self-evident) */}
-      {value.preset === 'custom' && (
-        <p className="text-xs text-slate-400 mt-2">{value.from} → {value.to}</p>
-      )}
+      {/* Días exactos que abarca el filtro activo */}
+      <p className="flex items-start gap-1.5 text-xs text-slate-400 mt-2">
+        <CalendarRange size={12} className="shrink-0 mt-0.5 text-slate-500" />
+        <span>{formatRangeLabel(value.from, value.to)}</span>
+      </p>
 
       {showCustom && (
         <CustomRangeSheet
@@ -129,7 +149,7 @@ function CustomRangeSheet({ initial, onApply, onClose }: {
 
   const apply = () => {
     if (!valid) return
-    onApply({ preset: 'custom', from, to, label: `${from} → ${to}` })
+    onApply({ preset: 'custom', from, to, label: formatRangeLabel(from, to) })
   }
 
   return (

@@ -30,7 +30,23 @@ export function useToday(): string {
       }, msUntilMidnight)
     }
     let timer = scheduleNextTick()
-    return () => clearTimeout(timer)
+
+    // The phone suspends timers while the screen is off, so the midnight
+    // timeout can fire late (or long after the fact) when the PWA is in the
+    // user's pocket. On every return to the foreground we re-read the real
+    // clock and re-arm the timer, so the date is never stale on screen.
+    function onVisible() {
+      if (document.visibilityState !== 'visible') return
+      setToday(isoDate(new Date()))
+      clearTimeout(timer)
+      timer = scheduleNextTick()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+
+    return () => {
+      clearTimeout(timer)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
   }, [])
 
   return today
