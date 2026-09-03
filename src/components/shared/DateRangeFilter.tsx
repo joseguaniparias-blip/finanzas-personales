@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Calendar, CalendarRange, X } from 'lucide-react'
+import { useToday } from '@/hooks/useToday'
 import {
   todayISO, addDaysISO,
   startOfWeekISO, endOfWeekISO,
@@ -71,6 +72,23 @@ export function buildPreset(preset: Exclude<PresetKey, 'custom'>): DateRange {
 
 export function DateRangeFilter({ value, onChange, presets = DEFAULT_PRESETS }: Props) {
   const [showCustom, setShowCustom] = useState(false)
+
+  // `buildPreset` lee el reloj una sola vez, al montar, y el rango queda
+  // congelado en el state del padre. En una PWA que vive abierta en el
+  // bolsillo eso significa que a las 00:01 "Hoy" sigue apuntando al día
+  // anterior: el gasto que el repartidor acaba de registrar se guarda con la
+  // fecha nueva y no aparece en la lista, así que lo registra otra vez.
+  // Al cruzar la medianoche recalculamos el preset activo. Un rango
+  // personalizado no se toca: lo eligió el usuario a mano.
+  const today = useToday()
+  const lastTodayRef = useRef(today)
+
+  useEffect(() => {
+    if (lastTodayRef.current === today) return
+    lastTodayRef.current = today
+    if (value.preset === 'custom') return
+    onChange(buildPreset(value.preset))
+  }, [today, value.preset, onChange])
 
   const handlePreset = (p: PresetKey) => {
     if (p === 'custom') {
