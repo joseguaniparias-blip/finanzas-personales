@@ -56,3 +56,65 @@ export function addMonthsISO(iso: string, months: number): string {
   if (target.getDate() !== d) target.setDate(0)
   return toISODate(target)
 }
+
+// ─── Etiquetas humanas de fecha (es-CO) ────────────────────────────────────
+// Escritas a mano en vez de con Intl: el label debe ser idéntico en el móvil,
+// en los tests y en cualquier runtime, sin depender de los datos de locale.
+
+const WEEKDAYS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado']
+
+const MONTHS = [
+  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+]
+
+/** Día de la semana en minúscula: 'lunes', 'domingo'… */
+export function weekdayName(iso: string): string {
+  return WEEKDAYS[new Date(iso + 'T12:00:00').getDay()]
+}
+
+/** Mes en minúscula: 'julio', 'septiembre'… */
+export function monthName(iso: string): string {
+  return MONTHS[Number(iso.slice(5, 7)) - 1]
+}
+
+function dayNum(iso: string): number {
+  return Number(iso.slice(8, 10))
+}
+
+function cap(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1)
+}
+
+/**
+ * Etiqueta legible de los días que abarca un rango, para que el usuario vea
+ * exactamente qué está contando el filtro:
+ *
+ *   un día        → 'Miércoles 2 de septiembre'
+ *   mes completo  → '1 – 30 de septiembre'
+ *   cualquier otro→ 'Lunes 31 de julio → Domingo 6 de agosto'
+ *
+ * El año se omite cuando el rango cae dentro del año en curso.
+ */
+export function formatRangeLabel(from: string, to: string): string {
+  const fromYear = Number(from.slice(0, 4))
+  const toYear = Number(to.slice(0, 4))
+  const crossesYears = fromYear !== toYear
+  const showYear = crossesYears || toYear !== new Date().getFullYear()
+
+  const long = (iso: string) => `${weekdayName(iso)} ${dayNum(iso)} de ${monthName(iso)}`
+
+  if (from === to) {
+    return cap(long(from)) + (showYear ? ` de ${fromYear}` : '')
+  }
+
+  // Mes calendario completo: los días de la semana solo estorban.
+  const sameMonth = from.slice(0, 7) === to.slice(0, 7)
+  if (sameMonth && from === startOfMonthISO(from) && to === endOfMonthISO(to)) {
+    return `${dayNum(from)} – ${dayNum(to)} de ${monthName(from)}` + (showYear ? ` de ${fromYear}` : '')
+  }
+
+  const left = cap(long(from)) + (crossesYears ? ` de ${fromYear}` : '')
+  const right = cap(long(to)) + (showYear ? ` de ${toYear}` : '')
+  return `${left} → ${right}`
+}
