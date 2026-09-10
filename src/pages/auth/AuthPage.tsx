@@ -1,33 +1,48 @@
 import { useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
+import { ForgotPassword } from '@/pages/auth/ForgotPassword'
 
 export function AuthPage() {
   const { signIn, signUp } = useAuth()
-  const [mode, setMode] = useState<'login' | 'register'>('login')
+  const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
   const [loading, setLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    setNotice('')
     setLoading(true)
-    const result = mode === 'login'
-      ? await signIn(email, password)
-      : await signUp(email, password, name)
-    if (result.error) setError(result.error.message)
+    if (mode === 'login') {
+      const { error } = await signIn(email, password)
+      if (error) setError(error.message)
+    } else {
+      const { error, needsConfirmation } = await signUp(email, password, name)
+      if (error) setError(error.message)
+      // A signup with no session and no error means the account exists but is
+      // parked behind an emailed link. Without this the screen would not move
+      // and the user would keep tapping — which is what burns the email quota.
+      else if (needsConfirmation) {
+        setNotice(`Te enviamos un correo a ${email}. Ábrelo y toca el enlace para activar tu cuenta.`)
+      }
+    }
     setLoading(false)
   }
 
-  const switchMode = (next: 'login' | 'register') => {
+  const switchMode = (next: 'login' | 'register' | 'forgot') => {
     setMode(next)
     setError('')
+    setNotice('')
     setName('')
     setEmail('')
     setPassword('')
   }
+
+  if (mode === 'forgot') return <ForgotPassword onBack={() => switchMode('login')} />
 
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
@@ -81,8 +96,14 @@ export function AuthPage() {
             </div>
 
             {error && (
-              <p className="text-red-400 text-xs bg-red-950 border border-red-800 rounded-lg p-3">
+              <p role="alert" className="text-red-400 text-xs bg-red-950 border border-red-800 rounded-lg p-3">
                 {error}
+              </p>
+            )}
+
+            {notice && (
+              <p role="status" className="text-accent text-xs bg-slate-800 border border-accent/40 rounded-lg p-3">
+                {notice}
               </p>
             )}
 
@@ -94,6 +115,17 @@ export function AuthPage() {
               {loading ? 'Cargando...' : mode === 'login' ? 'Entrar' : 'Crear cuenta'}
             </button>
           </form>
+
+          {mode === 'login' && (
+            <div className="mt-4 text-center">
+              <button
+                onClick={() => switchMode('forgot')}
+                className="text-slate-400 hover:text-slate-300 text-xs underline underline-offset-2"
+              >
+                ¿Olvidaste tu contraseña?
+              </button>
+            </div>
+          )}
 
           <div className="mt-5 text-center text-sm">
             {mode === 'login' ? (
