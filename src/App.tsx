@@ -15,6 +15,8 @@ import { usePlatformPayouts } from '@/hooks/usePlatformPayouts'
 import { useOrphanCleanup } from '@/hooks/useOrphanCleanup'
 import { setupSyncHooks, pullFromSupabase, flushSyncQueue } from '@/lib/sync'
 import { checkRemoteWipe } from '@/lib/wipe'
+import { useRecoveryMode } from '@/hooks/useRecoveryMode'
+import { ResetPassword } from '@/pages/auth/ResetPassword'
 import { IncomePage } from '@/pages/income/IncomePage'
 import { ExpensesPage } from '@/pages/expenses/ExpensesPage'
 import { DebtsPage } from '@/pages/debts/DebtsPage'
@@ -26,6 +28,7 @@ import { RecurringPaymentsPage } from '@/pages/recurring/RecurringPaymentsPage'
 
 function AppRoutes() {
   const { user, loading } = useAuth()
+  const { recovering, endRecovery } = useRecoveryMode()
   const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null)
 
   // Must be called unconditionally before any returns
@@ -88,6 +91,11 @@ function AppRoutes() {
 
     checkOnboarding()
   }, [user])
+
+  // Before everything else. A recovery link arrives as a valid session, so any
+  // check below this would read it as an ordinary sign-in and send the user to
+  // their dashboard — still unable to log in next time, just further in.
+  if (recovering) return <ResetPassword onDone={endRecovery} />
 
   if (loading || (user && onboardingDone === null)) {
     return (

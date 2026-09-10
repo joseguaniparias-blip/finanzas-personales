@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { LogOut, ChevronRight, User, Bell, Trash2, Plus, Tags, Pencil, Check, X, Eye, Bike } from 'lucide-react'
+import { LogOut, ChevronRight, User, Bell, Trash2, Plus, Tags, Pencil, Check, X, Eye, Bike, KeyRound } from 'lucide-react'
 import type { Category, CategoryKind } from '@/types'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { usePlatforms } from '@/hooks/usePlatforms'
@@ -12,10 +12,11 @@ import { DAYS_OF_WEEK, PLATFORM_DEFAULTS } from '@/types'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { AmountInput, parseAmount } from '@/components/shared/AmountInput'
 import { DangerZoneMenu, DangerConfirm, type DangerMode } from '@/pages/config/DangerZone'
+import { ChangePasswordSection } from '@/pages/config/ChangePasswordSection'
 
 interface Props { userId: string }
 
-type Section = 'main' | 'profile' | 'platforms' | 'category_limits' | 'categories' | DangerMode
+type Section = 'main' | 'profile' | 'platforms' | 'category_limits' | 'categories' | 'password' | DangerMode
 
 const PLATFORM_COLORS = ['#fb923c', '#60a5fa', '#4ade80', '#a78bfa', '#f87171', '#fbbf24', '#94a3b8']
 
@@ -244,6 +245,10 @@ export function ConfigPage({ userId }: Props) {
     )
   }
 
+  if (section === 'password') {
+    return <ChangePasswordSection onBack={() => setSection('main')} />
+  }
+
   if (section === 'reset' || section === 'delete_account') {
     return <DangerConfirm userId={userId} mode={section} onBack={() => setSection('main')} />
   }
@@ -314,6 +319,18 @@ export function ConfigPage({ userId }: Props) {
           <ChevronRight size={16} className="text-slate-400" />
         </button>
 
+
+        <button onClick={() => setSection('password')}
+          className="w-full flex items-center gap-3 bg-slate-800 border border-slate-700 rounded-xl p-4 hover:bg-slate-700 transition-colors">
+          <div className="w-9 h-9 rounded-full bg-accent/15 flex items-center justify-center">
+            <KeyRound size={16} className="text-accent" />
+          </div>
+          <div className="flex-1 text-left">
+            <p className="text-slate-200 text-sm font-medium">Cambiar contraseña</p>
+            <p className="text-slate-400 text-xs">Sin salir de la app y sin correo de por medio</p>
+          </div>
+          <ChevronRight size={16} className="text-slate-400" />
+        </button>
 
         <div className="flex items-center gap-3 bg-slate-800 border border-slate-700 rounded-xl p-4">
           <div className="w-9 h-9 rounded-full bg-slate-700 flex items-center justify-center">
